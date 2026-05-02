@@ -1,0 +1,181 @@
+<?php
+
+namespace App\Http\Controllers\Rh;
+
+use App\Http\Controllers\Controller;
+use App\Models\Colaborador;
+use App\Models\RecrutamentoVaga;
+use App\Support\ContratoAccess;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class RecrutamentoController extends Controller
+{
+    public function index()
+    {
+        $vagas = ContratoAccess::applyContratoString(RecrutamentoVaga::query())
+            ->when(request('busca'), function ($query, string $busca) {
+                $query->where(function ($query) use ($busca) {
+                    $query->where('titulo', 'like', "%{$busca}%")
+                        ->orWhere('contrato', 'like', "%{$busca}%")
+                        ->orWhere('gestor', 'like', "%{$busca}%")
+                        ->orWhere('local', 'like', "%{$busca}%")
+                        ->orWhere('status', 'like', "%{$busca}%");
+                });
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('rh.recrutamento.index', compact('vagas'));
+    }
+
+    public function create()
+    {
+        return view('rh.recrutamento.form', [
+            'vaga' => new RecrutamentoVaga([
+                'status' => 'Em abertura',
+                'quantidade' => 1,
+                'form_state' => [
+                    'vaga_status' => 'Em abertura',
+                    'vaga_quantidade' => '1',
+                ],
+            ]),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $vaga = RecrutamentoVaga::create($this->vagaData($request));
+        $this->syncCandidatosAssinadosComEfetivo($vaga);
+        $step = $vaga->form_state['currentStep'] ?? 'step-recrutamento';
+
+        return redirect()
+            ->route('rh.recrutamento.edit', ['recrutamento' => $vaga, 'step' => $step])
+            ->with('success', 'Vaga criada. O fluxo de recrutamento foi salvo.');
+    }
+
+    public function edit(RecrutamentoVaga $recrutamento)
+    {
+        $this->authorizeContratoString($recrutamento->contrato);
+
+        return view('rh.recrutamento.form', ['vaga' => $recrutamento]);
+    }
+
+    public function update(Request $request, RecrutamentoVaga $recrutamento)
+    {
+        $this->authorizeContratoString($recrutamento->contrato);
+
+        $recrutamento->update($this->vagaData($request));
+        $this->syncCandidatosAssinadosComEfetivo($recrutamento);
+        $step = $recrutamento->form_state['currentStep'] ?? 'step-recrutamento';
+
+        return redirect()
+            ->route('rh.recrutamento.edit', ['recrutamento' => $recrutamento, 'step' => $step])
+            ->with('success', 'Vaga atualizada. Os dados continuam salvos nesta ficha.');
+    }
+
+    public function destroy(RecrutamentoVaga $recrutamento)
+    {
+        $this->authorizeContratoString($recrutamento->contrato);
+
+        $recrutamento->delete();
+
+        return redirect()
+            ->route('rh.recrutamento.index')
+            ->with('success', 'Vaga removida com sucesso.');
+    }
+
+    private function authorizeContratoString(?string $contrato): void
+    {
+        if (! ContratoAccess::shouldRestrict()) {
+            return;
+        }
+
+        abort_unless($contrato && in_array($contrato, ContratoAccess::contratoValores(), true), 404);
+    }
+
+    private function vagaData(Request $request): array
+    {
+        $validated = $request->validate([
+            'form_state' => ['nullable', 'string'],
+        ]);
+
+        $state = json_decode($validated['form_state'] ?? '{}', true) ?: [];
+
+        return [
+            'titulo' => $state['vaga_titulo'] ?? null,
+            'quantidade' => max(1, (int) ($state['vaga_quantidade'] ?? 1)),
+            'prioridade' => $state['vaga_prioridade'] ?? null,
+            'tipo' => $state['vaga_tipo'] ?? null,
+            'contrato' => $state['vaga_contrato'] ?? null,
+            'gestor' => $state['vaga_gestor'] ?? null,
+            'local' => $state['vaga_local'] ?? null,
+            'data_solicitacao' => $state['vaga_data_solicitacao'] ?? null,
+            'previsao_inicio' => $state['vaga_previsao_inicio'] ?? null,
+            'salario' => $state['vaga_salario'] ?? null,
+            'status' => $state['vaga_status'] ?? 'Em abertura',
+            'descricao' => $state['vaga_descricao'] ?? null,
+            'requisitos' => $state['vaga_requisitos'] ?? null,
+            'form_state' => $state,
+        ];
+    }
+
+    private function syncCandidatosAssinadosComEfetivo(RecrutamentoVaga $vaga): void
+    {
+        $state = $vaga->form_state ?? [];
+        $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+        $changed = false;
+
+        DB::transaction(function () use ($vaga, &$state, $quantity, &$changed) {
+            foreach (range(1, $quantity) as $position) {
+                $name = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
+                $phone = trim((string) ($state["candidato_{$position}_celular"] ?? ''));
+                $status = $state["candidato_{$position}_status"] ?? 'pendente';
+                $signedAt = $state["candidato_{$position}_assinatura_data_confirmacao"] ?? null;
+
+                if ($status !== 'aprovado' || $name === '' || blank($signedAt)) {
+                    continue;
+                }
+
+                $colaborador = null;
+                $colaboradorId = $state["candidato_{$position}_colaborador_id"] ?? null;
+
+                if ($colaboradorId) {
+                    $colaborador = Colaborador::query()->find($colaboradorId);
+                }
+
+                $colaborador ??= Colaborador::query()
+                    ->where('recrutamento_vaga_id', $vaga->id)
+                    ->where('recrutamento_posicao', $position)
+                    ->first();
+
+                $data = [
+                    'nome' => $name,
+                    'telefone' => $phone ?: null,
+                    'status' => 'ativo',
+                    'cargo' => $vaga->titulo,
+                    'centro_custo' => $vaga->contrato,
+                    'local_trabalho' => $vaga->local,
+                    'recrutamento_vaga_id' => $vaga->id,
+                    'recrutamento_posicao' => $position,
+                ];
+
+                if ($colaborador) {
+                    $colaborador->update($data);
+                } else {
+                    $colaborador = Colaborador::create($data);
+                }
+
+                if (($state["candidato_{$position}_colaborador_id"] ?? null) !== $colaborador->id) {
+                    $state["candidato_{$position}_colaborador_id"] = $colaborador->id;
+                    $changed = true;
+                }
+            }
+        });
+
+        if ($changed) {
+            $vaga->forceFill(['form_state' => $state])->saveQuietly();
+        }
+    }
+}

@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-brand-burgundy: #6f1731;
+    --color-brand-burgundy-dark: #431020;
+    --color-brand-burgundy-soft: #f7e9ee;
+    --color-brand-gray: #6b6f76;
+    --color-brand-gray-soft: #f3f4f6;
+    --color-brand-black: #111111;
+    --color-brand-white: #ffffff;
+}
+
+:root {
+    --brand-burgundy: #6f1731;
+    --brand-burgundy-dark: #431020;
+    --brand-burgundy-soft: #f7e9ee;
+    --brand-gray: #6b6f76;
+    --brand-gray-soft: #f3f4f6;
+    --brand-black: #111111;
+    --brand-white: #ffffff;
+}
+
+body {
+    background: var(--brand-white);
+    color: var(--brand-black);
+}
+
+.bs-stepper .step-trigger {
+    padding: 0;
+}
+
+.bs-stepper .step-trigger:focus {
+    color: inherit;
+    outline: none;
+}
+
+.bs-stepper .bs-stepper-circle {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 0;
+    background: var(--brand-gray-soft);
+    color: var(--brand-gray);
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
+.bs-stepper .step.active .bs-stepper-circle {
+    background: var(--brand-burgundy);
+    color: white;
+}
+
+.bs-stepper .bs-stepper-label {
+    margin: 0;
+    color: var(--brand-gray);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.bs-stepper .step.active .bs-stepper-label {
+    color: var(--brand-burgundy);
+}
+
+.bs-stepper .line {
+    min-width: 2rem;
+    margin: 0 0.5rem;
+    background-color: #e4e4e7;
+}
+
+.bs-stepper .content.step-visible {
+    display: block !important;
+    visibility: visible !important;
+}

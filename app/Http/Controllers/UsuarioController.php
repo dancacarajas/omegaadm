@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Perfil;
+use App\Models\Contrato;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class UsuarioController extends Controller
+{
+    public function index()
+    {
+        $query = User::query()
+            ->with(['perfil', 'contratos'])
+            ->when(request('busca'), function ($query, string $busca) {
+                $query->where(function ($query) use ($busca) {
+                    $query->where('name', 'like', "%{$busca}%")
+                        ->orWhere('email', 'like', "%{$busca}%")
+                        ->orWhere('telefone', 'like', "%{$busca}%")
+                        ->orWhere('cargo', 'like', "%{$busca}%");
+                });
+            })
+            ->when(request('status'), fn ($query, string $status) => $query->where('status', $status));
+
+        $indicadores = [
+            'total' => User::count(),
+            'ativos' => User::where('status', 'ativo')->count(),
+            'inativos' => User::where('status', 'inativo')->count(),
+            'perfis' => Perfil::where('ativo', true)->count(),
+        ];
+
+        $usuarios = $query->latest()->paginate(10)->withQueryString();
+
+        return view('usuarios.index', compact('usuarios', 'indicadores'));
+    }
+
+    public function create()
+    {
+        return view('usuarios.create', [
+            'usuario' => new User(['status' => 'ativo']),
+            'perfis' => Perfil::where('ativo', true)->orderBy('nome')->get(),
+            'contratos' => Contrato::whereNotIn('status', ['encerrado', 'cancelado'])->orderBy('numero')->get(),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $this->validatedData($request);
+        $contratos = $data['contratos'] ?? [];
+        unset($data['contratos']);
+
+        $usuario = User::create($data);
+        $usuario->contratos()->sync($usuario->todos_contratos ? [] : $contratos);
+
+        return redirect()->route('usuarios.show', $usuario)->with('success', 'Usuário cadastrado com sucesso.');
+    }
+
+    public function show(User $usuario)
+    {
+        $usuario->load(['perfil', 'contratos']);
+
+        return view('usuarios.show', compact('usuario'));
+    }
+
+    public function edit(User $usuario)
+    {
+        return view('usuarios.edit', [
+            'usuario' => $usuario,
+            'perfis' => Perfil::where('ativo', true)->orderBy('nome')->get(),
+            'contratos' => Contrato::whereNotIn('status', ['encerrado', 'cancelado'])->orderBy('numero')->get(),
+        ]);
+    }
+
+    public function update(Request $request, User $usuario)
+    {
+        $data = $this->validatedData($request, $usuario);
+        $contratos = $data['contratos'] ?? [];
+        unset($data['contratos']);
+
+        if (blank($data['password'] ?? null)) {
+            unset($data['password']);
+        }
+
+        $usuario->update($data);
+        $usuario->contratos()->sync($usuario->todos_contratos ? [] : $contratos);
+
+        return redirect()->route('usuarios.show', $usuario)->with('success', 'Usuário atualizado com sucesso.');
+    }
+
+    public function destroy(User $usuario)
+    {
+        $usuario->delete();
+
+        return redirect()->route('usuarios.index')->with('success', 'Usuário removido com sucesso.');
+    }
+
+    private function validatedData(Request $request, ?User $usuario = null): array
+    {
+        return $request->validate([
+            'perfil_id' => ['nullable', 'exists:perfis,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuario?->id)],
+            'telefone' => ['nullable', 'string', 'max:40'],
+            'cargo' => ['nullable', 'string', 'max:120'],
+            'status' => ['required', 'in:ativo,inativo,bloqueado'],
+            'todos_contratos' => ['nullable', 'boolean'],
+            'contratos' => ['nullable', 'array'],
+            'contratos.*' => ['integer', 'exists:contratos,id'],
+            'password' => [$usuario ? 'nullable' : 'required', 'string', 'min:6', 'confirmed'],
+        ]) + ['todos_contratos' => $request->boolean('todos_contratos')];
+    }
+}
