@@ -25,7 +25,12 @@
                             <p class="truncate text-sm font-semibold text-brand-black">{{ auth()->user()?->name ?? 'Usuário' }}</p>
                             <p class="truncate text-xs font-medium text-brand-gray">{{ auth()->user()?->email ?? 'omega286.local' }}</p>
                         </div>
-                        <i data-lucide="chevrons-up-down" class="h-4 w-4 text-brand-gray"></i>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" title="Sair do sistema" class="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-gray shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy hover:text-white">
+                                <i data-lucide="log-out" class="h-4 w-4"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
 
