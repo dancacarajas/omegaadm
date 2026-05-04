@@ -32,6 +32,17 @@ body {
     color: var(--brand-black);
 }
 
+/* Autofill (Chrome/Safari): evita fundo azul e texto sobreposto aos ícones no login */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-text-fill-color: var(--brand-black);
+    caret-color: var(--brand-black);
+    box-shadow: 0 0 0 1000px #fff inset;
+    transition: background-color 99999s ease-out;
+}
+
 .bs-stepper .step-trigger {
     padding: 0;
 }
