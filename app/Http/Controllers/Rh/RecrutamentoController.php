@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
+use App\Models\Contrato;
 use App\Models\RecrutamentoVaga;
 use App\Support\ContratoAccess;
 use Illuminate\Http\Request;
@@ -32,14 +33,16 @@ class RecrutamentoController extends Controller
 
     public function create()
     {
+        $defaults = $this->loggedContratoDefaults();
+
         return view('rh.recrutamento.form', [
             'vaga' => new RecrutamentoVaga([
                 'status' => 'Em abertura',
                 'quantidade' => 1,
-                'form_state' => [
+                'form_state' => array_merge([
                     'vaga_status' => 'Em abertura',
                     'vaga_quantidade' => '1',
-                ],
+                ], $defaults),
             ]),
         ]);
     }
@@ -102,6 +105,7 @@ class RecrutamentoController extends Controller
         ]);
 
         $state = json_decode($validated['form_state'] ?? '{}', true) ?: [];
+        $state = $this->enforceContratoState($state);
 
         return [
             'titulo' => $state['vaga_titulo'] ?? null,
@@ -119,6 +123,48 @@ class RecrutamentoController extends Controller
             'requisitos' => $state['vaga_requisitos'] ?? null,
             'form_state' => $state,
         ];
+    }
+
+    private function loggedContratoDefaults(): array
+    {
+        $user = ContratoAccess::user();
+        if (! $user) {
+            return [];
+        }
+
+        $contrato = $user->contratos()->orderBy('contratos.id')->first();
+        if (! $contrato && $user->todos_contratos) {
+            $contrato = Contrato::query()
+                ->where('status', 'Ativo')
+                ->orderBy('id')
+                ->first()
+                ?? Contrato::query()->orderBy('id')->first();
+        }
+
+        if (! $contrato) {
+            return [];
+        }
+
+        return [
+            'vaga_contrato' => $contrato->numero ?: ($contrato->centro_custo ?: $contrato->nome),
+            'vaga_gestor' => $contrato->gestor,
+            'vaga_local' => $contrato->local_execucao,
+        ];
+    }
+
+    private function enforceContratoState(array $state): array
+    {
+        if (! ContratoAccess::shouldRestrict()) {
+            return $state;
+        }
+
+        $allowed = ContratoAccess::contratoValores();
+        $selected = (string) ($state['vaga_contrato'] ?? '');
+        if ($selected !== '' && in_array($selected, $allowed, true)) {
+            return $state;
+        }
+
+        return array_merge($state, $this->loggedContratoDefaults());
     }
 
     private function syncCandidatosAssinadosComEfetivo(RecrutamentoVaga $vaga): void
