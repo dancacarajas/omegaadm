@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Contrato;
 use App\Models\Patrimonio;
 use App\Support\ContratoAccess;
 use Illuminate\Http\Request;
@@ -47,15 +48,18 @@ class PatrimonialController extends Controller
 
     public function create()
     {
-        return view('patrimonial.create', ['patrimonio' => new Patrimonio([
+        $defaults = $this->loggedContratoDefaultsForPatrimonio();
+
+        return view('patrimonial.create', ['patrimonio' => new Patrimonio(array_merge([
             'status' => 'ativo',
             'condicao' => 'bom',
-        ])]);
+        ], $defaults))]);
     }
 
     public function store(Request $request)
     {
-        $patrimonio = Patrimonio::create($this->validatedData($request));
+        $data = $this->enforceContratoFields($this->validatedData($request));
+        $patrimonio = Patrimonio::create($data);
 
         return redirect()
             ->route('patrimonial.show', $patrimonio)
@@ -80,7 +84,7 @@ class PatrimonialController extends Controller
     {
         $this->authorizeContratoString($patrimonio->contrato);
 
-        $patrimonio->update($this->validatedData($request, $patrimonio));
+        $patrimonio->update($this->enforceContratoFields($this->validatedData($request, $patrimonio)));
 
         return redirect()
             ->route('patrimonial.index')
@@ -105,6 +109,56 @@ class PatrimonialController extends Controller
         }
 
         abort_unless($contrato && in_array($contrato, ContratoAccess::contratoValores(), true), 404);
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function loggedContratoDefaultsForPatrimonio(): array
+    {
+        $user = ContratoAccess::user();
+        if (! $user) {
+            return [];
+        }
+
+        $contrato = $user->contratos()->orderBy('contratos.id')->first();
+        if (! $contrato && $user->todos_contratos) {
+            $contrato = Contrato::query()
+                ->where('status', 'Ativo')
+                ->orderBy('id')
+                ->first()
+                ?? Contrato::query()->orderBy('id')->first();
+        }
+
+        if (! $contrato) {
+            return [];
+        }
+
+        return [
+            'contrato' => $contrato->numero ?: ($contrato->centro_custo ?: $contrato->nome),
+            'centro_custo' => $contrato->centro_custo,
+            'responsavel' => $contrato->gestor,
+            'localizacao' => $contrato->local_execucao,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function enforceContratoFields(array $data): array
+    {
+        if (! ContratoAccess::shouldRestrict()) {
+            return $data;
+        }
+
+        $allowed = ContratoAccess::contratoValores();
+        $selected = (string) ($data['contrato'] ?? '');
+        if ($selected !== '' && in_array($selected, $allowed, true)) {
+            return $data;
+        }
+
+        return array_merge($data, $this->loggedContratoDefaultsForPatrimonio());
     }
 
     private function validatedData(Request $request, ?Patrimonio $patrimonio = null): array
