@@ -121,6 +121,11 @@ class PatrimonialController extends Controller
             return [];
         }
 
+        $nomeCadastrante = trim((string) $user->name);
+        $defaults = array_filter([
+            'responsavel' => $nomeCadastrante !== '' ? $nomeCadastrante : null,
+        ], fn ($v) => $v !== null && $v !== '');
+
         $contrato = $user->contratos()->orderBy('contratos.id')->first();
         if (! $contrato && $user->todos_contratos) {
             $contrato = Contrato::query()
@@ -131,15 +136,14 @@ class PatrimonialController extends Controller
         }
 
         if (! $contrato) {
-            return [];
+            return $defaults;
         }
 
-        return [
+        return array_merge($defaults, [
             'contrato' => $contrato->numero ?: ($contrato->centro_custo ?: $contrato->nome),
             'centro_custo' => $contrato->centro_custo,
-            'responsavel' => $contrato->gestor,
             'localizacao' => $contrato->local_execucao,
-        ];
+        ]);
     }
 
     /**
