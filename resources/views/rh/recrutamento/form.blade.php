@@ -234,7 +234,8 @@
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-sgc">Voltar Passo 04</button>
-                        <button type="button" disabled class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" data-rh-finish-flow title="Disponível quando os 5 passos estiverem 100% concluídos">Concluir fluxo e voltar à lista</button>
+                        <!-- omegaadm-rh-finish-guard:v2 (se nao existir no "Ver codigo fonte", o deploy nao trouxe o Blade novo) -->
+                        <button type="button" disabled class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" data-rh-finish-flow title="Disponível quando o progresso do fluxo RH estiver em 100%">Concluir fluxo e voltar à lista</button>
                         <div class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Fluxo RH concluído quando todos os itens dos 5 passos estiverem completos.</div>
                     </aside>
                 </div>
@@ -635,6 +636,15 @@
                 btn.classList.toggle('pointer-events-none', !ok);
                 btn.classList.toggle('opacity-40', !ok);
                 btn.classList.toggle('grayscale', !ok);
+                if (!ok) {
+                    btn.style.opacity = '0.42';
+                    btn.style.cursor = 'not-allowed';
+                    btn.style.filter = 'grayscale(0.35)';
+                } else {
+                    btn.style.opacity = '';
+                    btn.style.cursor = '';
+                    btn.style.filter = '';
+                }
             };
 
             const updateApprovedFields = () => {
