@@ -11,9 +11,15 @@
     </head>
     <body class="min-h-screen bg-[#f6f6f7] text-brand-black antialiased">
         <div class="flex min-h-screen">
-            <aside class="hidden w-[280px] shrink-0 border-r border-zinc-200/80 bg-white lg:flex lg:flex-col">
-                <div class="flex h-16 items-center justify-center border-b border-zinc-100 px-4">
-                    <img src="{{ asset('logo.png') }}" alt="Omega Service" class="block object-contain" style="max-height: 42px; max-width: 165px; width: auto; height: auto;">
+            <div data-mobile-nav-backdrop class="fixed inset-0 z-40 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200 lg:hidden" aria-hidden="true"></div>
+            <aside id="app-sidebar" data-app-sidebar class="fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 -translate-x-full flex-col border-r border-zinc-200/80 bg-white shadow-xl transition-transform duration-200 ease-out lg:static lg:inset-y-auto lg:left-auto lg:z-auto lg:flex lg:w-[280px] lg:translate-x-0 lg:shadow-none">
+                <div class="flex h-16 items-center border-b border-zinc-100 px-4">
+                    <div class="flex flex-1 justify-center lg:flex-none lg:w-full lg:justify-center">
+                        <img src="{{ asset('logo.png') }}" alt="Omega Service" class="block object-contain" style="max-height: 42px; max-width: 165px; width: auto; height: auto;">
+                    </div>
+                    <button type="button" data-mobile-nav-close class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy lg:hidden" aria-label="Fechar menu">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
                 </div>
 
                 <div class="border-b border-zinc-100 px-4 py-5">
@@ -147,7 +153,7 @@
             <div class="min-w-0 flex-1">
                 <header class="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-zinc-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
                     <div class="flex items-center gap-4">
-                        <button class="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-black shadow-sm lg:hidden">
+                        <button type="button" data-mobile-nav-toggle class="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-black shadow-sm lg:hidden" aria-expanded="false" aria-controls="app-sidebar" title="Abrir menu">
                             <i data-lucide="menu" class="h-5 w-5"></i>
                         </button>
                         <div>
