@@ -1,5 +1,16 @@
 # Deploy OmegaADM na Hostinger
 
+## Antes de cada deploy (local)
+
+Sempre que alterar Blade/CSS/JS, gere os assets de producao e envie para o GitHub (o painel Hostinger so puxa o repositorio; sem isso o site fica com CSS antigo e o layout quebra):
+
+```bash
+npm run build
+git add public/build resources/css
+git commit -m "chore: rebuild vite"
+git push origin main
+```
+
 ## Repositorio
 
 - Repository: `https://github.com/dancacarajas/omegaadm.git`
