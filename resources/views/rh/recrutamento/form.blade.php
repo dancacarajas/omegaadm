@@ -31,6 +31,7 @@
             @method('PUT')
         @endif
         <input type="hidden" name="form_state" value="{{ $state }}" data-rh-state>
+        <input type="hidden" name="finish_rh_flow" value="0" data-rh-finish-flag>
 
     <section class="bs-stepper js-stepper rounded-xl border border-zinc-200 bg-white shadow-sm" data-rh-stepper>
         <div class="bs-stepper-header overflow-x-auto border-b border-zinc-200 p-4" role="tablist">
@@ -233,6 +234,7 @@
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-sgc">Voltar Passo 04</button>
+                        <button type="button" disabled class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" data-rh-finish-flow title="Disponível quando os 5 passos estiverem 100% concluídos">Concluir fluxo e voltar à lista</button>
                         <div class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Fluxo RH concluído quando todos os itens dos 5 passos estiverem completos.</div>
                     </aside>
                 </div>
@@ -606,6 +608,18 @@
                 const percent = Math.round((done / total) * 100);
                 if (progressBar) progressBar.style.width = `${percent}%`;
                 if (progressLabel) progressLabel.textContent = `${percent}%`;
+
+                syncFinishFlowButton();
+            };
+
+            const allStepsComplete = () => stepIds.every((id) => stepDone(id));
+
+            const syncFinishFlowButton = () => {
+                const btn = wrapper.querySelector('[data-rh-finish-flow]');
+                if (!btn) return;
+                const ok = allStepsComplete();
+                btn.disabled = !ok;
+                btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
             };
 
             const updateApprovedFields = () => {
@@ -939,6 +953,30 @@
 
             wrapper.querySelectorAll('[data-rh-prev-step]').forEach((button) => {
                 button.addEventListener('click', () => goStep(button.getAttribute('data-rh-prev-step')));
+            });
+
+            const formEl = wrapper.closest('form');
+            const finishFlag = formEl?.querySelector('[data-rh-finish-flag]');
+            let submitWithFinishRedirect = false;
+            if (formEl && finishFlag) {
+                formEl.addEventListener('submit', () => {
+                    finishFlag.value = submitWithFinishRedirect ? '1' : '0';
+                    submitWithFinishRedirect = false;
+                });
+            }
+            wrapper.querySelectorAll('[data-rh-finish-flow]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    if (button.disabled) return;
+                    if (!allStepsComplete()) {
+                        alert('Conclua todos os itens dos 5 passos antes de finalizar o fluxo.');
+                        return;
+                    }
+                    const state = loadState();
+                    state.currentStep = 'step-liberacao';
+                    saveState(state);
+                    submitWithFinishRedirect = true;
+                    formEl?.requestSubmit();
+                });
             });
 
             applyState();

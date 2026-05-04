@@ -49,8 +49,16 @@ class RecrutamentoController extends Controller
 
     public function store(Request $request)
     {
+        $finish = $request->boolean('finish_rh_flow');
         $vaga = RecrutamentoVaga::create($this->vagaData($request));
         $this->syncCandidatosAssinadosComEfetivo($vaga);
+
+        if ($finish) {
+            return redirect()
+                ->route('rh.recrutamento.index')
+                ->with('success', 'Fluxo de recrutamento concluído e salvo.');
+        }
+
         $step = $vaga->form_state['currentStep'] ?? 'step-recrutamento';
 
         return redirect()
@@ -69,8 +77,16 @@ class RecrutamentoController extends Controller
     {
         $this->authorizeContratoString($recrutamento->contrato);
 
+        $finish = $request->boolean('finish_rh_flow');
         $recrutamento->update($this->vagaData($request));
         $this->syncCandidatosAssinadosComEfetivo($recrutamento);
+
+        if ($finish) {
+            return redirect()
+                ->route('rh.recrutamento.index')
+                ->with('success', 'Fluxo de recrutamento concluído e salvo.');
+        }
+
         $step = $recrutamento->form_state['currentStep'] ?? 'step-recrutamento';
 
         return redirect()
