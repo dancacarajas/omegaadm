@@ -59,7 +59,7 @@
 
         <div class="bs-stepper-content p-5 lg:p-6">
             <div id="step-recrutamento" class="content active dstepper-block step-visible" role="tabpanel" aria-labelledby="step-recrutamento-trigger" data-rh-step="step-recrutamento">
-                <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Recrutamento e Seleção</h2>
                         <p class="mt-2 text-sm text-brand-gray">Cadastre a vaga, valide a aprovação e conduza a seleção do candidato.</p>
@@ -170,7 +170,7 @@
                             <div class="mt-4 grid gap-4" data-rh-approved-candidates></div>
                         </div>
                     </section>
-                    <aside class="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-24 2xl:z-[5] 2xl:max-h-[calc(100dvh-7rem)] 2xl:overflow-y-auto">
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <h3 class="text-lg font-black text-brand-black">Ação da etapa</h3>
                         <p class="mt-2 text-xs text-brand-gray">Quando concluir os itens, avance para Treinamentos.</p>
                         <button type="button" class="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white" data-rh-next-step="step-treinamentos" data-rh-save-next>Concluir Passo 01</button>
@@ -183,13 +183,13 @@
             </div>
 
             <div id="step-treinamentos" class="content" role="tabpanel" aria-labelledby="step-treinamentos-trigger" data-rh-step="step-treinamentos">
-                <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Treinamentos</h2>
                         <p class="mt-2 text-sm text-brand-gray">Cada candidato aprovado segue com treinamento próprio, sem depender das outras posições da vaga.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="treinamentos"></div>
                     </section>
-                    <aside class="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-24 2xl:z-[5] 2xl:max-h-[calc(100dvh-7rem)] 2xl:overflow-y-auto">
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-recrutamento">Voltar Passo 01</button>
                         <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-assinatura" data-rh-save-next>Concluir Passo 02</button>
                     </aside>
@@ -197,13 +197,13 @@
             </div>
 
             <div id="step-assinatura" class="content" role="tabpanel" aria-labelledby="step-assinatura-trigger" data-rh-step="step-assinatura">
-                <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Assinatura Documental</h2>
                         <p class="mt-2 text-sm text-brand-gray">A assinatura documental é feita por candidato aprovado.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="assinatura"></div>
                     </section>
-                    <aside class="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-24 2xl:z-[5] 2xl:max-h-[calc(100dvh-7rem)] 2xl:overflow-y-auto">
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-treinamentos">Voltar Passo 02</button>
                         <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-sgc" data-rh-save-next>Concluir Passo 03</button>
                     </aside>
@@ -211,13 +211,13 @@
             </div>
 
             <div id="step-sgc" class="content" role="tabpanel" aria-labelledby="step-sgc-trigger" data-rh-step="step-sgc">
-                <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Postagem SGC</h2>
                         <p class="mt-2 text-sm text-brand-gray">Postagem e acompanhamento no SGC por candidato.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="sgc"></div>
                     </section>
-                    <aside class="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-24 2xl:z-[5] 2xl:max-h-[calc(100dvh-7rem)] 2xl:overflow-y-auto">
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-assinatura">Voltar Passo 03</button>
                         <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-liberacao" data-rh-save-next>Concluir Passo 04</button>
                     </aside>
@@ -225,13 +225,13 @@
             </div>
 
             <div id="step-liberacao" class="content" role="tabpanel" aria-labelledby="step-liberacao-trigger" data-rh-step="step-liberacao">
-                <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Liberação para Atividades</h2>
                         <p class="mt-2 text-sm text-brand-gray">Liberação final individual para início das atividades.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="liberacao"></div>
                     </section>
-                    <aside class="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-24 2xl:z-[5] 2xl:max-h-[calc(100dvh-7rem)] 2xl:overflow-y-auto">
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-sgc">Voltar Passo 04</button>
                         <div class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Fluxo RH concluído quando todos os itens dos 5 passos estiverem completos.</div>
                     </aside>
