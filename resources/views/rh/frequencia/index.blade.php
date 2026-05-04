@@ -177,12 +177,15 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1280px] text-left text-sm">
+            <table class="w-full min-w-[1480px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                     <tr>
                         <th class="px-5 py-4">Colaborador</th>
                         <th class="px-4 py-4">Data</th>
                         <th class="px-4 py-4">Marcações</th>
+                        <th class="px-4 py-4">Horas trabalhadas</th>
+                        <th class="px-4 py-4">Horas falta</th>
+                        <th class="px-4 py-4">Horas extras</th>
                         <th class="px-4 py-4">Status</th>
                         <th class="px-4 py-4">Justificativa</th>
                         <th class="px-5 py-4">Anexar atestado / justificativa</th>
@@ -190,6 +193,9 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($registros as $registro)
+                        @php
+                            $calcHoras = \App\Support\FrequenciaCalculo::resumo($registro);
+                        @endphp
                         <tr class="align-top transition hover:bg-brand-gray-soft/50">
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
@@ -219,6 +225,18 @@
                                         Registrar ponto manual
                                     </button>
                                 </form>
+                            </td>
+                            <td class="px-4 py-4">
+                                <p class="text-sm font-bold text-brand-black">{{ $calcHoras['trabalhadas_fmt'] }}</p>
+                                <p class="mt-1 text-[10px] text-brand-gray">Soma dos intervalos</p>
+                            </td>
+                            <td class="px-4 py-4">
+                                <p class="text-sm font-bold {{ ($calcHoras['falta'] ?? 0) > 0 ? 'text-red-700' : 'text-brand-gray' }}">{{ $calcHoras['falta_fmt'] }}</p>
+                                <p class="mt-1 text-[10px] text-brand-gray">Vs. jornada {{ intdiv(\App\Support\FrequenciaCalculo::jornadaMinutosEsperados(), 60) }}h</p>
+                            </td>
+                            <td class="px-4 py-4">
+                                <p class="text-sm font-bold {{ $calcHoras['extras'] > 0 ? 'text-emerald-700' : 'text-brand-gray' }}">{{ $calcHoras['extras_fmt'] }}</p>
+                                <p class="mt-1 text-[10px] text-brand-gray">Acima da jornada</p>
                             </td>
                             <td class="px-4 py-4">
                                 <span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $statusClass[$registro->status] ?? $statusClass['falta'] }}">
@@ -252,7 +270,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-12 text-center">
+                            <td colspan="9" class="px-5 py-12 text-center">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="clock" class="h-7 w-7"></i>
                                 </div>
@@ -263,6 +281,10 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <div class="border-t border-zinc-200 px-5 py-3 text-xs text-brand-gray">
+            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2). Horas falta = jornada esperada (padrão 8h, ajustável por <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code> no .env) menos trabalhadas, quando não está justificado. Extras = trabalhadas acima da jornada. Dia justificado: falta exibida como “—”.
         </div>
 
         <div class="border-t border-zinc-200 p-5">
