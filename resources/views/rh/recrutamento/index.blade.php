@@ -299,15 +299,18 @@
                         @php
                             $approved = $approvedCandidates($vaga);
                             $quantity = max(1, (int) $vaga->quantidade);
-                            $approvedCount = min($approved->count(), $quantity);
-                            $progressUnits = $stepOneDone($vaga) ? ($approvedCount / $quantity) : 0;
+                            $approvedCount = $approved->count();
+                            $progressUnits = $stepOneDone($vaga) ? 1 : 0;
 
                             foreach (array_keys($candidateSteps) as $step) {
+                                if ($approvedCount === 0) {
+                                    continue;
+                                }
                                 $doneInStep = $approved
                                     ->filter(fn ($candidate) => $candidateStepDone($vaga, $candidate['position'], $step))
                                     ->count();
 
-                                $progressUnits += min($doneInStep, $quantity) / $quantity;
+                                $progressUnits += $doneInStep / $approvedCount;
                             }
 
                             $percent = (int) round(($progressUnits / (1 + count($candidateSteps))) * 100);

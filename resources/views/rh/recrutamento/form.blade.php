@@ -551,7 +551,7 @@
             };
 
             const stepIds = ['step-recrutamento', 'step-treinamentos', 'step-assinatura', 'step-sgc', 'step-liberacao'];
-            const stepChecks = (stepId) => checks.filter((check) => check.dataset.rhCheck === stepId);
+            const stepChecks = (stepId) => checks.filter((check) => check.getAttribute('data-rh-check') === stepId);
             const stepDone = (stepId) => {
                 const candidateStep = stepId.replace('step-', '');
 
@@ -593,33 +593,48 @@
                 if (trigger) trigger.click();
             };
 
-            const updateProgress = () => {
-                const quantity = Math.max(1, Math.min(50, Number.parseInt(quantityField?.value || loadState().vaga_quantidade || '1', 10) || 1));
+            /**
+             * Mesma formula da barra "Progresso do fluxo RH" e do botao "Concluir fluxo".
+             * Passo 01: 1/5 se os checkboxes da vaga estiverem OK.
+             * Passos 02-05: cada um vale 1/5 * (aprovados que cumpriram o passo / total de aprovados).
+             * Assim, quantidade da vaga > aprovados nao bloqueia 100% nem deixa o botao ativo com barra incompleta.
+             */
+            const computeRhFlowProgressPercent = () => {
+                applyAutomaticCandidateRules();
                 const approved = approvedCandidatePositions();
-                const approvedCount = Math.min(approved.length, quantity);
-                let done = stepDone('step-recrutamento') ? approvedCount / quantity : 0;
+                const approvedCount = approved.length;
                 const total = stepIds.length;
 
+                let done = stepDone('step-recrutamento') ? 1 : 0;
+
                 Object.keys(candidateStepConfig).forEach((step) => {
+                    if (approvedCount === 0) return;
                     const doneInStep = approved.filter((candidate) => candidateStepDone(candidate.position, step)).length;
-                    done += Math.min(doneInStep, quantity) / quantity;
+                    done += doneInStep / approvedCount;
                 });
 
-                const percent = Math.round((done / total) * 100);
+                return Math.round((done / total) * 100);
+            };
+
+            const rhFlowFullyComplete = () => computeRhFlowProgressPercent() >= 100;
+
+            const updateProgress = () => {
+                const percent = computeRhFlowProgressPercent();
                 if (progressBar) progressBar.style.width = `${percent}%`;
                 if (progressLabel) progressLabel.textContent = `${percent}%`;
 
                 syncFinishFlowButton();
             };
 
-            const allStepsComplete = () => stepIds.every((id) => stepDone(id));
-
             const syncFinishFlowButton = () => {
                 const btn = wrapper.querySelector('[data-rh-finish-flow]');
                 if (!btn) return;
-                const ok = allStepsComplete();
+                const ok = rhFlowFullyComplete();
                 btn.disabled = !ok;
                 btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+                btn.classList.toggle('pointer-events-none', !ok);
+                btn.classList.toggle('opacity-40', !ok);
+                btn.classList.toggle('grayscale', !ok);
             };
 
             const updateApprovedFields = () => {
@@ -967,8 +982,8 @@
             wrapper.querySelectorAll('[data-rh-finish-flow]').forEach((button) => {
                 button.addEventListener('click', () => {
                     if (button.disabled) return;
-                    if (!allStepsComplete()) {
-                        alert('Conclua todos os itens dos 5 passos antes de finalizar o fluxo.');
+                    if (!rhFlowFullyComplete()) {
+                        alert('Só é possível concluir quando o progresso do fluxo RH estiver em 100% (todos os passos e posições da vaga conforme a barra).');
                         return;
                     }
                     const state = loadState();
