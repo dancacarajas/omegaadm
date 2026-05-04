@@ -17,6 +17,8 @@ class FrequenciaController extends Controller
             ? Carbon::parse(request('data'))->toDateString()
             : today()->toDateString();
 
+        $this->garantirRegistrosDoDia($data);
+
         $mes = request('mes') ?: Carbon::parse($data)->format('Y-m');
         $inicioMes = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
         $fimMes = $inicioMes->copy()->endOfMonth();
@@ -149,6 +151,42 @@ class FrequenciaController extends Controller
         return back()->with('success', 'AFD importado. Marcações lidas: '.count($marcacoes).'. Linhas ignoradas: '.$ignoradas.'.');
     }
 
+    public function marcacaoManual(Request $request, FrequenciaRegistro $registro)
+    {
+        $payload = [];
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            $v = $request->input($campo);
+            $payload[$campo] = (is_string($v) && trim($v) === '') ? null : $v;
+        }
+
+        $validated = validator($payload, [
+            'entrada_1' => ['nullable', 'date_format:H:i'],
+            'saida_1' => ['nullable', 'date_format:H:i'],
+            'entrada_2' => ['nullable', 'date_format:H:i'],
+            'saida_2' => ['nullable', 'date_format:H:i'],
+        ])->validate();
+
+        $preenchidos = collect($validated)->filter()->count();
+        $status = match (true) {
+            $preenchidos >= 2 => 'presente',
+            $preenchidos === 1 => 'incompleto',
+            default => 'falta',
+        };
+
+        $hora = static fn (?string $v) => $v ? ($v.':00') : null;
+
+        $registro->update([
+            'entrada_1' => $hora($validated['entrada_1'] ?? null),
+            'saida_1' => $hora($validated['saida_1'] ?? null),
+            'entrada_2' => $hora($validated['entrada_2'] ?? null),
+            'saida_2' => $hora($validated['saida_2'] ?? null),
+            'status' => $status,
+            'origem' => 'manual',
+        ]);
+
+        return back()->with('success', 'Marcações manuais salvas para '.$registro->colaborador?->nome.'.');
+    }
+
     public function justificar(Request $request, FrequenciaRegistro $registro)
     {
         $data = $request->validate([
@@ -240,6 +278,27 @@ class FrequenciaController extends Controller
                     ]
                 );
             }
+        }
+    }
+
+    /**
+     * Garante uma linha por colaborador ativo na data, para permitir ponto manual e justificativas sem AFD.
+     */
+    private function garantirRegistrosDoDia(string $data): void
+    {
+        $colaboradores = Colaborador::query()->where('status', 'ativo')->pluck('id');
+
+        foreach ($colaboradores as $colaboradorId) {
+            FrequenciaRegistro::firstOrCreate(
+                [
+                    'colaborador_id' => $colaboradorId,
+                    'data' => $data,
+                ],
+                [
+                    'status' => 'falta',
+                    'origem' => 'grade',
+                ]
+            );
         }
     }
 }

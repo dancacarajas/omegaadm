@@ -18,6 +18,7 @@
             'justificado' => 'border-brand-burgundy/20 bg-brand-burgundy-soft text-brand-burgundy',
             'incompleto' => 'border-amber-200 bg-amber-50 text-amber-700',
         ];
+        $fmtHora = fn ($t) => $t ? substr((string) $t, 0, 5) : '';
     @endphp
 
     @if (session('error'))
@@ -62,7 +63,7 @@
             <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
                 <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Importação AFD</p>
                 <h2 class="mt-1 text-xl font-bold text-brand-black">Importar relógio de ponto</h2>
-                <p class="mt-1 text-sm text-brand-gray">Envie o arquivo AFD do relógio. O sistema lê as marcações, vincula ao efetivo por PIS/matrícula e registra falta para quem não tiver ponto no dia importado.</p>
+                <p class="mt-1 text-sm text-brand-gray">Envie o arquivo AFD do relógio para importar marcações em lote. <strong>Sem AFD</strong>, a grade do dia é criada automaticamente para o efetivo ativo: use os horários manuais na tabela abaixo e registre atestados, abonos ou justificativas por linha.</p>
             </div>
             <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="grid gap-3 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
                 @csrf
@@ -203,14 +204,21 @@
                             </td>
                             <td class="px-4 py-4 font-semibold text-brand-black">{{ $registro->data?->format('d/m/Y') }}</td>
                             <td class="px-4 py-4">
-                                <div class="grid grid-cols-4 gap-2 text-xs font-semibold text-brand-gray">
-                                    @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída', 'entrada_2' => 'Retorno', 'saida_2' => 'Saída'] as $field => $label)
-                                        <span class="rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center">
-                                            <span class="block text-[10px] uppercase">{{ $label }}</span>
-                                            {{ $registro->{$field} ? substr($registro->{$field}, 0, 5) : '--:--' }}
-                                        </span>
-                                    @endforeach
-                                </div>
+                                <form method="POST" action="{{ route('rh.frequencia.marcacao', $registro) }}" class="space-y-2">
+                                    @csrf
+                                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                        @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída', 'entrada_2' => 'Retorno', 'saida_2' => 'Saída'] as $field => $label)
+                                            <label class="block text-[10px] font-bold uppercase tracking-wide text-brand-gray">
+                                                <span class="mb-1 block">{{ $label }}</span>
+                                                <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" class="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-1 text-xs font-semibold text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-2 text-xs font-bold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white sm:w-auto">
+                                        <i data-lucide="clock" class="h-3.5 w-3.5"></i>
+                                        Registrar ponto manual
+                                    </button>
+                                </form>
                             </td>
                             <td class="px-4 py-4">
                                 <span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $statusClass[$registro->status] ?? $statusClass['falta'] }}">
@@ -248,8 +256,8 @@
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="clock" class="h-7 w-7"></i>
                                 </div>
-                                <p class="mt-4 text-base font-bold text-brand-black">Nenhum ponto registrado para esta data.</p>
-                                <p class="mt-1 text-sm text-brand-gray">Importe um arquivo AFD para gerar as marcações e faltas do efetivo.</p>
+                                <p class="mt-4 text-base font-bold text-brand-black">Nenhum colaborador ativo no efetivo.</p>
+                                <p class="mt-1 text-sm text-brand-gray">Cadastre colaboradores em RH / Efetivo para lançar frequência, ou verifique o filtro de data.</p>
                             </td>
                         </tr>
                     @endforelse

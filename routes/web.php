@@ -56,6 +56,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::post('frequencia/importar-afd', [FrequenciaController::class, 'importarAfd'])->name('frequencia.importar-afd');
+        Route::post('frequencia/{registro}/marcacao', [FrequenciaController::class, 'marcacaoManual'])->name('frequencia.marcacao');
         Route::post('frequencia/{registro}/justificar', [FrequenciaController::class, 'justificar'])->name('frequencia.justificar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::resource('beneficios', BeneficioController::class);
