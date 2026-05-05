@@ -11,6 +11,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\MedicaoController;
+use App\Http\Controllers\MedicaoContratualController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PatrimonialController;
 use App\Http\Controllers\RdoController;
@@ -59,6 +61,11 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::put('/sesmt/tarefas/{tarefa}', [SesmtController::class, 'update'])->name('sesmt.tarefas.update');
     Route::resource('patrimonial', PatrimonialController::class)
         ->parameters(['patrimonial' => 'patrimonio']);
+    Route::get('/medicao', [MedicaoController::class, 'index'])->name('medicao.index');
+    Route::resource('/medicao/contratual', MedicaoContratualController::class)
+        ->except(['show'])
+        ->names('medicao.contratual')
+        ->parameters(['contratual' => 'contratual']);
     Route::get('/rdo/exportar/excel', [RdoController::class, 'exportExcel'])->name('rdo.export.excel');
     Route::get('/rdo/exportar/pdf', [RdoController::class, 'exportPdf'])->name('rdo.export.pdf');
     Route::get('/rdo/{rdo}/pdf', [RdoController::class, 'pdf'])->name('rdo.pdf');

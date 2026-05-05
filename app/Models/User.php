@@ -117,6 +117,7 @@ class User extends Authenticatable
             'sesmt' => fn () => route('sesmt.index'),
             'contratos' => fn () => route('contratos.index'),
             'patrimonial' => fn () => route('patrimonial.index'),
+            'medicao' => fn () => route('medicao.index'),
             'rdo' => fn () => route('rdo.index'),
             'acessos' => fn () => route('usuarios.index'),
         ];

@@ -48,6 +48,7 @@
                     $veiculosOpen = request()->routeIs('veiculos.*');
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
+                    $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                 @endphp
 
@@ -148,11 +149,33 @@
                             Patrimonial
                         </a>
                         @endif
-                        @if ($podeModulo('rdo'))
-                        <a href="{{ route('rdo.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rdo.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="clipboard-list" class="h-5 w-5"></i>
-                            RDO
-                        </a>
+                        @if ($podeModulo('medicao') || $podeModulo('rdo'))
+                        <div data-menu-group="medicao">
+                            <button type="button" data-menu-toggle="medicao" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $medicaoOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="calculator" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Medição</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $medicaoOpen ? 'rotate-180' : '' }}" data-menu-chevron="medicao"></i>
+                            </button>
+
+                            <div data-menu-panel="medicao" class="{{ $medicaoOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                @if ($podeModulo('medicao'))
+                                <a href="{{ route('medicao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.index') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="gauge" class="h-4 w-4"></i>
+                                    Painel de medição
+                                </a>
+                                <a href="{{ route('medicao.contratual.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.contratual.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="receipt-text" class="h-4 w-4"></i>
+                                    Medição contratual
+                                </a>
+                                @endif
+                                @if ($podeModulo('rdo'))
+                                <a href="{{ route('rdo.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rdo.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+                                    RDO
+                                </a>
+                                @endif
+                            </div>
+                        </div>
                         @endif
 
                         @if ($podeModulo('acessos'))

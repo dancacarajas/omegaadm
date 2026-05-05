@@ -17,6 +17,7 @@ class PerfilController extends Controller
             'sesmt' => 'SESMT',
             'contratos' => 'Contratos',
             'patrimonial' => 'Patrimonial',
+            'medicao' => 'Medição',
             'rdo' => 'RDO',
             'acessos' => 'Acessos',
         ];
