@@ -69,6 +69,10 @@ class EnsurePerfilPermissaoRota
             return 'contratos';
         }
 
+        if (str_starts_with($name, 'dashboard.pgu')) {
+            return 'contratos';
+        }
+
         if (str_starts_with($name, 'patrimonial.')) {
             return 'patrimonial';
         }

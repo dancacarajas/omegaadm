@@ -15,6 +15,18 @@
     --color-brand-gray-soft: #f3f4f6;
     --color-brand-black: #111111;
     --color-brand-white: #ffffff;
+    --color-pgu-bg: #f6f8fb;
+    --color-pgu-card: #ffffff;
+    --color-pgu-border: #e5e7eb;
+    --color-pgu-primary: #0f766e;
+    --color-pgu-primary-soft: #ccfbf1;
+    --color-pgu-success: #059669;
+    --color-pgu-warning: #d97706;
+    --color-pgu-danger: #dc2626;
+    --color-pgu-ink: #0f172a;
+    --color-pgu-muted: #64748b;
+    --color-pgu-subtle: #94a3b8;
+    --radius-pgu: 1.25rem;
 }
 
 :root {

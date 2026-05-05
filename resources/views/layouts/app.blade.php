@@ -48,6 +48,7 @@
                     $veiculosOpen = request()->routeIs('veiculos.*');
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
+                    $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                 @endphp
@@ -138,10 +139,28 @@
                         </a>
                         @endif
                         @if ($podeModulo('contratos'))
-                        <a href="{{ route('contratos.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('contratos.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="file-text" class="h-5 w-5"></i>
-                            Contrato
-                        </a>
+                        <div data-menu-group="contratos">
+                            <button type="button" data-menu-toggle="contratos" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $contratosOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="file-text" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Contrato</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $contratosOpen ? 'rotate-180' : '' }}" data-menu-chevron="contratos"></i>
+                            </button>
+
+                            <div data-menu-panel="contratos" class="{{ $contratosOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('contratos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('contratos.index') || request()->routeIs('contratos.create') || request()->routeIs('contratos.edit') || request()->routeIs('contratos.show') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="list" class="h-4 w-4"></i>
+                                    Gestão de contratos
+                                </a>
+                                <a href="{{ route('contratos.histograma.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('contratos.histograma.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                                    Histograma
+                                </a>
+                                <a href="{{ route('dashboard.pgu') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('dashboard.pgu') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="calendar-clock" class="h-4 w-4"></i>
+                                    PGU Command Center
+                                </a>
+                            </div>
+                        </div>
                         @endif
                         @if ($podeModulo('patrimonial'))
                         <a href="{{ route('patrimonial.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('patrimonial.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
@@ -166,6 +185,10 @@
                                 <a href="{{ route('medicao.contratual.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.contratual.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="receipt-text" class="h-4 w-4"></i>
                                     Medição contratual
+                                </a>
+                                <a href="{{ route('medicao.fluxo-financeiro.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.fluxo-financeiro.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="line-chart" class="h-4 w-4"></i>
+                                    Fluxo financeiro
                                 </a>
                                 @endif
                                 @if ($podeModulo('rdo'))

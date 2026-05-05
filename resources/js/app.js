@@ -1,8 +1,15 @@
 import './bootstrap';
+import Alpine from 'alpinejs';
+import * as echarts from 'echarts';
 import { createIcons, icons } from 'lucide';
 import Stepper from 'bs-stepper';
 import ApexCharts from 'apexcharts';
+import './pgu-dashboard';
 import 'bs-stepper/dist/css/bs-stepper.min.css';
+
+window.Alpine = Alpine;
+window.echarts = echarts;
+Alpine.start();
 
 document.addEventListener('DOMContentLoaded', () => {
     createIcons({

@@ -1,21 +1,24 @@
 <?php
 
-use App\Http\Controllers\Rh\ColaboradorController;
-use App\Http\Controllers\Rh\BeneficioController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContratoController;
+use App\Http\Controllers\ContratoHistogramaController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InstallController;
+use App\Http\Controllers\MedicaoContratualController;
+use App\Http\Controllers\MedicaoController;
+use App\Http\Controllers\MedicaoFluxoFinanceiroController;
+use App\Http\Controllers\PatrimonialController;
+use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\PguDashboardController;
+use App\Http\Controllers\RdoController;
 use App\Http\Controllers\Rh\BeneficioColaboradorController;
+use App\Http\Controllers\Rh\BeneficioController;
+use App\Http\Controllers\Rh\ColaboradorController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\FrequenciaController;
 use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\RecrutamentoController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ContratoController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\InstallController;
-use App\Http\Controllers\MedicaoController;
-use App\Http\Controllers\MedicaoContratualController;
-use App\Http\Controllers\PerfilController;
-use App\Http\Controllers\PatrimonialController;
-use App\Http\Controllers\RdoController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
@@ -38,6 +41,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installe
 
 Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('contratos/histograma', [ContratoHistogramaController::class, 'index'])->name('contratos.histograma.index');
+    Route::get('contratos/histograma/status-cronograma', fn () => redirect()->route('dashboard.pgu'))->name('contratos.histograma.status-cronograma');
+    Route::get('/dashboard/pgu', [PguDashboardController::class, 'index'])->name('dashboard.pgu');
+    Route::post('contratos/histograma', [ContratoHistogramaController::class, 'salvar'])->name('contratos.histograma.salvar');
     Route::resource('contratos', ContratoController::class);
     Route::resource('usuarios', UsuarioController::class);
     Route::resource('perfis', PerfilController::class);
@@ -66,6 +73,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         ->except(['show'])
         ->names('medicao.contratual')
         ->parameters(['contratual' => 'contratual']);
+    Route::get('/medicao/fluxo-financeiro', [MedicaoFluxoFinanceiroController::class, 'index'])->name('medicao.fluxo-financeiro.index');
     Route::get('/rdo/exportar/excel', [RdoController::class, 'exportExcel'])->name('rdo.export.excel');
     Route::get('/rdo/exportar/pdf', [RdoController::class, 'exportPdf'])->name('rdo.export.pdf');
     Route::get('/rdo/{rdo}/pdf', [RdoController::class, 'pdf'])->name('rdo.pdf');
