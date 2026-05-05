@@ -46,7 +46,18 @@ class AuthController extends Controller
 
         $user->forceFill(['ultimo_acesso_em' => now()])->save();
 
-        return redirect()->intended(route('dashboard'));
+        $inicial = $user->urlInicialAposLogin();
+        if ($inicial === null) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Este perfil não tem nenhum módulo liberado. Solicite ajuste ao administrador.',
+            ]);
+        }
+
+        return redirect()->intended($inicial);
     }
 
     public function logout(Request $request)

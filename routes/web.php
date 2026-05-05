@@ -31,7 +31,7 @@ Route::middleware(['installed', 'guest'])->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installed', 'auth'])->name('logout');
 
-Route::middleware(['installed', 'auth'])->group(function () {
+Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::resource('contratos', ContratoController::class);
     Route::resource('usuarios', UsuarioController::class);

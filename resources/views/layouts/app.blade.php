@@ -41,6 +41,8 @@
                 </div>
 
                 @php
+                    auth()->user()?->loadMissing('perfil');
+                    $podeModulo = fn (string $m) => auth()->user() && auth()->user()->temQualquerPermissaoNoModulo($m);
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
@@ -48,11 +50,14 @@
 
                 <nav class="flex-1 px-4 py-5 text-sm">
                     <div class="space-y-1">
-                        <a href="{{ route('dashboard') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('dashboard') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
-                            Painel
-                        </a>
+                        @if ($podeModulo('dashboard'))
+                            <a href="{{ route('dashboard') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('dashboard') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+                                Painel
+                            </a>
+                        @endif
 
+                        @if ($podeModulo('rh'))
                         <div data-menu-group="rh">
                             <button type="button" data-menu-toggle="rh" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $rhOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                 <i data-lucide="briefcase-business" class="h-5 w-5"></i>
@@ -96,28 +101,40 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
+                        @if ($podeModulo('veiculos'))
                         <a href="{{ route('veiculos.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('veiculos.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                             <i data-lucide="truck" class="h-5 w-5"></i>
                             Veículos
                         </a>
+                        @endif
+                        @if ($podeModulo('sesmt'))
                         <a href="{{ route('sesmt.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('sesmt.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                             <i data-lucide="hard-hat" class="h-5 w-5"></i>
                             SESMT
                         </a>
+                        @endif
+                        @if ($podeModulo('contratos'))
                         <a href="{{ route('contratos.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('contratos.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                             <i data-lucide="file-text" class="h-5 w-5"></i>
                             Contrato
                         </a>
+                        @endif
+                        @if ($podeModulo('patrimonial'))
                         <a href="{{ route('patrimonial.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('patrimonial.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                             <i data-lucide="warehouse" class="h-5 w-5"></i>
                             Patrimonial
                         </a>
+                        @endif
+                        @if ($podeModulo('rdo'))
                         <a href="{{ route('rdo.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rdo.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                             <i data-lucide="clipboard-list" class="h-5 w-5"></i>
                             RDO
                         </a>
+                        @endif
 
+                        @if ($podeModulo('acessos'))
                         <div data-menu-group="acessos">
                             <button type="button" data-menu-toggle="acessos" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $acessosOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                 <i data-lucide="shield-check" class="h-5 w-5"></i>
@@ -136,6 +153,7 @@
                                 </a>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </nav>
 

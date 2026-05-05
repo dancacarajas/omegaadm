@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'installed' => \App\Http\Middleware\EnsureInstalled::class,
+            'perfil.rota' => \App\Http\Middleware\EnsurePerfilPermissaoRota::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
