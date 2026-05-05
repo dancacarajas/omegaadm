@@ -45,6 +45,8 @@
                     $podeModulo = fn (string $m) => auth()->user() && auth()->user()->temQualquerPermissaoNoModulo($m);
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
+                    $veiculosOpen = request()->routeIs('veiculos.*');
+                    $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                 @endphp
 
@@ -104,10 +106,24 @@
                         @endif
 
                         @if ($podeModulo('veiculos'))
-                        <a href="{{ route('veiculos.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('veiculos.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="truck" class="h-5 w-5"></i>
-                            Veículos
-                        </a>
+                        <div data-menu-group="veiculos">
+                            <button type="button" data-menu-toggle="veiculos" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $veiculosOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="truck" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Veículos</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $veiculosOpen ? 'rotate-180' : '' }}" data-menu-chevron="veiculos"></i>
+                            </button>
+
+                            <div data-menu-panel="veiculos" class="{{ $veiculosOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('veiculos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('veiculos.index') || request()->routeIs('veiculos.create') || request()->routeIs('veiculos.edit') || request()->routeIs('veiculos.solicitacoes.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+                                    Mobilização
+                                </a>
+                                <a href="{{ route('veiculos.telemetria.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ $veiculosTelemetriaOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="activity" class="h-4 w-4"></i>
+                                    Telemetria
+                                </a>
+                            </div>
+                        </div>
                         @endif
                         @if ($podeModulo('sesmt'))
                         <a href="{{ route('sesmt.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('sesmt.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
