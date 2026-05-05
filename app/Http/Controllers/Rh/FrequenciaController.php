@@ -30,7 +30,7 @@ class FrequenciaController extends Controller
             : $fimMes->copy();
 
         $registros = FrequenciaRegistro::query()
-            ->with('colaborador')
+            ->with(['colaborador.horarioEscala.dias'])
             ->whereDate('data', $data)
             ->when(request('busca'), function ($query, string $busca) {
                 $query->whereHas('colaborador', function ($query) use ($busca) {
@@ -283,15 +283,19 @@ class FrequenciaController extends Controller
 
     /**
      * Garante uma linha por colaborador ativo na data, para permitir ponto manual e justificativas sem AFD.
+     * Preenche horários vazios com a escala vinculada (incl. almoço: saída 1 e retorno / entrada 2).
      */
     private function garantirRegistrosDoDia(string $data): void
     {
-        $colaboradores = Colaborador::query()->where('status', 'ativo')->pluck('id');
+        $colaboradores = Colaborador::query()
+            ->where('status', 'ativo')
+            ->with(['horarioEscala.dias'])
+            ->get();
 
-        foreach ($colaboradores as $colaboradorId) {
-            FrequenciaRegistro::firstOrCreate(
+        foreach ($colaboradores as $colaborador) {
+            $registro = FrequenciaRegistro::firstOrCreate(
                 [
-                    'colaborador_id' => $colaboradorId,
+                    'colaborador_id' => $colaborador->id,
                     'data' => $data,
                 ],
                 [
@@ -299,6 +303,64 @@ class FrequenciaController extends Controller
                     'origem' => 'grade',
                 ]
             );
+
+            $this->preencherHorariosDaEscalaNosVazios($registro, $colaborador, $data);
         }
+    }
+
+    private function preencherHorariosDaEscalaNosVazios(FrequenciaRegistro $registro, Colaborador $colaborador, string $dataYmd): void
+    {
+        if ($registro->status === 'justificado') {
+            return;
+        }
+
+        $dia = $colaborador->horarioEscalaDiaNaData($dataYmd);
+        if (! $dia) {
+            return;
+        }
+
+        $campos = ['entrada_1', 'saida_1', 'entrada_2', 'saida_2'];
+        $alterou = false;
+
+        foreach ($campos as $campo) {
+            if (! \App\Support\FrequenciaCalculo::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                continue;
+            }
+            $valorEscala = $dia->getAttribute($campo);
+            if (\App\Support\FrequenciaCalculo::horarioArmazenadoVazio($valorEscala)) {
+                continue;
+            }
+            $registro->setAttribute($campo, $this->normalizarHoraParaBanco($valorEscala));
+            $alterou = true;
+        }
+
+        if (! $alterou) {
+            return;
+        }
+
+        $preenchidos = 0;
+        foreach ($campos as $campo) {
+            if (! \App\Support\FrequenciaCalculo::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                $preenchidos++;
+            }
+        }
+
+        $registro->status = match (true) {
+            $preenchidos >= 2 => 'presente',
+            $preenchidos === 1 => 'incompleto',
+            default => 'falta',
+        };
+
+        $registro->save();
+    }
+
+    private function normalizarHoraParaBanco(mixed $valor): string
+    {
+        $s = trim((string) $valor);
+        if (strlen($s) === 5 && preg_match('/^\d{2}:\d{2}$/', $s)) {
+            return $s.':00';
+        }
+
+        return $s;
     }
 }

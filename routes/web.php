@@ -5,6 +5,7 @@ use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\FrequenciaController;
+use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\RecrutamentoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContratoController;
@@ -58,6 +59,9 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('frequencia/importar-afd', [FrequenciaController::class, 'importarAfd'])->name('frequencia.importar-afd');
         Route::post('frequencia/{registro}/marcacao', [FrequenciaController::class, 'marcacaoManual'])->name('frequencia.marcacao');
         Route::post('frequencia/{registro}/justificar', [FrequenciaController::class, 'justificar'])->name('frequencia.justificar');
+        Route::resource('frequencia/horarios', HorarioEscalaController::class)
+            ->except(['show'])
+            ->parameters(['horarios' => 'horario_escala']);
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::resource('beneficios', BeneficioController::class);
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');

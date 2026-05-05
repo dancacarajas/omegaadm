@@ -1,4 +1,5 @@
 @php
+    $horarioEscalas = $horarioEscalas ?? collect();
     $value = fn (string $field) => old($field, data_get($colaborador, $field));
     $date = function (string $field) use ($colaborador) {
         $current = old($field, data_get($colaborador, $field));
@@ -197,6 +198,7 @@
             <div>
                 <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">03 / Vínculo</p>
                 <h2 class="mt-1 text-xl font-bold text-brand-black">Dados do contrato</h2>
+                <p class="mt-2 max-w-3xl text-sm text-brand-gray">Cada colaborador pode ter uma <strong class="text-brand-black">escala de horários</strong> diferente. Cadastre as grades em <strong class="text-brand-black">RH → Frequência → Cadastro de horários</strong> e selecione abaixo a escala deste profissional — o ponto diário usará esses horários para calcular falta e extras.</p>
             </div>
         </div>
 
@@ -234,8 +236,21 @@
                 <input name="jornada_semanal" value="{{ $value('jornada_semanal') }}" class="{{ $inputClass }}">
             </label>
             <label>
-                <span class="{{ $labelClass }}">Horário</span>
-                <input name="horario" value="{{ $value('horario') }}" class="{{ $inputClass }}">
+                <span class="{{ $labelClass }}">Horário (texto livre)</span>
+                <input name="horario" value="{{ $value('horario') }}" class="{{ $inputClass }}" placeholder="Opcional — use o cadastro abaixo para escala semanal">
+            </label>
+            <label class="md:col-span-2">
+                <span class="{{ $labelClass }}">Cadastro de horários</span>
+                <select name="horario_escala_id" class="{{ $inputClass }}">
+                    <option value="">— Sem vínculo —</option>
+                    @foreach ($horarioEscalas as $escala)
+                        <option value="{{ $escala->id }}" @selected((string) old('horario_escala_id', $colaborador->horario_escala_id) === (string) $escala->id)>
+                            {{ $escala->nome }}@if ($escala->status !== 'ativo') ({{ $escala->status === 'inativo' ? 'Inativo' : ucfirst($escala->status) }})@endif
+                        </option>
+                    @endforeach
+                </select>
+                @error('horario_escala_id') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
+                <span class="mt-1 block text-xs font-medium text-brand-gray">Vincule a escala criada em RH → Frequência → Cadastro de horários.</span>
             </label>
         </div>
     </section>

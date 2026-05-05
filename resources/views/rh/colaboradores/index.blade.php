@@ -111,12 +111,13 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[980px] text-left text-sm">
+            <table class="w-full min-w-[1080px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                     <tr>
                         <th class="px-5 py-4">Colaborador</th>
                         <th class="px-5 py-4">Matrícula</th>
                         <th class="px-5 py-4">Cargo</th>
+                        <th class="px-5 py-4">Escala de horários</th>
                         <th class="px-5 py-4">Admissão</th>
                         <th class="px-5 py-4">Status</th>
                         <th class="px-5 py-4">SGC Vale</th>
@@ -139,6 +140,17 @@
                             </td>
                             <td class="px-5 py-4 font-medium text-brand-gray">{{ $colaborador->matricula ?: '-' }}</td>
                             <td class="px-5 py-4 font-medium text-brand-gray">{{ $colaborador->cargo ?: '-' }}</td>
+                            <td class="px-5 py-4">
+                                @if ($colaborador->horarioEscala)
+                                    <span class="font-medium text-brand-black">{{ $colaborador->horarioEscala->nome }}</span>
+                                    @if ($colaborador->horarioEscala->status !== 'ativo')
+                                        <span class="mt-0.5 block text-xs text-amber-700">Escala {{ $colaborador->horarioEscala->status === 'inativo' ? 'inativa' : $colaborador->horarioEscala->status }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-brand-gray">—</span>
+                                    <span class="mt-0.5 block text-xs text-brand-gray">Edite a ficha para vincular</span>
+                                @endif
+                            </td>
                             <td class="px-5 py-4 font-medium text-brand-gray">{{ $colaborador->data_admissao?->format('d/m/Y') ?: '-' }}</td>
                             <td class="px-5 py-4">
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-burgundy-soft px-2.5 py-1 text-xs font-bold text-brand-burgundy">
@@ -170,7 +182,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-12 text-center">
+                            <td colspan="8" class="px-5 py-12 text-center">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="user-plus" class="h-7 w-7"></i>
                                 </div>

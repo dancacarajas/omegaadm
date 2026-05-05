@@ -75,6 +75,7 @@
                 $item('CBO', $colaborador->cbo),
                 $item('Jornada semanal', $colaborador->jornada_semanal),
                 $item('Horário', $colaborador->horario),
+                $item('Cadastro de horários', $colaborador->horarioEscala?->nome),
             ]),
             $section('Dados da admissão', [
                 $item('Data de admissão', $date($colaborador->data_admissao)),

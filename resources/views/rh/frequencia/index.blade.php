@@ -194,7 +194,7 @@
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($registros as $registro)
                         @php
-                            $calcHoras = \App\Support\FrequenciaCalculo::resumo($registro);
+                            $calcHoras = \App\Support\FrequenciaCalculo::resumoComFallbackEscala($registro);
                         @endphp
                         <tr class="align-top transition hover:bg-brand-gray-soft/50">
                             <td class="px-5 py-4">
@@ -205,6 +205,15 @@
                                     <div>
                                         <p class="font-semibold text-brand-black">{{ $registro->colaborador->nome }}</p>
                                         <p class="text-xs text-brand-gray">{{ $registro->colaborador->matricula ?: 'Sem matrícula' }} · {{ $registro->colaborador->cargo ?: 'Cargo não informado' }}</p>
+                                        @php
+                                            $diaEscala = $registro->colaborador->horarioEscalaDiaNaData($registro->data);
+                                        @endphp
+                                        @if ($registro->colaborador->horarioEscala)
+                                            <p class="mt-1 text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">Escala: {{ $registro->colaborador->horarioEscala->nome }}</p>
+                                            <p class="text-[10px] text-brand-gray">Previsto hoje: {{ $diaEscala?->textoGrade() ?? '—' }}</p>
+                                        @else
+                                            <p class="mt-1 text-[10px] text-brand-gray">Sem escala — usa jornada padrão ({{ \App\Support\FrequenciaCalculo::formatarMinutos(\App\Support\FrequenciaCalculo::jornadaMinutosEsperados()) }})</p>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -213,7 +222,7 @@
                                 <form method="POST" action="{{ route('rh.frequencia.marcacao', $registro) }}" class="space-y-2">
                                     @csrf
                                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                        @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída', 'entrada_2' => 'Retorno', 'saida_2' => 'Saída'] as $field => $label)
+                                        @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída 1 (alm.)', 'entrada_2' => 'Entrada 2 (alm.)', 'saida_2' => 'Saída final'] as $field => $label)
                                             <label class="block text-[10px] font-bold uppercase tracking-wide text-brand-gray">
                                                 <span class="mb-1 block">{{ $label }}</span>
                                                 <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" class="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-1 text-xs font-semibold text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
@@ -232,7 +241,7 @@
                             </td>
                             <td class="px-4 py-4">
                                 <p class="text-sm font-bold {{ ($calcHoras['falta'] ?? 0) > 0 ? 'text-red-700' : 'text-brand-gray' }}">{{ $calcHoras['falta_fmt'] }}</p>
-                                <p class="mt-1 text-[10px] text-brand-gray">Vs. jornada {{ intdiv(\App\Support\FrequenciaCalculo::jornadaMinutosEsperados(), 60) }}h</p>
+                                <p class="mt-1 text-[10px] text-brand-gray">Vs. {{ $calcHoras['jornada_esperada_fmt'] ?? 'jornada' }}</p>
                             </td>
                             <td class="px-4 py-4">
                                 <p class="text-sm font-bold {{ $calcHoras['extras'] > 0 ? 'text-emerald-700' : 'text-brand-gray' }}">{{ $calcHoras['extras_fmt'] }}</p>
@@ -284,7 +293,7 @@
         </div>
 
         <div class="border-t border-zinc-200 px-5 py-3 text-xs text-brand-gray">
-            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2). Horas falta = jornada esperada (padrão 8h, ajustável por <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code> no .env) menos trabalhadas, quando não está justificado. Extras = trabalhadas acima da jornada. Dia justificado: falta exibida como “—”.
+            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2). A <strong>jornada esperada</strong> por colaborador vem do <strong>Cadastro de horários</strong> vinculado na ficha do efetivo (dia da semana da data filtrada); se não houver escala, usa o padrão do <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code> no .env. <strong>Preenchimento:</strong> ao abrir o dia, o sistema copia da escala os horários ainda vazios (incluindo <strong>Saída 1</strong> e <strong>Entrada 2</strong>, intervalo de almoço). Horas falta = jornada esperada menos trabalhadas (não justificado). Extras = acima da jornada. Dia sem marcação na escala = folga (0h previstas). Justificado: falta como “—”.
         </div>
 
         <div class="border-t border-zinc-200 p-5">

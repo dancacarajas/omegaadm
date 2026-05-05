@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
+use App\Models\HorarioEscala;
 use App\Support\SimpleSpreadsheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class ColaboradorController extends Controller
     public function index()
     {
         $colaboradores = Colaborador::query()
+            ->with('horarioEscala')
             ->when(request('busca'), function ($query, string $busca) {
                 $query->where(function ($query) use ($busca) {
                         $query->where('nome', 'like', "%{$busca}%")
@@ -39,6 +41,7 @@ class ColaboradorController extends Controller
                 'status' => 'ativo',
                 'mobilizacao_status' => 'pendente',
             ]),
+            'horarioEscalas' => $this->horarioEscalasParaSelect(),
         ]);
     }
 
@@ -53,12 +56,17 @@ class ColaboradorController extends Controller
 
     public function show(Colaborador $colaborador)
     {
+        $colaborador->load('horarioEscala');
+
         return view('rh.colaboradores.show', compact('colaborador'));
     }
 
     public function edit(Colaborador $colaborador)
     {
-        return view('rh.colaboradores.edit', compact('colaborador'));
+        return view('rh.colaboradores.edit', [
+            'colaborador' => $colaborador,
+            'horarioEscalas' => $this->horarioEscalasParaSelect(),
+        ]);
     }
 
     public function update(Request $request, Colaborador $colaborador)
@@ -243,6 +251,7 @@ class ColaboradorController extends Controller
             'CBO' => 'cbo',
             'Jornada semanal' => 'jornada_semanal',
             'Horario' => 'horario',
+            'Escala de horários (ID)' => 'horario_escala_id',
             'Data opcao FGTS' => 'data_opcao_fgts',
             'Data demissao' => 'data_demissao',
             'Forma pagamento' => 'forma_pagamento',
@@ -294,6 +303,17 @@ class ColaboradorController extends Controller
 
         if (filled($data['salario_inicial'] ?? null)) {
             $data['salario_inicial'] = str_replace(['.', ','], ['', '.'], (string) $data['salario_inicial']);
+        }
+
+        if (array_key_exists('horario_escala_id', $data)) {
+            $raw = $data['horario_escala_id'];
+            if ($raw === null || $raw === '') {
+                $data['horario_escala_id'] = null;
+            } elseif (is_numeric($raw)) {
+                $data['horario_escala_id'] = (int) $raw;
+            } else {
+                $data['horario_escala_id'] = null;
+            }
         }
 
         $data['status'] = $this->normalizeOption($data['status'] ?? 'ativo', [
@@ -421,6 +441,7 @@ class ColaboradorController extends Controller
             'centro_custo' => ['nullable', 'string', 'max:80'],
             'jornada_semanal' => ['nullable', 'string', 'max:40'],
             'horario' => ['nullable', 'string', 'max:255'],
+            'horario_escala_id' => ['nullable', 'integer', Rule::exists('horario_escalas', 'id')],
             'data_admissao' => ['nullable', 'date'],
             'data_opcao_fgts' => ['nullable', 'date'],
             'data_demissao' => ['nullable', 'date'],
@@ -441,5 +462,16 @@ class ColaboradorController extends Controller
             'contato_emergencia_parentesco' => ['nullable', 'string', 'max:80'],
             'observacoes' => ['nullable', 'string'],
         ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, HorarioEscala>
+     */
+    private function horarioEscalasParaSelect()
+    {
+        return HorarioEscala::query()
+            ->orderByRaw("CASE WHEN status = 'ativo' THEN 0 ELSE 1 END")
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'status']);
     }
 }

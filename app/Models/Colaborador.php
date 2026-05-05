@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Colaborador extends Model
 {
@@ -52,6 +54,7 @@ class Colaborador extends Model
         'centro_custo',
         'jornada_semanal',
         'horario',
+        'horario_escala_id',
         'data_admissao',
         'data_opcao_fgts',
         'data_demissao',
@@ -100,5 +103,30 @@ class Colaborador extends Model
     public function frequencias()
     {
         return $this->hasMany(FrequenciaRegistro::class);
+    }
+
+    public function horarioEscala()
+    {
+        return $this->belongsTo(HorarioEscala::class, 'horario_escala_id');
+    }
+
+    /**
+     * Dia da escala semanal vinculada (dia_semana 1=seg … 7=dom, ISO-8601).
+     */
+    public function horarioEscalaDiaNaData(DateTimeInterface|string|null $data): ?HorarioEscalaDia
+    {
+        if (! $this->horario_escala_id || $data === null) {
+            return null;
+        }
+
+        $this->loadMissing('horarioEscala.dias');
+
+        $carbon = $data instanceof DateTimeInterface
+            ? Carbon::parse($data)
+            : Carbon::parse((string) $data);
+
+        $diaSemana = (int) $carbon->isoWeekday();
+
+        return $this->horarioEscala?->dias->firstWhere('dia_semana', $diaSemana);
     }
 }

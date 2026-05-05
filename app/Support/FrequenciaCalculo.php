@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\FrequenciaRegistro;
+use App\Models\HorarioEscalaDia;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
@@ -12,6 +13,28 @@ class FrequenciaCalculo
     public static function jornadaMinutosEsperados(): int
     {
         return max(1, (int) env('RH_FREQUENCIA_JORNADA_MINUTOS', 480));
+    }
+
+    /**
+     * Jornada esperada (minutos) para o registro: escala do colaborador no dia, senão env padrão.
+     */
+    public static function jornadaMinutosParaRegistro(FrequenciaRegistro $registro): int
+    {
+        $colaborador = $registro->colaborador;
+        if (! $colaborador) {
+            return self::jornadaMinutosEsperados();
+        }
+
+        $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
+        if (! $diaEscala) {
+            return self::jornadaMinutosEsperados();
+        }
+
+        $ymd = $registro->data instanceof CarbonInterface
+            ? $registro->data->format('Y-m-d')
+            : Carbon::parse($registro->data)->format('Y-m-d');
+
+        return self::minutosPrevistosEscalaDia($ymd, $diaEscala);
     }
 
     public static function minutosTrabalhados(FrequenciaRegistro $registro): int
@@ -28,11 +51,44 @@ class FrequenciaCalculo
     }
 
     /**
-     * @return array{trabalhadas: int, trabalhadas_fmt: string, falta: int|null, falta_fmt: string, extras: int, extras_fmt: string}
+     * @return array{trabalhadas: int, trabalhadas_fmt: string, falta: int|null, falta_fmt: string, extras: int, extras_fmt: string, jornada_esperada_minutos: int, jornada_esperada_fmt: string}
      */
+    /**
+     * Resumo usando horários da escala nos campos ainda vazios (útil antes de gravar ou quando o registro é parcial).
+     */
+    public static function resumoComFallbackEscala(FrequenciaRegistro $registro): array
+    {
+        $clone = clone $registro;
+        $dia = $registro->colaborador?->horarioEscalaDiaNaData($registro->data);
+        if ($dia) {
+            foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+                if (self::horarioArmazenadoVazio($clone->getAttribute($campo))) {
+                    $prev = $dia->getAttribute($campo);
+                    if (! self::horarioArmazenadoVazio($prev)) {
+                        $clone->setAttribute($campo, $prev);
+                    }
+                }
+            }
+        }
+
+        return self::resumo($clone);
+    }
+
+    public static function horarioArmazenadoVazio(mixed $valor): bool
+    {
+        if ($valor === null) {
+            return true;
+        }
+
+        $s = trim((string) $valor);
+
+        return $s === '';
+    }
+
     public static function resumo(FrequenciaRegistro $registro): array
     {
-        $jornada = self::jornadaMinutosEsperados();
+        $jornada = self::jornadaMinutosParaRegistro($registro);
+        $jornadaFmt = $jornada === 0 ? 'Folga (escala)' : self::formatarMinutos($jornada);
         $trabalhadas = self::minutosTrabalhados($registro);
         $status = $registro->status ?? 'falta';
 
@@ -46,6 +102,8 @@ class FrequenciaCalculo
                 'falta_fmt' => '—',
                 'extras' => $extras,
                 'extras_fmt' => self::formatarMinutos($extras),
+                'jornada_esperada_minutos' => $jornada,
+                'jornada_esperada_fmt' => $jornadaFmt,
             ];
         }
 
@@ -59,6 +117,8 @@ class FrequenciaCalculo
             'falta_fmt' => $falta > 0 ? self::formatarMinutos($falta) : '0h',
             'extras' => $extras,
             'extras_fmt' => $extras > 0 ? self::formatarMinutos($extras) : '0h',
+            'jornada_esperada_minutos' => $jornada,
+            'jornada_esperada_fmt' => $jornadaFmt,
         ];
     }
 
@@ -72,6 +132,12 @@ class FrequenciaCalculo
         $m = $minutos % 60;
 
         return sprintf('%dh %02dmin', $h, $m);
+    }
+
+    private static function minutosPrevistosEscalaDia(string $diaYmd, HorarioEscalaDia $dia): int
+    {
+        return self::segmentoMinutos($diaYmd, $dia->entrada_1, $dia->saida_1)
+            + self::segmentoMinutos($diaYmd, $dia->entrada_2, $dia->saida_2);
     }
 
     private static function segmentoMinutos(string $dia, mixed $inicio, mixed $fim): int
