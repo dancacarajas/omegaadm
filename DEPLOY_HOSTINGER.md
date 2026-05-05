@@ -30,8 +30,23 @@ git push origin main
 
 ```bash
 composer install --no-dev --optimize-autoloader
+php artisan migrate --force
 php artisan storage:link
+php artisan optimize:clear
 ```
+
+### Erro 500 em rotas novas (ex.: Cadastro de horarios)?
+
+Apos `git pull`, **sempre** rode `php artisan migrate --force`. Sem as tabelas `horario_escalas`, `horario_escala_dias` e a coluna `horario_escala_id` em `colaboradores`, a pagina `/rh/frequencia/horarios` retorna **500**.
+
+No SSH, na pasta do projeto:
+
+```bash
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+Se continuar falhando, veja o erro real em `storage/logs/laravel.log` (ou ative `APP_DEBUG=true` **só para diagnosticar** e volte para `false` depois).
 
 ### O log de deploy mostra Composer mas o site nao muda?
 
