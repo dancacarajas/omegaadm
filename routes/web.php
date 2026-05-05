@@ -17,6 +17,8 @@ use App\Http\Controllers\RdoController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
+use App\Http\Controllers\VeiculoFrotaController;
+use App\Http\Controllers\VeiculoManutencaoController;
 use App\Http\Controllers\VeiculoTelemetriaController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +44,11 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/veiculos/solicitacoes/{solicitacao}/edit', [VeiculoController::class, 'editSolicitacao'])->name('veiculos.solicitacoes.edit');
     Route::put('/veiculos/solicitacoes/{solicitacao}', [VeiculoController::class, 'updateSolicitacao'])->name('veiculos.solicitacoes.update');
     Route::delete('/veiculos/solicitacoes/{solicitacao}', [VeiculoController::class, 'destroySolicitacao'])->name('veiculos.solicitacoes.destroy');
+    Route::get('veiculos/frota', [VeiculoFrotaController::class, 'index'])->name('veiculos.frota.index');
+    Route::resource('veiculos/manutencoes', VeiculoManutencaoController::class)
+        ->except(['index', 'show'])
+        ->names('veiculos.manutencoes')
+        ->parameters(['manutencoes' => 'manutencao']);
     Route::resource('veiculos/telemetria', VeiculoTelemetriaController::class)
         ->except(['show'])
         ->names('veiculos.telemetria');
