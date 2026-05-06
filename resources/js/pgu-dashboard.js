@@ -1050,6 +1050,7 @@ window.pguApresentacaoShell = function () {
         ordemAbasApresentacao: ['capa', 'geral', 'funcoes100', 'gargalos', 'concentracao', 'plano'],
         wheelCooldownMs: 300,
         lastWheelAt: 0,
+        bloqueioNavegacaoAte: 0,
         initFromDataset() {
             const root = document.querySelector('[data-pgu-apresentacao]');
             if (!root) return;
@@ -1063,6 +1064,8 @@ window.pguApresentacaoShell = function () {
             this.initFromDataset();
             // Garante que a apresentação sempre abra na capa (slide 00).
             this.setAbaApresentacao('capa');
+            // Evita avanço imediato por eventos de entrada/resíduo logo após o load.
+            this.bloqueioNavegacaoAte = Date.now() + 900;
             this.bindSlideNavigation();
             this.bindFullscreenState();
             this.bindTouchSlideNavigation();
@@ -1093,6 +1096,9 @@ window.pguApresentacaoShell = function () {
                 if (!this.canHandleNavigationEvent(event.target)) {
                     return;
                 }
+                if (Date.now() < this.bloqueioNavegacaoAte) {
+                    return;
+                }
                 const now = Date.now();
                 if (now - this.lastWheelAt < this.wheelCooldownMs) {
                     return;
@@ -1112,6 +1118,9 @@ window.pguApresentacaoShell = function () {
 
             window.addEventListener('keydown', (event) => {
                 if (!this.canHandleNavigationEvent(event.target)) {
+                    return;
+                }
+                if (Date.now() < this.bloqueioNavegacaoAte) {
                     return;
                 }
                 if (event.key === 'Escape' && this.modoApresentacao) {
@@ -1138,6 +1147,9 @@ window.pguApresentacaoShell = function () {
                 if (!this.modoApresentacao) {
                     return;
                 }
+                if (Date.now() < this.bloqueioNavegacaoAte) {
+                    return;
+                }
                 const touch = event.changedTouches?.[0];
                 if (!touch) {
                     return;
@@ -1148,6 +1160,9 @@ window.pguApresentacaoShell = function () {
 
             window.addEventListener('touchend', (event) => {
                 if (!this.modoApresentacao) {
+                    return;
+                }
+                if (Date.now() < this.bloqueioNavegacaoAte) {
                     return;
                 }
                 const touch = event.changedTouches?.[0];
