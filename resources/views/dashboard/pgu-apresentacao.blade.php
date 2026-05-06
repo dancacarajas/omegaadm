@@ -38,7 +38,7 @@
             <button type="button" @click="exportPpt()" :disabled="exportandoPpt" :class="exportandoPpt ? 'cursor-not-allowed opacity-70' : ''" class="inline-flex items-center gap-2 rounded-xl border border-pgu-border bg-white px-4 py-2 text-sm font-semibold text-pgu-ink shadow-sm transition hover:border-pgu-primary hover:text-pgu-primary">
                 <i data-lucide="file-down" class="h-4 w-4"></i>
                 <span x-show="!exportandoPpt">Exportar para PPT</span>
-                <span x-show="exportandoPpt" x-cloak>Gerando PPT...</span>
+                <span x-show="exportandoPpt" x-cloak x-text="exportProgressLabel || 'Gerando PPT...'"></span>
             </button>
             <button
                 type="button"

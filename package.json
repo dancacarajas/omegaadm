@@ -21,7 +21,9 @@
         "bs-stepper": "^1.7.0",
         "countup.js": "^2.10.0",
         "echarts": "^6.0.0",
+        "html2canvas": "^1.4.1",
         "lucide": "^1.14.0",
+        "pptxgenjs": "^4.0.1",
         "puppeteer": "^24.43.0"
     }
 }

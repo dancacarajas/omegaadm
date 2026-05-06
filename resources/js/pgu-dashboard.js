@@ -1,3 +1,6 @@
+import html2canvas from 'html2canvas';
+import PptxGenJS from 'pptxgenjs';
+
 window.pguDashboard = function () {
     return {
         loading: true,
@@ -1042,6 +1045,7 @@ window.pguApresentacaoShell = function () {
         dataLimite: '',
         exportUrl: '',
         exportandoPpt: false,
+        exportProgressLabel: '',
         modoApresentacao: false,
         fullscreenRoot: null,
         touchStartX: null,
@@ -1257,37 +1261,93 @@ window.pguApresentacaoShell = function () {
             const path = window.location.pathname;
             window.location.href = q ? `${path}?${q}` : path;
         },
-        exportPpt() {
-            if (!this.exportUrl || this.exportandoPpt) return;
+        async waitForUiRender() {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+        },
+        getCurrentSlideElement() {
+            const map = {
+                capa: '.pgu0-apresentacao-embed .pgu0-slide',
+                geral: '.pgu-apresentacao-embed .pgu-slide',
+                funcoes100: '.pgu2-apresentacao-embed .pgu2-slide',
+                gargalos: '.pgu3-apresentacao-embed .pgu3-slide',
+                concentracao: '.pgu4-apresentacao-embed .pgu4-slide',
+                plano: '.pgu5-apresentacao-embed .pgu5-slide',
+            };
+            const selector = map[this.abaApresentacao];
+            if (!selector) {
+                return null;
+            }
+
+            return document.querySelector(selector);
+        },
+        async captureCurrentSlidePng() {
+            const element = this.getCurrentSlideElement();
+            if (!element) {
+                throw new Error(`Slide "${this.abaApresentacao}" não encontrado para captura.`);
+            }
+
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#ffffff',
+                width: 1366,
+                height: 768,
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+                imageTimeout: 15000,
+                windowWidth: 1366,
+                windowHeight: 768,
+            });
+
+            return canvas.toDataURL('image/png');
+        },
+        buildPptFileName() {
+            const safeContrato = String(this.contrato || 'contrato').replace(/[^\dA-Za-z_-]/g, '_');
+            const safeComp = String(this.competencia || 'competencia').replace(/[^\dA-Za-z_-]/g, '_');
+
+            return `pgu-visao-executiva-${safeContrato}-${safeComp}.pptx`;
+        },
+        async exportPpt() {
+            if (this.exportandoPpt) return;
             this.exportandoPpt = true;
             try {
-                const form = document.createElement('form');
-                form.method = 'GET';
-                form.action = this.exportUrl;
-                form.style.display = 'none';
+                const abaOriginal = this.abaApresentacao;
+                const pptx = new PptxGenJS();
+                pptx.layout = 'LAYOUT_WIDE';
+                pptx.author = 'Omega286';
+                pptx.subject = 'Apresentação PGU';
+                pptx.title = 'PGU - Visão Executiva';
+                pptx.company = 'Omega Service';
 
-                const addInput = (name, value) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = name;
-                    input.value = value;
-                    form.appendChild(input);
-                };
+                for (let i = 0; i < this.ordemAbasApresentacao.length; i += 1) {
+                    const aba = this.ordemAbasApresentacao[i];
+                    this.abaApresentacao = aba;
+                    this.exportProgressLabel = `Gerando slide ${i + 1}/${this.ordemAbasApresentacao.length}...`;
+                    await this.waitForUiRender();
 
-                if (this.contrato) addInput('contrato', this.contrato);
-                if (this.competencia) addInput('competencia', this.competencia);
-                if (this.dataLimite) addInput('data_limite_etapa_2', this.dataLimite);
+                    const dataUrl = await this.captureCurrentSlidePng();
+                    const slide = pptx.addSlide();
+                    slide.addImage({
+                        data: dataUrl,
+                        x: 0,
+                        y: 0,
+                        w: 13.333,
+                        h: 7.5,
+                    });
+                }
 
-                document.body.appendChild(form);
-                form.submit();
-                form.remove();
+                this.abaApresentacao = abaOriginal;
+                this.exportProgressLabel = 'Finalizando arquivo...';
+                await this.waitForUiRender();
+                await pptx.writeFile({ fileName: this.buildPptFileName() });
+                this.exportProgressLabel = '';
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Falha ao exportar PPT.';
                 window.alert(message);
             } finally {
-                setTimeout(() => {
-                    this.exportandoPpt = false;
-                }, 1200);
+                this.exportProgressLabel = '';
+                this.exportandoPpt = false;
             }
         },
     };
