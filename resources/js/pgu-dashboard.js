@@ -1264,15 +1264,18 @@ window.pguApresentacaoShell = function () {
         async waitForUiRender() {
             await new Promise((resolve) => requestAnimationFrame(resolve));
             await new Promise((resolve) => setTimeout(resolve, 220));
+            if (document.fonts?.ready) {
+                await document.fonts.ready;
+            }
         },
         getCurrentSlideElement() {
             const map = {
-                capa: '.pgu0-apresentacao-embed .pgu0-slide',
-                geral: '.pgu-apresentacao-embed .pgu-slide',
-                funcoes100: '.pgu2-apresentacao-embed .pgu2-slide',
-                gargalos: '.pgu3-apresentacao-embed .pgu3-slide',
-                concentracao: '.pgu4-apresentacao-embed .pgu4-slide',
-                plano: '.pgu5-apresentacao-embed .pgu5-slide',
+                capa: '.pgu0-apresentacao-embed .pgu0-slide-shell',
+                geral: '.pgu-apresentacao-embed .pgu-slide-shell',
+                funcoes100: '.pgu2-apresentacao-embed .pgu2-slide-shell',
+                gargalos: '.pgu3-apresentacao-embed .pgu3-slide-shell',
+                concentracao: '.pgu4-apresentacao-embed .pgu4-slide-shell',
+                plano: '.pgu5-apresentacao-embed .pgu5-slide-shell',
             };
             const selector = map[this.abaApresentacao];
             if (!selector) {
@@ -1298,6 +1301,40 @@ window.pguApresentacaoShell = function () {
                 imageTimeout: 15000,
                 windowWidth: 1366,
                 windowHeight: 768,
+                onclone: (clonedDoc) => {
+                    const shellSelectors = [
+                        '.pgu0-slide-shell',
+                        '.pgu-slide-shell',
+                        '.pgu2-slide-shell',
+                        '.pgu3-slide-shell',
+                        '.pgu4-slide-shell',
+                        '.pgu5-slide-shell',
+                    ];
+                    const scaleSelectors = [
+                        '.pgu0-slide-scale',
+                        '.pgu-slide-scale',
+                        '.pgu2-slide-scale',
+                        '.pgu3-slide-scale',
+                        '.pgu4-slide-scale',
+                        '.pgu5-slide-scale',
+                    ];
+
+                    clonedDoc.querySelectorAll(shellSelectors.join(',')).forEach((node) => {
+                        node.style.width = '1366px';
+                        node.style.height = '768px';
+                        node.style.aspectRatio = 'auto';
+                        node.style.maxWidth = 'none';
+                        node.style.overflow = 'hidden';
+                        node.style.containerType = 'inline-size';
+                    });
+
+                    clonedDoc.querySelectorAll(scaleSelectors.join(',')).forEach((node) => {
+                        node.style.width = '1366px';
+                        node.style.height = '768px';
+                        node.style.transform = 'scale(1)';
+                        node.style.transformOrigin = 'top left';
+                    });
+                },
             });
 
             return canvas.toDataURL('image/png');
