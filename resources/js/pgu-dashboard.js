@@ -1061,6 +1061,8 @@ window.pguApresentacaoShell = function () {
         },
         init() {
             this.initFromDataset();
+            // Garante que a apresentação sempre abra na capa (slide 00).
+            this.setAbaApresentacao('capa');
             this.bindSlideNavigation();
             this.bindFullscreenState();
             this.bindTouchSlideNavigation();
