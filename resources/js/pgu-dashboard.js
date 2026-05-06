@@ -58,18 +58,6 @@ window.pguDashboard = function () {
                 .replace(/\s+/g, '_')
                 .slice(0, 80);
         },
-        /** Abre o histograma no contrato/competência atuais e rola até a linha salva no banco. */
-        histogramaDetalheUrl(row) {
-            const params = new URLSearchParams({
-                contrato: this.contrato || '',
-                competencia: this.competencia || '',
-            });
-            const base = `/contratos/histograma?${params.toString()}`;
-            if (row?.linha_id) {
-                return `${base}#hist-linha-${row.linha_id}`;
-            }
-            return base;
-        },
         exportChartPng(chartId) {
             const chart = this.charts[chartId];
             if (!chart || (typeof chart.isDisposed === 'function' && chart.isDisposed())) {
@@ -167,15 +155,15 @@ window.pguDashboard = function () {
 
             const pctF2 = this.formatPctPtBr(avanco);
             const pctF1 = this.formatPctPtBr(pendente);
-            const legF2 = `Fase 2 · PGU · ${pctF2}%`;
-            const legF1 = `Fase 1 · pré-PGU · ${pctF1}%`;
+            const legF2 = `Cobertura · ${pctF2}%`;
+            const legF1 = `Falta cobrir · ${pctF1}%`;
 
             chart.setOption({
                 backgroundColor: 'transparent',
                 color: ['#059669', '#CBD5E1'],
                 title: {
                     text: `${pctF2}%`,
-                    subtext: 'Média na Fase 2 (PGU)\nsobre o pré-PGU',
+                    subtext: 'Média: mobilização (Pré)\nsobre necessidade (PGU)',
                     left: '50%',
                     top: '44%',
                     textAlign: 'center',
@@ -199,9 +187,9 @@ window.pguDashboard = function () {
                     textStyle: { color: '#FFFFFF', fontSize: 13 },
                     formatter: (p) => {
                         if (p.dataIndex === 0) {
-                            return `<strong>Fase 2 — PGU</strong><br/>${pctF2}% do volume (média das funções)<br/><span style="opacity:.85">Já registrado na etapa PGU em relação ao pré-PGU.</span>`;
+                            return `<strong>Cobertura da PGU</strong><br/>${pctF2}% em média<br/><span style="opacity:.85">Pré-PGU (mobilizado) em relação à necessidade PGU por função.</span>`;
                         }
-                        return `<strong>Fase 1 — pré-PGU</strong><br/>${pctF1}% em aberto (média)<br/><span style="opacity:.85">Ainda não migrado para PGU neste recorte.</span>`;
+                        return `<strong>Falta cobrir</strong><br/>${pctF1}% em média<br/><span style="opacity:.85">Quanto falta, em média, para Pré atingir a PGU.</span>`;
                     },
                 },
                 legend: {
@@ -222,7 +210,7 @@ window.pguDashboard = function () {
                 },
                 series: [
                     {
-                        name: 'PGU',
+                        name: 'Cobertura PGU',
                         type: 'pie',
                         radius: ['50%', '70%'],
                         center: ['50%', '44%'],
@@ -387,7 +375,14 @@ window.pguDashboard = function () {
                         const item = items[p.dataIndex];
                         if (!item) return '';
                         const cod = item.codigo ? `Código: ${item.codigo}<br/>` : '';
-                        return `<strong>${item.funcao}</strong><br/>${cod}Pendências: ${item.pending}`;
+                        const tipo = item.tipo_pendencia || 'falta_mobilizar';
+                        let nota = '<span style="opacity:.85;font-size:12px">Pendência = PGU − Pré (vagas).</span>';
+                        if (tipo === 'pgu_nao_informado') {
+                            nota = '<span style="opacity:.85;font-size:12px">Pré mobilizado sem PGU informado (prioridade para preencher meta).</span>';
+                        } else if (tipo === 'agregado') {
+                            nota = '<span style="opacity:.85;font-size:12px">Soma das demais funções (ranking executivo).</span>';
+                        }
+                        return `<strong>${item.funcao}</strong><br/>${cod}Volume no gráfico: ${item.pending}<br/>${nota}`;
                     },
                 },
                 xAxis: {
@@ -481,6 +476,7 @@ window.pguDashboard = function () {
                         textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
                         subtextStyle: { color: '#94A3B8', fontSize: 13, lineHeight: 20 },
                     },
+                    graphic: [],
                 });
                 return;
             }
@@ -488,31 +484,55 @@ window.pguDashboard = function () {
             const pctIntegral = total > 0 ? Math.round((n100 / total) * 1000) / 10 : 0;
             const legIntegral = `Integral · ${n100}`;
             const legDemais = `Outras · ${nDemais}`;
+            const fontStack = 'Instrument Sans, ui-sans-serif, system-ui, sans-serif';
+            const donutCx = '50%';
+            const donutCy = '42%';
 
             chart.setOption({
                 backgroundColor: 'transparent',
-                color: ['#059669', '#CBD5E1'],
-                title: {
-                    text: String(n100),
-                    subtext: `PGU integral\n${n100} / ${total}`,
-                    left: '50%',
-                    top: '46%',
-                    width: 200,
-                    overflow: 'break',
-                    textAlign: 'center',
-                    textVerticalAlign: 'middle',
-                    textStyle: {
-                        color: '#0F172A',
-                        fontSize: 28,
-                        fontWeight: 700,
+                color: ['#0D9488', '#E2E8F0'],
+                title: { show: false },
+                graphic: [
+                    {
+                        type: 'text',
+                        left: 'center',
+                        top: donutCy,
+                        silent: true,
+                        z: 10,
+                        style: {
+                            text: `{main|${n100}}\n{sub|Pré cobre PGU}\n{ratio|${n100}\u2009/\u2009${total}}`,
+                            textAlign: 'center',
+                            textVerticalAlign: 'middle',
+                            rich: {
+                                main: {
+                                    fontSize: 38,
+                                    fontWeight: 700,
+                                    color: '#0F172A',
+                                    fontFamily: fontStack,
+                                    lineHeight: 44,
+                                    align: 'center',
+                                },
+                                sub: {
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: '#64748B',
+                                    fontFamily: fontStack,
+                                    lineHeight: 20,
+                                    align: 'center',
+                                },
+                                ratio: {
+                                    fontSize: 16,
+                                    fontWeight: 600,
+                                    color: '#334155',
+                                    fontFamily: fontStack,
+                                    lineHeight: 24,
+                                    align: 'center',
+                                    fontVariantNumeric: 'tabular-nums',
+                                },
+                            },
+                        },
                     },
-                    subtextStyle: {
-                        color: '#64748B',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        lineHeight: 18,
-                    },
-                },
+                ],
                 tooltip: {
                     trigger: 'item',
                     backgroundColor: '#0F172A',
@@ -520,33 +540,48 @@ window.pguDashboard = function () {
                     textStyle: { color: '#FFFFFF', fontSize: 13 },
                     formatter: (p) => {
                         if (p.dataIndex === 0) {
-                            return `<strong>PGU integral</strong><br/>${n100} função(ões) — ${this.formatPctPtBr(pctIntegral)}% do total`;
+                            return `<strong>100% cobertura</strong><br/>${n100} função(ões) — ${this.formatPctPtBr(pctIntegral)}% do total`;
                         }
-                        return `<strong>Demais funções</strong><br/>${nDemais} ainda não em 100% neste recorte`;
+                        return `<strong>Demais funções</strong><br/>${nDemais} com falta de mobilização ou PGU não informado`;
                     },
                 },
                 legend: {
                     orient: 'horizontal',
                     left: 'center',
-                    bottom: 10,
-                    itemGap: 20,
-                    itemWidth: 10,
-                    itemHeight: 10,
+                    bottom: 8,
+                    itemGap: 32,
+                    itemWidth: 14,
+                    itemHeight: 14,
                     icon: 'roundRect',
-                    textStyle: { color: '#64748B', fontSize: 11 },
+                    textStyle: {
+                        color: '#475569',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        fontFamily: fontStack,
+                    },
                     data: [legIntegral, legDemais],
                 },
                 series: [
                     {
                         name: 'Cobertura',
                         type: 'pie',
-                        radius: ['46%', '66%'],
-                        center: ['50%', '46%'],
+                        radius: ['56%', '80%'],
+                        center: [donutCx, donutCy],
                         avoidLabelOverlap: true,
                         itemStyle: {
-                            borderRadius: 8,
+                            borderRadius: 10,
                             borderColor: '#FFFFFF',
-                            borderWidth: 3,
+                            borderWidth: 4,
+                            shadowBlur: 8,
+                            shadowColor: 'rgba(15, 23, 42, 0.06)',
+                            shadowOffsetY: 2,
+                        },
+                        emphasis: {
+                            scale: false,
+                            itemStyle: {
+                                shadowBlur: 14,
+                                shadowColor: 'rgba(15, 23, 42, 0.1)',
+                            },
                         },
                         label: { show: false },
                         data: [
@@ -605,7 +640,7 @@ window.pguDashboard = function () {
                 yAxis: [
                     {
                         type: 'value',
-                        name: 'Pendências',
+                        name: 'Pendência (vagas)',
                         nameTextStyle: { color: '#64748B' },
                         axisLabel: { color: '#64748B' },
                         splitLine: { lineStyle: { color: '#EEF2F7' } },
@@ -622,7 +657,7 @@ window.pguDashboard = function () {
                 ],
                 series: [
                     {
-                        name: 'Pendências',
+                        name: 'Pendência (exec.)',
                         type: 'bar',
                         data: items.map((item) => item.pending),
                         barWidth: 28,
@@ -709,7 +744,7 @@ window.pguDashboard = function () {
                         if (nome === 'Avanço médio') {
                             return `<strong>${mes}</strong><br/>${nome}: ${this.formatPctPtBr(v)}%`;
                         }
-                        return `<strong>${mes}</strong><br/>${nome}: ${v} itens`;
+                        return `<strong>${mes}</strong><br/>${nome}: ${this.formatQtyPtBr(v)} vagas`;
                     },
                 },
                 legend: { top: 4, textStyle: { color: '#64748B' } },
@@ -724,7 +759,7 @@ window.pguDashboard = function () {
                 yAxis: [
                     {
                         type: 'value',
-                        name: 'Itens',
+                        name: 'Vagas',
                         nameTextStyle: { color: '#64748B' },
                         axisLabel: { color: '#64748B' },
                         splitLine: { lineStyle: { color: '#EEF2F7' } },
@@ -755,7 +790,7 @@ window.pguDashboard = function () {
                         data: items.map((item) => item.pending),
                     },
                     {
-                        name: 'Concluídos',
+                        name: 'Coberto (min Pré, PGU)',
                         type: 'line',
                         yAxisIndex: 0,
                         smooth: true,
@@ -810,8 +845,8 @@ window.pguDashboard = function () {
                 .filter((row) => row != null);
 
             const hints = {
-                Pendências: 'Quanto maior o valor (até 100), mais pendências. Cor quente = mais crítico.',
-                Avanço: 'Quanto maior o % de avanço PGU, melhor. Cor quente = avanço baixo (atenção).',
+                Pendências: 'Pendência exibida no ranking executivo (PGU − Pré, ou Pré quando PGU não informado). Até 100 na escala de calor.',
+                Avanço: 'Quanto maior o % (Pré cobre PGU), melhor. Cor quente = avanço baixo (atenção).',
                 Risco: 'Pontuação de risco pelo status da função. Cor quente = maior risco.',
             };
 
@@ -907,7 +942,7 @@ window.pguDashboard = function () {
                     backgroundColor: '#0F172A',
                     borderWidth: 0,
                     textStyle: { color: '#FFFFFF' },
-                    formatter: (info) => `${info.name}<br/>Pendências: ${info.value}`,
+                    formatter: (info) => `${info.name}<br/>Volume (ranking executivo): ${info.value}`,
                 },
                 series: [
                     {

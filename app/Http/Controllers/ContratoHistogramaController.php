@@ -143,7 +143,7 @@ class ContratoHistogramaController extends Controller
     }
 
     /**
-     * Item com pré-PGU > 0 ainda não totalmente coberto pela PGU após a data limite (Fase 1 → Fase 2).
+     * Após a data limite: item ainda com pendência real (necessidade PGU maior que mobilização Pré-PGU).
      */
     private function itemAtrasadoTransicaoFase2(ContratoHistogramaLinha $linha, Carbon $limiteDia): bool
     {
@@ -155,10 +155,7 @@ class ContratoHistogramaController extends Controller
         }
         $pre = (float) $linha->pre_pgu;
         $pgu = (float) $linha->pgu;
-        if ($pre <= 0) {
-            return false;
-        }
 
-        return $pgu < $pre - 0.00001;
+        return $pgu > $pre + 0.00001;
     }
 }

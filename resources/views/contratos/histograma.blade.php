@@ -17,7 +17,7 @@
     <section class="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
             <h2 class="text-xl font-bold text-brand-black">Histograma de mão de obra por contrato</h2>
-            <p class="mt-1 text-sm text-brand-gray">Formato simples estilo planilha, com colunas de mobilização, pré-PGU, PGU, pós-PGU e desmobilização.</p>
+            <p class="mt-1 text-sm text-brand-gray">Pré-PGU = mobilizados/contratados · PGU = necessidade prevista na competência · Pós-PGU e demais colunas conforme planilha.</p>
         </div>
         <form method="GET" class="grid gap-3 p-5 md:grid-cols-[1fr_170px_auto] md:items-end">
             <label>
@@ -130,8 +130,7 @@
                                 $linhaAtrasada = $dataLimiteEtapa2
                                     && ! $ehGrupo
                                     && \Carbon\Carbon::today()->gt(\Carbon\Carbon::parse($dataLimiteEtapa2)->startOfDay())
-                                    && (float) $linha->pre_pgu > 0
-                                    && (float) $linha->pgu < (float) $linha->pre_pgu - 0.00001;
+                                    && (float) $linha->pgu > (float) $linha->pre_pgu + 0.00001;
                             @endphp
                             <tr data-row id="hist-linha-{{ $linha->id }}" class="scroll-mt-24 {{ $linha->tipo_linha === 'grupo' ? 'bg-[#f8f4d9]/70 font-bold text-brand-black' : '' }} {{ $linhaAtrasada ? 'bg-red-50/90 ring-1 ring-red-300/80' : '' }}">
                                 <td class="px-3 py-2">

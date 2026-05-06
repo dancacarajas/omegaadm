@@ -9,6 +9,12 @@ class ContratoHistogramaLinha extends Model
 {
     protected $table = 'contrato_histograma_linhas';
 
+    /**
+     * Histograma Mão de obra (métricas PGU):
+     * - pre_pgu: vagas já contratadas / mobilizadas (Pré-PGU)
+     * - pgu: necessidade total prevista na competência (PGU)
+     * - Pendência por função = max(0, pgu - pre_pgu); coberto = min(pre_pgu, pgu)
+     */
     protected $fillable = [
         'contrato',
         'competencia',

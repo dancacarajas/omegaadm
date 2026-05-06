@@ -34,21 +34,69 @@
 
         <div x-show="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" x-text="error"></div>
 
+        <section
+            class="rounded-[1.5rem] border border-pgu-border bg-white p-6 shadow-sm"
+            x-show="!loading && !error && data?.summary?.kpis_mao_de_obra_itens"
+        >
+            <h2 class="text-base font-semibold text-pgu-ink">Indicadores (soma linha a linha, só itens)</h2>
+            <p class="mt-1 text-sm text-pgu-muted">Pré-PGU = mobilizados · PGU = necessidade · Pendência = PGU − Pré · Coberto = min(Pré, PGU). O saldo <span class="font-medium text-pgu-ink">ΣPGU − ΣPré</span> no total geral pode compensar funções entre si; use estes números para pendência real.</p>
+            <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                    <dt class="text-xs font-medium text-pgu-muted">Vagas PGU previstas</dt>
+                    <dd class="mt-1 text-2xl font-bold tabular-nums text-pgu-ink" x-text="data?.summary?.kpis_mao_de_obra_itens?.vagas_pgu_previstas ?? '—'"></dd>
+                </div>
+                <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
+                    <dt class="text-xs font-medium text-emerald-900/80">Concluídas (coberto)</dt>
+                    <dd class="mt-1 text-2xl font-bold tabular-nums text-emerald-900" x-text="data?.summary?.kpis_mao_de_obra_itens?.vagas_concluidas_no_pgu ?? '—'"></dd>
+                </div>
+                <div class="rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+                    <dt class="text-xs font-medium text-amber-950/80">Pendentes por função</dt>
+                    <dd class="mt-1 text-2xl font-bold tabular-nums text-amber-950" x-text="data?.summary?.kpis_mao_de_obra_itens?.vagas_pendentes_por_funcao ?? '—'"></dd>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <dt class="text-xs font-medium text-pgu-muted">Pré sem PGU informado</dt>
+                    <dd class="mt-1 text-2xl font-bold tabular-nums text-pgu-ink" x-text="data?.summary?.kpis_mao_de_obra_itens?.vagas_pre_sem_pgu_informado ?? '—'"></dd>
+                </div>
+            </dl>
+            <div class="mt-4 overflow-x-auto rounded-xl border border-pgu-border">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-pgu-muted">
+                        <tr>
+                            <th class="px-4 py-2">Grupo</th>
+                            <th class="px-4 py-2 text-right">PGU</th>
+                            <th class="px-4 py-2 text-right">Concluídas</th>
+                            <th class="px-4 py-2 text-right">Pendentes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-pgu-border">
+                        <template x-for="g in (data?.summary?.kpis_mao_de_obra_itens?.por_grupo || [])" :key="g.grupo">
+                            <tr>
+                                <td class="px-4 py-2 font-medium text-pgu-ink" x-text="g.grupo"></td>
+                                <td class="px-4 py-2 text-right tabular-nums" x-text="g.pgu"></td>
+                                <td class="px-4 py-2 text-right tabular-nums text-emerald-800" x-text="g.concluidas"></td>
+                                <td class="px-4 py-2 text-right tabular-nums text-amber-950" x-text="g.pendentes"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <section class="rounded-[1.5rem] border border-pgu-border bg-white p-6 shadow-sm">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0 max-w-full flex-1 space-y-3">
                     <div>
                         <h2 class="text-base font-semibold text-pgu-ink">Quadro executivo de cobertura integral PGU</h2>
-                        <p class="mt-1 text-sm text-pgu-muted">PGU integral = pré-PGU totalmente coberto pela PGU nesta competência.</p>
+                        <p class="mt-1 text-sm text-pgu-muted">Função <strong class="font-medium text-pgu-ink">100%</strong> = mobilização (Pré-PGU) cobre ou supera a necessidade (PGU): sem pendência <span class="whitespace-nowrap">(PGU − Pré ≤ 0)</span> e PGU informado.</p>
                     </div>
                     <ul class="max-w-xl space-y-1.5 text-sm text-pgu-muted">
                         <li class="flex gap-2.5">
                             <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                            <span><strong class="font-medium text-pgu-ink">Donut</strong> — quantas funções já estão integralmente na PGU, em relação ao total monitorado.</span>
+                            <span><strong class="font-medium text-pgu-ink">Donut</strong> — quantas funções já atingiram essa cobertura, em relação ao total monitorado.</span>
                         </li>
                         <li class="flex gap-2.5">
                             <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                            <span><strong class="font-medium text-pgu-ink">Selos</strong> — lista das funções liberadas (sem folga de PGU neste recorte).</span>
+                            <span><strong class="font-medium text-pgu-ink">Selos</strong> — lista das funções sem falta de gente frente à PGU neste recorte.</span>
                         </li>
                     </ul>
                     <div
@@ -78,21 +126,21 @@
                     <i data-lucide="download" class="h-5 w-5"></i>
                 </button>
             </div>
-            <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
-                <div class="min-w-0">
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,440px)_1fr] lg:items-start">
+                <div class="min-w-0 w-full">
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-pgu-muted">Funções com PGU integral</p>
-                    <div id="chartFuncoes100Donut" class="mx-auto h-[360px] w-full min-w-0 max-w-[420px] overflow-hidden"></div>
+                    <div id="chartFuncoes100Donut" class="h-[420px] w-full min-w-0 overflow-hidden"></div>
                 </div>
-                <div>
+                <div class="min-w-0">
                     <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-pgu-muted">Mapa de funções 100% liberadas</p>
                     <div
                         class="rounded-xl border border-dashed border-pgu-border bg-pgu-bg/40 p-4"
                         x-show="!loading && !error && (data?.funcoes_pgu_100?.length ?? 0) === 0"
                     >
-                        <p class="text-sm text-pgu-muted">Nenhuma função atingiu <strong class="text-pgu-ink">100%</strong> de avanço PGU neste recorte — todas seguem com folga ou pendência no pré-PGU.</p>
+                        <p class="text-sm text-pgu-muted">Nenhuma função atingiu <strong class="text-pgu-ink">100%</strong> neste recorte — todas têm falta de mobilização (PGU − Pré &gt; 0) ou PGU não informado com Pré &gt; 0.</p>
                     </div>
                     <ul
-                        class="grid gap-3 sm:grid-cols-2"
+                        class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         x-show="!loading && !error && (data?.funcoes_pgu_100?.length ?? 0) > 0"
                     >
                         <template x-for="row in (data?.funcoes_pgu_100 || [])" :key="(row.codigo || '') + '|' + row.funcao">
@@ -100,9 +148,9 @@
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white" aria-hidden="true">✓</span>
                                 <div class="min-w-0 flex-1">
                                     <p class="font-semibold leading-snug text-pgu-ink" x-text="row.funcao"></p>
-                                    <p class="mt-0.5 text-xs text-pgu-muted"><span class="font-medium text-emerald-800">100% PGU</span> · PGU integral</p>
+                                    <p class="mt-0.5 text-xs text-pgu-muted"><span class="font-medium text-emerald-800">100%</span> · Pré cobre PGU</p>
                                     <p class="mt-1 text-xs text-pgu-muted" x-show="row.codigo" x-text="'Código ' + row.codigo"></p>
-                                    <p class="mt-0.5 text-xs text-pgu-muted"><span x-text="row.completed"></span> concluídos (volume PGU)</p>
+                                    <p class="mt-0.5 text-xs text-pgu-muted"><span x-text="row.completed"></span> cobertos min(Pré, PGU)</p>
                                 </div>
                             </li>
                         </template>
@@ -114,7 +162,7 @@
         <section class="grid gap-6">
             <x-pgu.chart-card
                 title="Mão de obra"
-                subtitle="Totais por etapa — mesma soma do rodapé do histograma (todas as linhas: itens e grupos) para o contrato e competência selecionados."
+                subtitle="Soma apenas das linhas-item (sem subtotais de grupo), alinhada ao cálculo dos indicadores PGU."
                 chartId="chartMaoDeObra"
             />
         </section>
@@ -122,12 +170,12 @@
         <section class="grid gap-6 xl:grid-cols-2">
             <x-pgu.chart-card
                 title="Avanço geral PGU"
-                subtitle="Fase 2 (PGU) × Fase 1 (pré-PGU): média das funções no contrato e competência selecionados."
+                subtitle="Média do % em que a mobilização (Pré-PGU) cobre a necessidade (PGU) por função."
                 chartId="chartDonut"
             />
             <x-pgu.chart-card
                 title="Onde estão concentradas as pendências PGU?"
-                subtitle="Top funções com maior impacto operacional (máx. 5 + demais agrupadas)"
+                subtitle="Top funções por volume: PGU − Pré (falta mobilizar) ou Pré quando PGU não informado; máx. 5 + demais agrupadas."
                 chartId="chartRanking"
             />
         </section>
@@ -135,7 +183,7 @@
         <section class="grid gap-6">
             <x-pgu.chart-card
                 title="Concentração das pendências por função"
-                subtitle="Pareto sobre o mesmo conjunto executivo — poucas categorias, leitura de diretoria"
+                subtitle="Pareto no mesmo conjunto do ranking (pendência real ou Pré sem PGU); eixo = vagas."
                 chartId="chartPareto"
             />
         </section>
@@ -154,8 +202,8 @@
                 <x-slot name="description">
                     <p class="leading-snug text-pgu-ink">Cada célula combina <strong>uma função</strong> com <strong>um indicador</strong>.</p>
                     <ul class="mt-2 list-disc space-y-1.5 pl-4 leading-relaxed">
-                        <li><strong class="text-pgu-ink">Pendências</strong> e <strong class="text-pgu-ink">risco</strong> — quanto maior o número, mais “quente” a cor (pior).</li>
-                        <li><strong class="text-pgu-ink">Avanço</strong> — o contrário: <strong>% baixo</strong> fica mais quente (pior); <strong>% alto</strong> fica mais verde (melhor).</li>
+                        <li><strong class="text-pgu-ink">Pendências</strong> (PGU − Pré) e <strong class="text-pgu-ink">risco</strong> — quanto maior o número, mais “quente” a cor (pior).</li>
+                        <li><strong class="text-pgu-ink">Avanço</strong> (Pré/PGU) — <strong>% baixo</strong> fica mais quente (pior); <strong>% alto</strong> fica mais verde (melhor).</li>
                     </ul>
                 </x-slot>
             </x-pgu.chart-card>
@@ -164,7 +212,7 @@
         <section class="grid gap-6">
             <x-pgu.chart-card
                 title="Mapa de concentração das pendências"
-                subtitle="Tamanho do bloco proporcional ao volume pendente (conjunto executivo)"
+                subtitle="Área ∝ volume do ranking executivo (mesma regra do gráfico de barras horizontais)."
                 chartId="chartTreemap"
             />
         </section>
@@ -173,22 +221,12 @@
             <div class="mb-6">
                 <h2 class="text-base font-semibold text-pgu-ink">Funções concluídas × pendentes</h2>
                 <p class="mt-1 text-sm text-pgu-muted">
-                    <strong class="font-medium text-pgu-ink">Primeira coluna</strong>: funções sem pendência (PGU cobre o pré-PGU).
-                    <strong class="font-medium text-pgu-ink">Segunda coluna</strong>: funções que ainda têm volume pendente.
+                    <strong class="font-medium text-pgu-ink">Primeira coluna</strong>: funções sem pendência real (Pré cobre PGU) e com PGU informado.
+                    <strong class="font-medium text-pgu-ink">Segunda coluna</strong>: falta mobilizar (PGU − Pré &gt; 0) ou PGU não informado.
                     Mesmo contrato e competência dos filtros acima; linhas <strong class="font-medium text-pgu-ink">Grupo</strong> do histograma não entram.
                 </p>
             </div>
             @include('dashboard.partials.pgu-funcoes-duas-colunas')
-        </section>
-
-        <section class="rounded-[1.5rem] border border-pgu-border bg-white p-6 shadow-sm">
-            <div class="mb-5 flex items-center justify-between">
-                <div>
-                    <h2 class="text-base font-semibold text-pgu-ink">Detalhe por função</h2>
-                    <p class="mt-1 text-sm text-pgu-muted">Tabela completa com avanço, status e link ao histograma. Concluídos = PGU; pendentes = pré-PGU − PGU.</p>
-                </div>
-            </div>
-            @include('dashboard.partials.pgu-progress-table')
         </section>
     </div>
 </div>
