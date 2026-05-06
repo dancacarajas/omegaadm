@@ -58,6 +58,12 @@
                         {{ $contratoSelecionado ?: 'Selecione um contrato' }} · {{ \Carbon\Carbon::createFromFormat('Y-m', $competenciaMes)->format('m/Y') }}
                     </h3>
                     <p class="text-sm text-brand-gray">Use “Grupo” para linhas de título e “Item” para linhas detalhadas.</p>
+                    @if ($contratoSelecionado)
+                        <p class="mt-2 text-xs text-brand-gray">
+                            Ação recomendada e responsável do <strong class="font-semibold text-brand-black">Slide 5</strong> (plano executivo PGU) são editados no módulo
+                            <a href="{{ route('contratos.acoes-recomendadas.index', ['contrato' => $contratoSelecionado, 'competencia' => $competenciaMes]) }}" class="font-semibold text-brand-burgundy underline-offset-2 hover:underline">Ações recomendadas</a>.
+                        </p>
+                    @endif
                 </div>
                 <label class="w-full min-w-[220px] max-w-xs lg:w-auto">
                     <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data limite da transição Fase 1 → Fase 2</span>
@@ -107,25 +113,27 @@
                 </div>
             @endif
 
+            <div class="border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-xs text-brand-gray">
+                <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas <span class="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">Item</span> com fundo verde = <strong>PGU ≤ Pré-PGU</strong> (necessidade coberta pela mobilização — concluída neste critério). Linhas em vermelho = prazo Fase 2 vencido e <strong>PGU &gt; Pré-PGU</strong>. Linhas amarelas = <strong>Grupo</strong> (título).</p>
+            </div>
+
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1620px] text-left text-sm">
-                    <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
+                <table class="w-full min-w-[1280px] text-left text-sm">
+                    <thead class="sticky top-0 z-20 border-b-2 border-zinc-300 bg-zinc-50 text-xs uppercase tracking-wide text-brand-gray shadow-sm">
                         <tr>
-                            <th class="px-3 py-3">Tipo</th>
-                            <th class="px-3 py-3">Item</th>
-                            <th class="px-3 py-3">Descrição</th>
-                            <th class="px-3 py-3">Unid.</th>
-                            <th class="px-3 py-3">Mobilização</th>
-                            <th class="px-3 py-3">Pré-PGU</th>
-                            <th class="px-3 py-3">PGU</th>
-                            <th class="px-3 py-3">Pós-PGU</th>
-                            <th class="px-3 py-3">Desmobilização</th>
-                            <th class="px-3 py-3">Ação recomendada (Slide 5)</th>
-                            <th class="px-3 py-3">Responsável (Slide 5)</th>
-                            <th class="px-3 py-3 text-right">Ação</th>
+                            <th class="px-3 py-3.5 font-semibold">Tipo</th>
+                            <th class="px-3 py-3.5 font-semibold">Item</th>
+                            <th class="px-3 py-3.5 font-semibold">Descrição</th>
+                            <th class="px-3 py-3.5 font-semibold">Unid.</th>
+                            <th class="px-3 py-3.5 font-semibold tabular-nums">Mobilização</th>
+                            <th class="px-3 py-3.5 font-semibold tabular-nums">Pré-PGU</th>
+                            <th class="px-3 py-3.5 font-semibold tabular-nums">PGU</th>
+                            <th class="px-3 py-3.5 font-semibold tabular-nums">Pós-PGU</th>
+                            <th class="px-3 py-3.5 font-semibold tabular-nums">Desmobilização</th>
+                            <th class="px-3 py-3.5 text-right font-semibold">Ação</th>
                         </tr>
                     </thead>
-                    <tbody data-histograma-rows class="divide-y divide-zinc-100">
+                    <tbody data-histograma-rows class="divide-y divide-zinc-200/80 bg-white">
                         @forelse ($linhas as $i => $linha)
                             @php
                                 $ehGrupo = ($linha->tipo_linha ?? '') === 'grupo';
@@ -133,52 +141,59 @@
                                     && ! $ehGrupo
                                     && \Carbon\Carbon::today()->gt(\Carbon\Carbon::parse($dataLimiteEtapa2)->startOfDay())
                                     && (float) $linha->pgu > (float) $linha->pre_pgu + 0.00001;
+                                $linhaConcluida = ! $ehGrupo
+                                    && ! $linhaAtrasada
+                                    && (float) $linha->pgu <= (float) $linha->pre_pgu + 0.00001;
                             @endphp
-                            <tr data-row id="hist-linha-{{ $linha->id }}" class="scroll-mt-24 {{ $linha->tipo_linha === 'grupo' ? 'bg-[#f8f4d9]/70 font-bold text-brand-black' : '' }} {{ $linhaAtrasada ? 'bg-red-50/90 ring-1 ring-red-300/80' : '' }}">
-                                <td class="px-3 py-2">
-                                    <select name="linhas[{{ $i }}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold">
+                            <tr
+                                data-row
+                                id="hist-linha-{{ $linha->id }}"
+                                class="scroll-mt-24 transition-colors {{ $linha->tipo_linha === 'grupo' ? 'bg-[#f8f4d9]/80 font-bold text-brand-black' : '' }} {{ $linhaAtrasada ? 'bg-red-50/95 ring-1 ring-inset ring-red-200 border-l-4 border-red-600' : '' }} {{ $linhaConcluida ? 'bg-emerald-50/95 ring-1 ring-inset ring-emerald-200/80 border-l-4 border-emerald-600' : '' }} {{ ! $ehGrupo && ! $linhaAtrasada && ! $linhaConcluida ? 'bg-white hover:bg-zinc-50/80' : '' }}"
+                            >
+                                <td class="px-3 py-2.5 align-middle">
+                                    <select name="linhas[{{ $i }}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold shadow-sm">
                                         <option value="item" @selected($linha->tipo_linha === 'item')>Item</option>
                                         <option value="grupo" @selected($linha->tipo_linha === 'grupo')>Grupo</option>
                                     </select>
                                 </td>
-                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][item_codigo]" value="{{ $linha->item_codigo }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs"></td>
-                                <td class="px-3 py-2" data-desc-cell>
+                                <td class="px-3 py-2.5 align-middle"><input name="linhas[{{ $i }}][item_codigo]" value="{{ $linha->item_codigo }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
+                                <td class="px-3 py-2.5 align-middle" data-desc-cell>
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <input name="linhas[{{ $i }}][descricao]" value="{{ $linha->descricao }}" required class="min-w-0 flex-1 rounded border border-zinc-200 px-2 text-xs h-9">
+                                        <input name="linhas[{{ $i }}][descricao]" value="{{ $linha->descricao }}" required class="min-w-0 flex-1 rounded border border-zinc-200 bg-white px-2 text-xs h-9 shadow-sm">
                                         <span
                                             data-atraso-badge
                                             class="{{ $linhaAtrasada ? 'inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white' : 'hidden' }}"
                                         >Atrasado F2</span>
+                                        <span
+                                            data-concluida-badge
+                                            class="{{ $linhaConcluida ? 'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white' : 'hidden' }}"
+                                        >Concluída</span>
                                     </div>
                                 </td>
-                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][unidade]" value="{{ $linha->unidade }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs"></td>
-                                <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linha->mobilizacao }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="mobilizacao"></td>
-                                <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pre_pgu]" value="{{ $linha->pre_pgu }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pre_pgu"></td>
-                                <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pgu]" value="{{ $linha->pgu }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pgu"></td>
-                                <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pos_pgu]" value="{{ $linha->pos_pgu }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pos_pgu"></td>
-                                <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][desmobilizacao]" value="{{ $linha->desmobilizacao }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="desmobilizacao"></td>
-                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][acao_recomendada]" value="{{ $linha->acao_recomendada }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Força-tarefa documental"></td>
-                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][responsavel]" value="{{ $linha->responsavel }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Gestão PGU"></td>
-                                <td class="px-3 py-2 text-right">
-                                    <button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50">×</button>
+                                <td class="px-3 py-2.5 align-middle"><input name="linhas[{{ $i }}][unidade]" value="{{ $linha->unidade }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
+                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linha->mobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao"></td>
+                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pre_pgu]" value="{{ $linha->pre_pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pre_pgu"></td>
+                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pgu]" value="{{ $linha->pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pgu"></td>
+                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pos_pgu]" value="{{ $linha->pos_pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pos_pgu"></td>
+                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][desmobilizacao]" value="{{ $linha->desmobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="desmobilizacao"></td>
+                                <td class="px-3 py-2.5 align-middle text-right">
+                                    <button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50">×</button>
                                 </td>
                             </tr>
                         @empty
                             <tr data-empty-row>
-                                <td colspan="12" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td>
+                                <td colspan="10" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td>
                             </tr>
                         @endforelse
                     </tbody>
-                    <tfoot class="border-t border-zinc-200 bg-brand-gray-soft/40 text-sm font-bold text-brand-black">
+                    <tfoot class="border-t-2 border-zinc-300 bg-zinc-100/90 text-sm font-bold text-brand-black">
                         <tr>
-                            <td colspan="4" class="px-3 py-3 text-right">Totais</td>
-                            <td class="px-3 py-3" data-total="mobilizacao">{{ $fmtQtd($totais['mobilizacao'] ?? 0) }}</td>
-                            <td class="px-3 py-3" data-total="pre_pgu">{{ $fmtQtd($totais['pre_pgu'] ?? 0) }}</td>
-                            <td class="px-3 py-3" data-total="pgu">{{ $fmtQtd($totais['pgu'] ?? 0) }}</td>
-                            <td class="px-3 py-3" data-total="pos_pgu">{{ $fmtQtd($totais['pos_pgu'] ?? 0) }}</td>
-                            <td class="px-3 py-3" data-total="desmobilizacao">{{ $fmtQtd($totais['desmobilizacao'] ?? 0) }}</td>
-                            <td></td>
-                            <td></td>
+                            <td colspan="4" class="px-3 py-3.5 text-right text-xs uppercase tracking-wide text-brand-gray">Totais (itens)</td>
+                            <td class="px-3 py-3.5 tabular-nums" data-total="mobilizacao">{{ $fmtQtd($totais['mobilizacao'] ?? 0) }}</td>
+                            <td class="px-3 py-3.5 tabular-nums" data-total="pre_pgu">{{ $fmtQtd($totais['pre_pgu'] ?? 0) }}</td>
+                            <td class="px-3 py-3.5 tabular-nums" data-total="pgu">{{ $fmtQtd($totais['pgu'] ?? 0) }}</td>
+                            <td class="px-3 py-3.5 tabular-nums" data-total="pos_pgu">{{ $fmtQtd($totais['pos_pgu'] ?? 0) }}</td>
+                            <td class="px-3 py-3.5 tabular-nums" data-total="desmobilizacao">{{ $fmtQtd($totais['desmobilizacao'] ?? 0) }}</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -195,30 +210,34 @@
                 const tbody = form.querySelector('[data-histograma-rows]');
                 const emptyRow = () => tbody.querySelector('[data-empty-row]');
 
+                const rowBaseCls = (tipo) =>
+                    tipo === 'grupo'
+                        ? 'bg-[#f8f4d9]/80 font-bold text-brand-black'
+                        : 'bg-white hover:bg-zinc-50/80';
+
                 const rowHtml = (idx, tipo = 'item') => `
-                    <tr data-row class="${tipo === 'grupo' ? 'bg-[#f8f4d9]/70 font-bold text-brand-black' : ''}">
-                        <td class="px-3 py-2">
-                            <select name="linhas[${idx}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold">
+                    <tr data-row class="${rowBaseCls(tipo)} transition-colors">
+                        <td class="px-3 py-2.5 align-middle">
+                            <select name="linhas[${idx}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold shadow-sm">
                                 <option value="item" ${tipo === 'item' ? 'selected' : ''}>Item</option>
                                 <option value="grupo" ${tipo === 'grupo' ? 'selected' : ''}>Grupo</option>
                             </select>
                         </td>
-                        <td class="px-3 py-2"><input name="linhas[${idx}][item_codigo]" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs"></td>
-                        <td class="px-3 py-2" data-desc-cell>
+                        <td class="px-3 py-2.5 align-middle"><input name="linhas[${idx}][item_codigo]" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
+                        <td class="px-3 py-2.5 align-middle" data-desc-cell>
                             <div class="flex flex-wrap items-center gap-2">
-                                <input name="linhas[${idx}][descricao]" required class="min-w-0 flex-1 h-9 rounded border border-zinc-200 px-2 text-xs">
+                                <input name="linhas[${idx}][descricao]" required class="min-w-0 flex-1 h-9 rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm">
                                 <span data-atraso-badge class="hidden">Atrasado F2</span>
+                                <span data-concluida-badge class="hidden">Concluída</span>
                             </div>
                         </td>
-                        <td class="px-3 py-2"><input name="linhas[${idx}][unidade]" value="Unid." class="h-9 w-full rounded border border-zinc-200 px-2 text-xs"></td>
-                        <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][mobilizacao]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="mobilizacao"></td>
-                        <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][pre_pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pre_pgu"></td>
-                        <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pgu"></td>
-                        <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][pos_pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pos_pgu"></td>
-                        <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][desmobilizacao]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="desmobilizacao"></td>
-                        <td class="px-3 py-2"><input name="linhas[${idx}][acao_recomendada]" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Força-tarefa documental"></td>
-                        <td class="px-3 py-2"><input name="linhas[${idx}][responsavel]" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Gestão PGU"></td>
-                        <td class="px-3 py-2 text-right"><button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50">×</button></td>
+                        <td class="px-3 py-2.5 align-middle"><input name="linhas[${idx}][unidade]" value="Unid." class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
+                        <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[${idx}][mobilizacao]" value="0" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao"></td>
+                        <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[${idx}][pre_pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pre_pgu"></td>
+                        <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[${idx}][pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pgu"></td>
+                        <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[${idx}][pos_pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pos_pgu"></td>
+                        <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[${idx}][desmobilizacao]" value="0" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="desmobilizacao"></td>
+                        <td class="px-3 py-2.5 align-middle text-right"><button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50">×</button></td>
                     </tr>`;
 
                 const reindex = () => {
@@ -248,8 +267,19 @@
                 };
 
                 const limiteInput = form.querySelector('[data-limite-input]');
-                const BADGE_ON =
+                const BADGE_ATRASO_ON =
                     'inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white';
+                const BADGE_CONCLUIDA_ON =
+                    'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white';
+
+                const CLS_RED = ['bg-red-50/95', 'ring-1', 'ring-inset', 'ring-red-200', 'border-l-4', 'border-red-600'];
+                const CLS_GREEN = ['bg-emerald-50/95', 'ring-1', 'ring-inset', 'ring-emerald-200/80', 'border-l-4', 'border-emerald-600'];
+                const CLS_ITEM_NEUTRAL = ['bg-white', 'hover:bg-zinc-50/80'];
+                const CLS_GROUP = ['bg-[#f8f4d9]/80', 'font-bold', 'text-brand-black'];
+
+                const stripRowStateClasses = (tr) => {
+                    tr.classList.remove(...CLS_RED, ...CLS_GREEN, ...CLS_ITEM_NEUTRAL, ...CLS_GROUP);
+                };
 
                 const limitePassou = () => {
                     const L = (form.dataset.limite || '').trim();
@@ -262,25 +292,36 @@
                 };
                 const rowIsItem = (tr) => (tr.querySelector('[data-field="tipo"]')?.value || 'item') === 'item';
 
-                const refreshAtrasoHighlight = () => {
-                    const late = limitePassou();
+                const refreshRowStates = () => {
+                    const lateGlobal = limitePassou();
                     tbody.querySelectorAll('[data-row]').forEach((tr) => {
-                        const badge = tr.querySelector('[data-atraso-badge]');
-                        if (!badge) return;
-                        if (!rowIsItem(tr) || !late) {
-                            tr.classList.remove('bg-red-50/90', 'ring-1', 'ring-red-300/80');
-                            badge.className = 'hidden';
+                        const badgeA = tr.querySelector('[data-atraso-badge]');
+                        const badgeC = tr.querySelector('[data-concluida-badge]');
+                        if (!badgeA || !badgeC) return;
+
+                        stripRowStateClasses(tr);
+                        badgeA.classList.add('hidden');
+                        badgeC.classList.add('hidden');
+
+                        if (!rowIsItem(tr)) {
+                            tr.classList.add(...CLS_GROUP);
                             return;
                         }
+
                         const pre = parseFloat(tr.querySelector('[data-num="pre_pgu"]')?.value || '0');
                         const pgu = parseFloat(tr.querySelector('[data-num="pgu"]')?.value || '0');
-                        const show = pgu > pre + 1e-9;
-                        if (show) {
-                            tr.classList.add('bg-red-50/90', 'ring-1', 'ring-red-300/80');
-                            badge.className = BADGE_ON;
+                        const eps = 1e-9;
+                        const atrasada = lateGlobal && pgu > pre + eps;
+                        const concluida = pgu <= pre + eps;
+
+                        if (atrasada) {
+                            tr.classList.add(...CLS_RED);
+                            badgeA.className = BADGE_ATRASO_ON;
+                        } else if (concluida) {
+                            tr.classList.add(...CLS_GREEN);
+                            badgeC.className = BADGE_CONCLUIDA_ON;
                         } else {
-                            tr.classList.remove('bg-red-50/90', 'ring-1', 'ring-red-300/80');
-                            badge.className = 'hidden';
+                            tr.classList.add(...CLS_ITEM_NEUTRAL);
                         }
                     });
                 };
@@ -290,7 +331,7 @@
                     tbody.insertAdjacentHTML('beforeend', rowHtml(tbody.querySelectorAll('[data-row]').length, tipo));
                     reindex();
                     recalcTotals();
-                    refreshAtrasoHighlight();
+                    refreshRowStates();
                 };
 
                 form.querySelector('[data-add-grupo]')?.addEventListener('click', () => addRow('grupo'));
@@ -301,37 +342,33 @@
                         e.target.closest('[data-row]')?.remove();
                         reindex();
                         if (!tbody.querySelector('[data-row]')) {
-                            tbody.insertAdjacentHTML('beforeend', '<tr data-empty-row><td colspan="12" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td></tr>');
+                            tbody.insertAdjacentHTML('beforeend', '<tr data-empty-row><td colspan="10" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td></tr>');
                         }
                         recalcTotals();
-                        refreshAtrasoHighlight();
+                        refreshRowStates();
                     }
                 });
 
                 limiteInput?.addEventListener('change', () => {
                     form.dataset.limite = limiteInput.value || '';
-                    refreshAtrasoHighlight();
+                    refreshRowStates();
                 });
 
                 tbody.addEventListener('change', (e) => {
                     if (e.target.matches('[data-field="tipo"]')) {
-                        const tr = e.target.closest('[data-row]');
-                        tr?.classList.toggle('bg-[#f8f4d9]/70', e.target.value === 'grupo');
-                        tr?.classList.toggle('font-bold', e.target.value === 'grupo');
-                        tr?.classList.toggle('text-brand-black', e.target.value === 'grupo');
-                        refreshAtrasoHighlight();
+                        refreshRowStates();
                     }
                     if (e.target.matches('[data-num]')) recalcTotals();
-                    if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshAtrasoHighlight();
+                    if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshRowStates();
                 });
 
                 tbody.addEventListener('input', (e) => {
                     if (e.target.matches('[data-num]')) recalcTotals();
-                    if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshAtrasoHighlight();
+                    if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshRowStates();
                 });
 
                 recalcTotals();
-                refreshAtrasoHighlight();
+                refreshRowStates();
             })();
         </script>
     @endpush
