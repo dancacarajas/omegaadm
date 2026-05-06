@@ -145,8 +145,8 @@ class PguPowerPointExportService
             throw new \RuntimeException("Diretorio de exportacao sem permissao de escrita: {$baseDir}");
         }
 
-        $node = trim((string) shell_exec('node -v 2>&1'));
-        $npm = trim((string) shell_exec('npm -v 2>&1'));
+        $node = $this->resolveCommandVersion(['node', '-v']);
+        $npm = $this->resolveCommandVersion(['npm', '-v']);
 
         Log::info('PGU PPT runtime check', [
             'node' => $node,
@@ -157,6 +157,24 @@ class PguPowerPointExportService
         $nodeLower = strtolower($node);
         if ($node === '' || str_contains($nodeLower, 'not recognized') || str_contains($nodeLower, 'not found')) {
             throw new \RuntimeException('Node.js nao foi encontrado. Instale o Node.js e rode npm install.');
+        }
+    }
+
+    /**
+     * @param  list<string>  $command
+     */
+    private function resolveCommandVersion(array $command): string
+    {
+        try {
+            $process = new Process($command, base_path());
+            $process->setTimeout(10);
+            $process->run();
+
+            $output = trim($process->getOutput().' '.$process->getErrorOutput());
+
+            return $output;
+        } catch (Throwable $e) {
+            return 'error: '.$e->getMessage();
         }
     }
 
