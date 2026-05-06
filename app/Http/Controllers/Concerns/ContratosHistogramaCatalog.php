@@ -16,6 +16,7 @@ trait ContratosHistogramaCatalog
     {
         if (ContratoAccess::shouldRestrict()) {
             return ContratoAccess::applyContratoModel(Contrato::query())
+                ->where('gestao_histograma', true)
                 ->get(['numero', 'centro_custo'])
                 ->map(function ($c) {
                     $chave = trim((string) ($c->centro_custo ?: $c->numero));
@@ -29,6 +30,7 @@ trait ContratosHistogramaCatalog
         }
 
         return Contrato::query()
+            ->where('gestao_histograma', true)
             ->orderBy('numero')
             ->get(['numero', 'centro_custo'])
             ->map(function ($c) {

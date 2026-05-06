@@ -74,6 +74,23 @@
                     <span class="{{ $label }}">Valor</span>
                     <input type="number" step="0.01" min="0" name="valor" value="{{ old('valor', $contrato->valor) }}" class="{{ $input }}" placeholder="0,00">
                 </label>
+                <label class="space-y-2 md:col-span-2">
+                    <span class="{{ $label }}">Integração PGU</span>
+                    <div class="flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3">
+                        <input
+                            type="checkbox"
+                            id="gestao_histograma"
+                            name="gestao_histograma"
+                            value="1"
+                            @checked(old('gestao_histograma', (bool) $contrato->gestao_histograma))
+                            class="mt-0.5 h-4 w-4 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy"
+                        >
+                        <div>
+                            <label for="gestao_histograma" class="text-sm font-semibold text-brand-black">Gestão de Histograma</label>
+                            <p class="text-xs text-brand-gray">Quando marcado, este contrato aparece no Histograma, PGU — Visão Completa, Apresentação e Ações Recomendadas.</p>
+                        </div>
+                    </div>
+                </label>
             </div>
         </div>
 

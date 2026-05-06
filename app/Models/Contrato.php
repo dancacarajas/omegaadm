@@ -22,6 +22,7 @@ class Contrato extends Model
         'data_fim',
         'valor',
         'status',
+        'gestao_histograma',
         'descricao',
         'observacoes',
     ];
@@ -30,6 +31,7 @@ class Contrato extends Model
         'data_inicio' => 'date',
         'data_fim' => 'date',
         'valor' => 'decimal:2',
+        'gestao_histograma' => 'boolean',
     ];
 
     public function usuarios(): BelongsToMany

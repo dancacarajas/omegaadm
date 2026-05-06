@@ -1044,7 +1044,9 @@ window.pguApresentacaoShell = function () {
         exportandoPpt: false,
         modoApresentacao: false,
         fullscreenRoot: null,
-        abaApresentacao: 'geral',
+        touchStartX: null,
+        touchStartY: null,
+        abaApresentacao: 'capa',
         ordemAbasApresentacao: ['capa', 'geral', 'funcoes100', 'gargalos', 'concentracao', 'plano'],
         wheelCooldownMs: 300,
         lastWheelAt: 0,
@@ -1061,6 +1063,7 @@ window.pguApresentacaoShell = function () {
             this.initFromDataset();
             this.bindSlideNavigation();
             this.bindFullscreenState();
+            this.bindTouchSlideNavigation();
         },
         setAbaApresentacao(slug) {
             this.abaApresentacao = slug;
@@ -1124,6 +1127,65 @@ window.pguApresentacaoShell = function () {
                     event.preventDefault();
                 }
             });
+        },
+        bindTouchSlideNavigation() {
+            const minSwipeDistance = 40;
+            const maxOffAxisDistance = 120;
+
+            window.addEventListener('touchstart', (event) => {
+                if (!this.modoApresentacao) {
+                    return;
+                }
+                const touch = event.changedTouches?.[0];
+                if (!touch) {
+                    return;
+                }
+                this.touchStartX = touch.clientX;
+                this.touchStartY = touch.clientY;
+            }, { passive: true });
+
+            window.addEventListener('touchend', (event) => {
+                if (!this.modoApresentacao) {
+                    return;
+                }
+                const touch = event.changedTouches?.[0];
+                if (!touch || this.touchStartX === null || this.touchStartY === null) {
+                    this.touchStartX = null;
+                    this.touchStartY = null;
+                    return;
+                }
+
+                const deltaX = touch.clientX - this.touchStartX;
+                const deltaY = touch.clientY - this.touchStartY;
+                const absX = Math.abs(deltaX);
+                const absY = Math.abs(deltaY);
+
+                this.touchStartX = null;
+                this.touchStartY = null;
+
+                if (absX < minSwipeDistance && absY < minSwipeDistance) {
+                    return;
+                }
+
+                // Swipe horizontal (padrão mobile): esquerda avança, direita volta.
+                if (absX >= minSwipeDistance && absY <= maxOffAxisDistance) {
+                    if (deltaX < 0) {
+                        this.proximaAbaApresentacao();
+                        return;
+                    }
+                    this.abaApresentacaoAnterior();
+                    return;
+                }
+
+                // Swipe vertical: mantém mesma lógica já usada no scroll.
+                if (absY >= minSwipeDistance && absX <= maxOffAxisDistance) {
+                    if (deltaY < 0) {
+                        this.proximaAbaApresentacao();
+                        return;
+                    }
+                    this.abaApresentacaoAnterior();
+                }
+            }, { passive: true });
         },
         bindFullscreenState() {
             const syncState = () => {

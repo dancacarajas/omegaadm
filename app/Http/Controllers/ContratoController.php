@@ -130,8 +130,11 @@ class ContratoController extends Controller
             'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
             'valor' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:ativo,em_analise,suspenso,encerrado,cancelado,vencido'],
+            'gestao_histograma' => ['nullable', 'boolean'],
             'descricao' => ['nullable', 'string'],
             'observacoes' => ['nullable', 'string'],
-        ]);
+        ]) + [
+            'gestao_histograma' => $request->boolean('gestao_histograma'),
+        ];
     }
 }
