@@ -26,7 +26,13 @@ use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\VeiculoFrotaController;
 use App\Http\Controllers\VeiculoManutencaoController;
 use App\Http\Controllers\VeiculoTelemetriaController;
+use App\Services\PguPowerPointExportService;
+use Illuminate\Http\Request;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 Route::get('/install', [InstallController::class, 'index'])->name('install.index');
 Route::post('/install', [InstallController::class, 'store'])->name('install.store');
@@ -46,7 +52,114 @@ Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(fun
     Route::get('contratos/pgu-visao-completa', [PguDashboardController::class, 'index'])->name('dashboard.pgu');
     Route::get('contratos/apresentacao', [PguDashboardController::class, 'apresentacao'])->name('contratos.apresentacao');
     Route::get('exportar-pgu-powerpoint', [PguDashboardController::class, 'exportarPowerPoint'])->name('pgu.export.ppt');
+    Route::get('debug-pgu-powerpoint', [PguDashboardController::class, 'debugExportarPowerPoint'])->name('pgu.export.ppt.debug');
 });
+
+Route::prefix('pgu-capture')
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        VerifyCsrfToken::class,
+        Authenticate::class,
+    ])
+    ->group(function () {
+        Route::get('/health', [PguDashboardController::class, 'captureHealth'])->name('pgu.capture.health');
+        Route::get('/cover', [PguDashboardController::class, 'captureCover'])->name('pgu.capture.cover');
+        Route::get('/slide-1', [PguDashboardController::class, 'captureSlide1'])->name('pgu.capture.slide1');
+        Route::get('/slide-2', [PguDashboardController::class, 'captureSlide2'])->name('pgu.capture.slide2');
+        Route::get('/slide-3', [PguDashboardController::class, 'captureSlide3'])->name('pgu.capture.slide3');
+        Route::get('/slide-4', [PguDashboardController::class, 'captureSlide4'])->name('pgu.capture.slide4');
+        Route::get('/slide-5', [PguDashboardController::class, 'captureSlide5'])->name('pgu.capture.slide5');
+    });
+
+Route::get('/debug-pgu-capture-cover', [PguDashboardController::class, 'debugCaptureCover'])
+    ->name('pgu.debug.capture.cover');
+Route::get('/debug-pgu-aux-server', [PguDashboardController::class, 'debugAuxServer'])
+    ->name('pgu.debug.aux-server');
+Route::get('/debug-pgu-last-export-files', function () {
+    $base = storage_path('app/pgu-export');
+    if (! is_dir($base)) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Nenhum diretorio de exportacao encontrado.',
+        ]);
+    }
+
+    $dirs = collect(\Illuminate\Support\Facades\File::directories($base))
+        ->sortByDesc(function (string $dir) {
+            return @filemtime($dir) ?: 0;
+        })
+        ->values();
+
+    if ($dirs->isEmpty()) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Nenhum diretorio de exportacao encontrado.',
+        ]);
+    }
+
+    $latest = $dirs->first();
+    $files = collect(\Illuminate\Support\Facades\File::files($latest))
+        ->map(function ($file) {
+            $path = $file->getPathname();
+            $dimensions = null;
+            if (strtolower($file->getExtension()) === 'png') {
+                $img = @getimagesize($path);
+                if (is_array($img)) {
+                    $dimensions = [
+                        'width' => (int) ($img[0] ?? 0),
+                        'height' => (int) ($img[1] ?? 0),
+                    ];
+                }
+            }
+
+            return [
+                'name' => $file->getFilename(),
+                'path' => $path,
+                'size' => filesize($path),
+                'dimensions' => $dimensions,
+            ];
+        })
+        ->values();
+
+    return response()->json([
+        'ok' => true,
+        'latest_dir' => $latest,
+        'files' => $files,
+    ]);
+})->name('pgu.debug.last-export-files');
+
+Route::get('/debug-pgu-run-export', function (Request $request, PguPowerPointExportService $service) {
+    $debugRequest = Request::create('/debug-pgu-run-export', 'GET', [
+        'contrato' => (string) $request->query('contrato', '312'),
+        'competencia' => (string) $request->query('competencia', now()->format('Y-m')),
+        'data_limite_etapa_2' => $request->query('data_limite_etapa_2'),
+    ]);
+
+    $pptx = $service->export($debugRequest);
+    $dir = dirname($pptx);
+    $files = collect(\Illuminate\Support\Facades\File::files($dir))
+        ->map(function ($file) {
+            $path = $file->getPathname();
+            $isPng = strtolower($file->getExtension()) === 'png';
+            $img = $isPng ? @getimagesize($path) : null;
+            $hash = @hash_file('sha256', $path) ?: null;
+
+            return [
+                'name' => $file->getFilename(),
+                'size' => filesize($path),
+                'sha256' => $hash,
+                'dimensions' => is_array($img) ? ['width' => (int) ($img[0] ?? 0), 'height' => (int) ($img[1] ?? 0)] : null,
+            ];
+        })
+        ->values();
+
+    return response()->json([
+        'ok' => true,
+        'dir' => $dir,
+        'files' => $files,
+    ]);
+})->name('pgu.debug.run-export');
 
 Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
@@ -65,6 +178,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/pgu-slide-4', [PguDashboardController::class, 'pguSlide4'])->name('pgu.slide.4');
     Route::get('/pgu-slide-5', [PguDashboardController::class, 'pguSlide5'])->name('pgu.slide.5');
     Route::get('/exportar-pgu-powerpoint', [PguDashboardController::class, 'exportarPowerPoint'])->name('pgu.export.ppt');
+    Route::get('/debug-pgu-powerpoint', [PguDashboardController::class, 'debugExportarPowerPoint'])->name('pgu.export.ppt.debug');
     Route::post('contratos/histograma', [ContratoHistogramaController::class, 'salvar'])->name('contratos.histograma.salvar');
     Route::resource('contratos', ContratoController::class);
     Route::resource('usuarios', UsuarioController::class);

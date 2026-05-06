@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\PguDashboardApiController;
 use App\Http\Controllers\Concerns\ContratosHistogramaCatalog;
+use App\Services\PguPowerPointExportService;
 use App\Models\ContratoHistogramaRecorte;
 use App\Models\ContratoPguAcaoRecomendada;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpOffice\PhpPresentation\DocumentLayout;
@@ -204,126 +206,200 @@ class PguDashboardController extends Controller
     /**
      * Exporta os slides PGU para PPT preservando o visual via screenshots PNG.
      */
-    public function exportarPowerPoint(Request $request)
+    public function exportarPowerPoint(Request $request, PguPowerPointExportService $service)
     {
-        $params = array_filter([
-            'contrato' => $request->input('contrato'),
-            'competencia' => $request->input('competencia'),
-            'data_limite_etapa_2' => $request->input('data_limite_etapa_2'),
-        ], fn ($v) => $v !== null && $v !== '');
-
-        $baseUrl = $request->getSchemeAndHttpHost();
-        $captureBaseUrl = $baseUrl;
-        $cookieHeader = $this->buildCaptureCookieHeader((string) $request->header('cookie', ''));
-        $tmpDir = storage_path('app/pgu-export/'.Str::uuid()->toString());
-        $captureServer = null;
-
-        if (! is_dir($tmpDir)) {
-            mkdir($tmpDir, 0775, true);
-        }
-
         try {
-            [$captureBaseUrl, $captureServer] = $this->bootAuxCaptureServer();
+            $pptxPath = $service->export($request);
+
+            $contrato = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $request->query('contrato', 'geral'));
+            $competencia = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $request->query('competencia', now()->format('Y-m')));
+            $filename = "pgu-visao-executiva-{$contrato}-{$competencia}.pptx";
+
+            return response()
+                ->download($pptxPath, $filename)
+                ->deleteFileAfterSend(! config('pgu_export.keep_files'));
         } catch (\Throwable $e) {
-            Log::error('Falha ao iniciar servidor auxiliar para exportação PPT.', [
-                'error' => $e->getMessage(),
+            Log::error('Erro ao exportar PowerPoint PGU', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with(
-                'error',
-                'Falha ao exportar PPT: não foi possível iniciar o servidor auxiliar de captura.'
-            );
-        }
-
-        $slides = [
-            'cover' => '/pgu-cover',
-            'slide-1' => '/pgu-slide',
-            'slide-2' => '/pgu-slide-2',
-            'slide-3' => '/pgu-slide-3',
-            'slide-4' => '/pgu-slide-4',
-            'slide-5' => '/pgu-slide-5',
-        ];
-
-        $pngPaths = [];
-        $chromePath = $this->resolveChromeExecutablePath();
-        foreach ($slides as $key => $path) {
-            $url = $captureBaseUrl.$path.(filled($params) ? '?'.http_build_query($params) : '');
-            $pngPath = $tmpDir.DIRECTORY_SEPARATOR.$key.'.png';
-            $pngPaths[] = $pngPath;
-
-            $shot = Browsershot::url($url)
-                ->windowSize(1366, 768)
-                ->deviceScaleFactor(2)
-                ->setDelay(500)
-                ->setOption('waitUntil', 'domcontentloaded')
-                ->setOption('timeout', 120000)
-                ->setOption('fullPage', false)
-                ->setOption('omitBackground', false)
-                ->setOption('args', ['--disable-dev-shm-usage', '--no-sandbox']);
-
-            if ($chromePath !== null) {
-                $shot->setChromePath($chromePath);
-            }
-
-            if ($cookieHeader !== '') {
-                $shot->setExtraHttpHeaders(['Cookie' => $cookieHeader]);
-            }
-
-            try {
-                $shot->save($pngPath);
-            } catch (ProcessFailedException $e) {
-                Log::error('Falha ao capturar slide para exportação PPT.', [
-                    'slide' => $key,
-                    'url' => $url,
-                    'chrome_path' => $chromePath,
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Falha ao exportar PowerPoint PGU.',
                     'error' => $e->getMessage(),
-                ]);
+                ], 500);
+            }
 
-                if ($captureServer instanceof Process) {
-                    $captureServer->stop(1);
-                }
+            return back()->with('error', 'Falha ao exportar PowerPoint PGU: '.$e->getMessage());
+        }
+    }
 
-                return back()->with(
-                    'error',
-                    'Falha ao exportar PPT: o carregamento dos slides excedeu o tempo limite no Chrome headless. Tente novamente em alguns segundos.'
-                );
+    public function debugExportarPowerPoint(Request $request, PguPowerPointExportService $service)
+    {
+        try {
+            return response()->json($service->debugCapture($request));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    public function captureHealth()
+    {
+        return response('OK', 200);
+    }
+
+    public function captureCover(Request $request)
+    {
+        $this->mergeCapturePayloadIntoRequest($request);
+
+        return $this->renderCapturePartial('dashboard.partials.pgu-cover-wrap', [], 'pgu0-apresentacao-embed w-full max-w-none px-0');
+    }
+
+    public function captureSlide1(Request $request)
+    {
+        $request = $this->mergeCapturePayloadIntoRequest($request);
+
+        $contrato = (string) $request->query('contrato', '');
+        $competencia = (string) $request->query('competencia', now()->format('Y-m'));
+        $dataLimite = $request->query('data_limite_etapa_2');
+
+        return $this->renderCapturePartial(
+            'dashboard.partials.pgu-executive-slide-wrap',
+            $this->buildPguExecutiveSlideVars($contrato, $competencia, $dataLimite),
+            'pgu-apresentacao-embed w-full max-w-none px-0'
+        );
+    }
+
+    public function captureSlide2(Request $request)
+    {
+        $request = $this->mergeCapturePayloadIntoRequest($request);
+
+        $contrato = (string) $request->query('contrato', '');
+        $competencia = (string) $request->query('competencia', now()->format('Y-m'));
+        $dataLimite = $request->query('data_limite_etapa_2');
+
+        return $this->renderCapturePartial(
+            'dashboard.partials.pgu-slide-2-wrap',
+            $this->buildPguSlide2Vars($contrato, $competencia, $dataLimite),
+            'pgu2-apresentacao-embed w-full max-w-none px-0'
+        );
+    }
+
+    public function captureSlide3(Request $request)
+    {
+        $request = $this->mergeCapturePayloadIntoRequest($request);
+
+        $contrato = (string) $request->query('contrato', '');
+        $competencia = (string) $request->query('competencia', now()->format('Y-m'));
+        $dataLimite = $request->query('data_limite_etapa_2');
+
+        return $this->renderCapturePartial(
+            'dashboard.partials.pgu-slide-3-wrap',
+            $this->buildPguSlide3Vars($contrato, $competencia, $dataLimite),
+            'pgu3-apresentacao-embed w-full max-w-none px-0'
+        );
+    }
+
+    public function captureSlide4(Request $request)
+    {
+        $request = $this->mergeCapturePayloadIntoRequest($request);
+
+        $contrato = (string) $request->query('contrato', '');
+        $competencia = (string) $request->query('competencia', now()->format('Y-m'));
+        $dataLimite = $request->query('data_limite_etapa_2');
+
+        return $this->renderCapturePartial(
+            'dashboard.partials.pgu-slide-4-wrap',
+            $this->buildPguSlide4Vars($contrato, $competencia, $dataLimite),
+            'pgu4-apresentacao-embed w-full max-w-none px-0'
+        );
+    }
+
+    public function captureSlide5(Request $request)
+    {
+        $request = $this->mergeCapturePayloadIntoRequest($request);
+
+        $contrato = (string) $request->query('contrato', '');
+        $competencia = (string) $request->query('competencia', now()->format('Y-m'));
+        $dataLimite = $request->query('data_limite_etapa_2');
+
+        return $this->renderCapturePartial(
+            'dashboard.partials.pgu-slide-5-wrap',
+            $this->buildPguSlide5Vars($contrato, $competencia, $dataLimite),
+            'pgu5-apresentacao-embed w-full max-w-none px-0'
+        );
+    }
+
+    public function debugCaptureCover(Request $request, PguPowerPointExportService $service)
+    {
+        try {
+            return response()->json($service->debugCapture($request));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    public function debugAuxServer(PguPowerPointExportService $service)
+    {
+        try {
+            return response()->json($service->debugAuxServer());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    private function validatePguCaptureToken(Request $request): array
+    {
+        $token = (string) $request->query('capture_token', '');
+        if ($token === '') {
+            abort(403, 'Token de captura ausente.');
+        }
+
+        $payload = Cache::get("pgu_capture_token:{$token}");
+        if (! is_array($payload)) {
+            abort(403, 'Token de captura invalido ou expirado.');
+        }
+
+        return $payload;
+    }
+
+    private function mergeCapturePayloadIntoRequest(Request $request): Request
+    {
+        $payload = $this->validatePguCaptureToken($request);
+
+        foreach ($payload as $key => $value) {
+            if ($value !== null && $value !== '') {
+                $request->query->set((string) $key, $value);
             }
         }
 
-        $presentation = new PhpPresentation;
-        $presentation->removeSlideByIndex(0);
-        $layout = new DocumentLayout;
-        $layout->setDocumentLayout(DocumentLayout::LAYOUT_SCREEN_16X9);
-        $presentation->setLayout($layout);
-        $slideWidth = (int) round($presentation->getLayout()->getCX(DocumentLayout::UNIT_PIXEL));
-        $slideHeight = (int) round($presentation->getLayout()->getCY(DocumentLayout::UNIT_PIXEL));
+        return $request;
+    }
 
-        foreach ($pngPaths as $imgPath) {
-            $slide = $presentation->createSlide();
-            $shape = new File;
-            $shape->setPath($imgPath);
-            $shape->setOffsetX(0);
-            $shape->setOffsetY(0);
-            $shape->setResizeProportional(false);
-            $shape->setWidth($slideWidth);
-            $shape->setHeight($slideHeight);
-            $slide->addShape($shape);
-        }
-
-        $pptxPath = $tmpDir.DIRECTORY_SEPARATOR.'pgu-visao-executiva.pptx';
-        IOFactory::createWriter($presentation, 'PowerPoint2007')->save($pptxPath);
-
-        $safeContrato = preg_replace('/[^A-Za-z0-9_\-]+/', '_', $params['contrato'] ?? $request->input('contrato', 'contrato'));
-        $safeCompetencia = preg_replace('/[^0-9\-]+/', '_', $params['competencia'] ?? $request->input('competencia', 'competencia'));
-        $downloadName = trim((string) ("pgu-visao-executiva-{$safeContrato}-{$safeCompetencia}.pptx"), '-');
-
-        $response = response()->download($pptxPath, $downloadName)->deleteFileAfterSend(true);
-
-        if ($captureServer instanceof Process) {
-            $captureServer->stop(1);
-        }
-
-        return $response;
+    private function renderCapturePartial(string $partialView, array $data = [], string $wrapperClass = '')
+    {
+        return response()->view('dashboard.pgu-capture-frame', [
+            'capturePartialView' => $partialView,
+            'captureData' => $data,
+            'captureWrapperClass' => $wrapperClass,
+        ]);
     }
 
     /**
