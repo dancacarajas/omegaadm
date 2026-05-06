@@ -22,7 +22,7 @@
         <x-pgu.page-header
             title="Apresentação PGU"
             subtitle="Modo reunião: cada aba é um slide — visão geral, vitórias, gargalos, concentração e plano de ação."
-            x-show="!modoApresentacao"
+            x-show="!isModoApresentacaoAtivo()"
         >
             <select x-model="contrato" class="rounded-xl border border-pgu-border bg-white px-4 py-2 text-sm text-pgu-ink shadow-sm focus:border-pgu-primary">
                 @foreach ($contratos as $contrato)
@@ -52,7 +52,7 @@
 
         <div :class="modoApresentacao ? 'space-y-0' : 'space-y-5'" class="space-y-5">
             <nav
-                x-show="!modoApresentacao"
+                x-show="!isModoApresentacaoAtivo()"
                 class="sticky top-0 z-30 rounded-2xl border border-pgu-border bg-white/95 px-2 py-2 shadow-sm backdrop-blur-md sm:px-3"
                 aria-label="Slides da apresentação PGU"
             >

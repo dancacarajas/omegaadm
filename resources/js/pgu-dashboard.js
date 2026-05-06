@@ -1130,6 +1130,10 @@ window.pguApresentacaoShell = function () {
                 this.modoApresentacao = Boolean(document.fullscreenElement);
             };
             document.addEventListener('fullscreenchange', syncState);
+            syncState();
+        },
+        isModoApresentacaoAtivo() {
+            return this.modoApresentacao && Boolean(document.fullscreenElement);
         },
         async entrarModoApresentacao() {
             if (!this.fullscreenRoot || this.modoApresentacao) {
