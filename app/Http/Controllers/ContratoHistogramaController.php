@@ -13,6 +13,11 @@ class ContratoHistogramaController extends Controller
 {
     use ContratosHistogramaCatalog;
 
+    private function isPublicRoute(Request $request): bool
+    {
+        return str_starts_with((string) $request->route()?->getName(), 'publico.');
+    }
+
     public function index(Request $request)
     {
         $competenciaMes = $request->input('competencia', now()->format('Y-m'));
@@ -72,6 +77,7 @@ class ContratoHistogramaController extends Controller
             'contagemAtrasadas' => $contagemAtrasadas,
             'situacaoPrazo' => $situacaoPrazo,
             'diasAteLimite' => $diasAteLimite,
+            'layout' => $this->isPublicRoute($request) ? 'layouts.public-contratos' : 'layouts.app',
         ]);
     }
 
@@ -85,6 +91,8 @@ class ContratoHistogramaController extends Controller
             'linhas.*.tipo_linha' => ['nullable', 'in:grupo,item'],
             'linhas.*.item_codigo' => ['nullable', 'string', 'max:30'],
             'linhas.*.descricao' => ['required', 'string', 'max:255'],
+            'linhas.*.acao_recomendada' => ['nullable', 'string', 'max:255'],
+            'linhas.*.responsavel' => ['nullable', 'string', 'max:120'],
             'linhas.*.unidade' => ['nullable', 'string', 'max:20'],
             'linhas.*.mobilizacao' => ['nullable', 'numeric', 'min:0'],
             'linhas.*.pre_pgu' => ['nullable', 'numeric', 'min:0'],
@@ -112,6 +120,8 @@ class ContratoHistogramaController extends Controller
                     'ordem' => $index + 1,
                     'item_codigo' => $linha['item_codigo'] ?? null,
                     'descricao' => $linha['descricao'],
+                    'acao_recomendada' => $linha['acao_recomendada'] ?? null,
+                    'responsavel' => $linha['responsavel'] ?? null,
                     'unidade' => $linha['unidade'] ?? 'Unid.',
                     'mobilizacao' => (float) ($linha['mobilizacao'] ?? 0),
                     'pre_pgu' => (float) ($linha['pre_pgu'] ?? 0),

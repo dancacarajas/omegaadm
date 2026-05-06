@@ -7,6 +7,24 @@ window.pguDashboard = function () {
         contrato: '',
         competencia: '',
         dataLimite: '',
+        /** Slides da apresentação PGU (abas superiores). */
+        abaApresentacao: 'capa',
+        setAbaApresentacao(slug) {
+            if (this.abaApresentacao === slug) {
+                return;
+            }
+            this.abaApresentacao = slug;
+            queueMicrotask(() => {
+                this.scheduleChartsResize();
+                setTimeout(() => this.scheduleChartsResize(), 200);
+            });
+        },
+        rankingExecutivoTop(n) {
+            const r = this.data?.ranking_executivo;
+            const lim = Math.max(0, Number(n) || 5);
+            if (!Array.isArray(r)) return [];
+            return r.slice(0, lim);
+        },
         initFromDataset() {
             const root = document.querySelector('[data-pgu-dashboard]');
             if (!root) return;
@@ -1012,6 +1030,182 @@ window.pguDashboard = function () {
                     },
                 ],
             });
+        },
+    };
+};
+
+/** Página Contrato › Apresentação: slide 1 renderizado no servidor; filtros recarregam a página com query string. */
+window.pguApresentacaoShell = function () {
+    return {
+        contrato: '',
+        competencia: '',
+        dataLimite: '',
+        exportUrl: '',
+        exportandoPpt: false,
+        modoApresentacao: false,
+        fullscreenRoot: null,
+        abaApresentacao: 'geral',
+        ordemAbasApresentacao: ['capa', 'geral', 'funcoes100', 'gargalos', 'concentracao', 'plano'],
+        wheelCooldownMs: 300,
+        lastWheelAt: 0,
+        initFromDataset() {
+            const root = document.querySelector('[data-pgu-apresentacao]');
+            if (!root) return;
+            this.fullscreenRoot = root;
+            this.contrato = root.dataset.contrato || '';
+            this.competencia = root.dataset.competencia || '';
+            this.dataLimite = root.dataset.dataLimite || '';
+            this.exportUrl = root.dataset.exportUrl || '';
+        },
+        init() {
+            this.initFromDataset();
+            this.bindSlideNavigation();
+            this.bindFullscreenState();
+        },
+        setAbaApresentacao(slug) {
+            this.abaApresentacao = slug;
+        },
+        canHandleNavigationEvent(target) {
+            if (!(target instanceof HTMLElement)) {
+                return true;
+            }
+            return !target.closest('input, textarea, select, [contenteditable="true"]');
+        },
+        proximaAbaApresentacao() {
+            const idxAtual = this.ordemAbasApresentacao.indexOf(this.abaApresentacao);
+            const idxBase = idxAtual >= 0 ? idxAtual : 0;
+            const proximoIdx = Math.min(this.ordemAbasApresentacao.length - 1, idxBase + 1);
+            this.setAbaApresentacao(this.ordemAbasApresentacao[proximoIdx]);
+        },
+        abaApresentacaoAnterior() {
+            const idxAtual = this.ordemAbasApresentacao.indexOf(this.abaApresentacao);
+            const idxBase = idxAtual >= 0 ? idxAtual : 0;
+            const anteriorIdx = Math.max(0, idxBase - 1);
+            this.setAbaApresentacao(this.ordemAbasApresentacao[anteriorIdx]);
+        },
+        bindSlideNavigation() {
+            window.addEventListener('wheel', (event) => {
+                if (!this.canHandleNavigationEvent(event.target)) {
+                    return;
+                }
+                const now = Date.now();
+                if (now - this.lastWheelAt < this.wheelCooldownMs) {
+                    return;
+                }
+                if (event.deltaY < 0) {
+                    // Regra solicitada: rolagem para cima avança slide.
+                    this.proximaAbaApresentacao();
+                    this.lastWheelAt = now;
+                    return;
+                }
+                if (event.deltaY > 0) {
+                    // Regra solicitada: rolagem para baixo volta slide.
+                    this.abaApresentacaoAnterior();
+                    this.lastWheelAt = now;
+                }
+            }, { passive: true });
+
+            window.addEventListener('keydown', (event) => {
+                if (!this.canHandleNavigationEvent(event.target)) {
+                    return;
+                }
+                if (event.key === 'Escape' && this.modoApresentacao) {
+                    this.sairModoApresentacao();
+                    event.preventDefault();
+                    return;
+                }
+                if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                    this.proximaAbaApresentacao();
+                    event.preventDefault();
+                    return;
+                }
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                    this.abaApresentacaoAnterior();
+                    event.preventDefault();
+                }
+            });
+        },
+        bindFullscreenState() {
+            const syncState = () => {
+                this.modoApresentacao = Boolean(document.fullscreenElement);
+            };
+            document.addEventListener('fullscreenchange', syncState);
+        },
+        async entrarModoApresentacao() {
+            if (!this.fullscreenRoot || this.modoApresentacao) {
+                return;
+            }
+            try {
+                await this.fullscreenRoot.requestFullscreen();
+            } catch (error) {
+                const message = error instanceof Error
+                    ? error.message
+                    : 'Não foi possível abrir em tela cheia.';
+                window.alert(message);
+            }
+        },
+        async sairModoApresentacao() {
+            if (!document.fullscreenElement) {
+                this.modoApresentacao = false;
+                return;
+            }
+            try {
+                await document.exitFullscreen();
+            } catch (error) {
+                const message = error instanceof Error
+                    ? error.message
+                    : 'Não foi possível sair da tela cheia.';
+                window.alert(message);
+            }
+        },
+        async toggleModoApresentacao() {
+            if (this.modoApresentacao) {
+                await this.sairModoApresentacao();
+                return;
+            }
+            await this.entrarModoApresentacao();
+        },
+        refresh() {
+            const params = new URLSearchParams();
+            if (this.contrato) params.set('contrato', this.contrato);
+            if (this.competencia) params.set('competencia', this.competencia);
+            if (this.dataLimite) params.set('data_limite_etapa_2', this.dataLimite);
+            const q = params.toString();
+            const path = window.location.pathname;
+            window.location.href = q ? `${path}?${q}` : path;
+        },
+        exportPpt() {
+            if (!this.exportUrl || this.exportandoPpt) return;
+            this.exportandoPpt = true;
+            try {
+                const form = document.createElement('form');
+                form.method = 'GET';
+                form.action = this.exportUrl;
+                form.style.display = 'none';
+
+                const addInput = (name, value) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                };
+
+                if (this.contrato) addInput('contrato', this.contrato);
+                if (this.competencia) addInput('competencia', this.competencia);
+                if (this.dataLimite) addInput('data_limite_etapa_2', this.dataLimite);
+
+                document.body.appendChild(form);
+                form.submit();
+                form.remove();
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Falha ao exportar PPT.';
+                window.alert(message);
+            } finally {
+                setTimeout(() => {
+                    this.exportandoPpt = false;
+                }, 1200);
+            }
         },
     };
 };

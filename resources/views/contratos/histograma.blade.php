@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends($layout ?? 'layouts.app')
 
 @section('title', 'Histograma de contrato - Omega286')
 @section('eyebrow', 'Contrato')
@@ -108,7 +108,7 @@
             @endif
 
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1280px] text-left text-sm">
+                <table class="w-full min-w-[1620px] text-left text-sm">
                     <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                         <tr>
                             <th class="px-3 py-3">Tipo</th>
@@ -120,6 +120,8 @@
                             <th class="px-3 py-3">PGU</th>
                             <th class="px-3 py-3">Pós-PGU</th>
                             <th class="px-3 py-3">Desmobilização</th>
+                            <th class="px-3 py-3">Ação recomendada (Slide 5)</th>
+                            <th class="px-3 py-3">Responsável (Slide 5)</th>
                             <th class="px-3 py-3 text-right">Ação</th>
                         </tr>
                     </thead>
@@ -155,13 +157,15 @@
                                 <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pgu]" value="{{ $linha->pgu }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pgu"></td>
                                 <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pos_pgu]" value="{{ $linha->pos_pgu }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pos_pgu"></td>
                                 <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][desmobilizacao]" value="{{ $linha->desmobilizacao }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="desmobilizacao"></td>
+                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][acao_recomendada]" value="{{ $linha->acao_recomendada }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Força-tarefa documental"></td>
+                                <td class="px-3 py-2"><input name="linhas[{{ $i }}][responsavel]" value="{{ $linha->responsavel }}" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Gestão PGU"></td>
                                 <td class="px-3 py-2 text-right">
                                     <button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50">×</button>
                                 </td>
                             </tr>
                         @empty
                             <tr data-empty-row>
-                                <td colspan="10" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td>
+                                <td colspan="12" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -173,6 +177,8 @@
                             <td class="px-3 py-3" data-total="pgu">{{ $fmtQtd($totais['pgu'] ?? 0) }}</td>
                             <td class="px-3 py-3" data-total="pos_pgu">{{ $fmtQtd($totais['pos_pgu'] ?? 0) }}</td>
                             <td class="px-3 py-3" data-total="desmobilizacao">{{ $fmtQtd($totais['desmobilizacao'] ?? 0) }}</td>
+                            <td></td>
+                            <td></td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -210,6 +216,8 @@
                         <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pgu"></td>
                         <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][pos_pgu]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="pos_pgu"></td>
                         <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="linhas[${idx}][desmobilizacao]" value="0" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" data-num="desmobilizacao"></td>
+                        <td class="px-3 py-2"><input name="linhas[${idx}][acao_recomendada]" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Força-tarefa documental"></td>
+                        <td class="px-3 py-2"><input name="linhas[${idx}][responsavel]" class="h-9 w-full rounded border border-zinc-200 px-2 text-xs" placeholder="Ex.: Gestão PGU"></td>
                         <td class="px-3 py-2 text-right"><button type="button" data-remove-row class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50">×</button></td>
                     </tr>`;
 
@@ -293,7 +301,7 @@
                         e.target.closest('[data-row]')?.remove();
                         reindex();
                         if (!tbody.querySelector('[data-row]')) {
-                            tbody.insertAdjacentHTML('beforeend', '<tr data-empty-row><td colspan="10" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td></tr>');
+                            tbody.insertAdjacentHTML('beforeend', '<tr data-empty-row><td colspan="12" class="px-5 py-8 text-center text-sm text-brand-gray">Nenhuma linha ainda. Clique em “+ Grupo” ou “+ Item”.</td></tr>');
                         }
                         recalcTotals();
                         refreshAtrasoHighlight();

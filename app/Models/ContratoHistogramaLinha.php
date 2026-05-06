@@ -22,6 +22,8 @@ class ContratoHistogramaLinha extends Model
         'ordem',
         'item_codigo',
         'descricao',
+        'acao_recomendada',
+        'responsavel',
         'unidade',
         'mobilizacao',
         'pre_pgu',

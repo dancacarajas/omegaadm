@@ -1,0 +1,457 @@
+@import "@fontsource-variable/inter";
+
+:root {
+    --pgu-wine: #8B0B24;
+    --pgu-wine-dark: #6E0019;
+    --pgu-wine-strong: #A3002C;
+    --pgu-black: #111111;
+    --pgu-text: #404040;
+    --pgu-muted: #5D5D5D;
+    --pgu-soft-line: #E3E3E3;
+    --pgu-border: #DCDCDC;
+    --pgu-donut-bg: #EFEFEF;
+    --pgu-white: #FFFFFF;
+}
+
+.pgu-stage {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #ececec;
+    padding: 24px;
+    box-sizing: border-box;
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Apresentação embutida: evita colapso de altura e fundo duplicado */
+.pgu-apresentacao-embed .pgu-stage {
+    min-height: 0;
+    display: block;
+    padding: 0;
+    background: transparent;
+}
+
+.pgu-apresentacao-embed .pgu-slide-shell {
+    width: 100%;
+    max-width: none;
+}
+
+.pgu-slide-shell {
+    position: relative;
+    width: min(100%, 1366px);
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.16);
+    box-sizing: border-box;
+    container-type: inline-size;
+    container-name: pgu-slide-shell;
+}
+
+.pgu-slide {
+    position: relative;
+    width: 1366px;
+    height: 768px;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 56% 44%;
+    padding: 44px 36px 28px 40px;
+    isolation: isolate;
+    background: url('/capaslide.png') center / cover no-repeat;
+}
+
+/* Mesmo logo do menu (public/logo.png), canto superior direito do slide */
+.pgu-slide-logo {
+    position: absolute;
+    top: 44px;
+    right: 40px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.pgu-slide-logo-img {
+    display: block;
+    object-fit: contain;
+    max-height: 42px;
+    max-width: 165px;
+    width: auto;
+    height: auto;
+}
+
+.pgu-left {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+}
+
+.pgu-right {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Eyebrow
+|--------------------------------------------------------------------------
+*/
+.pgu-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.pgu-eyebrow-line {
+    display: block;
+    width: 32px;
+    height: 3px;
+    background: var(--pgu-wine);
+}
+
+.pgu-eyebrow-text {
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    color: #4B4B4B;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Título e subtítulo
+|--------------------------------------------------------------------------
+*/
+.pgu-title {
+    margin: 34px 0 0;
+    max-width: 720px;
+    font-size: 61px;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 740;
+    color: var(--pgu-black);
+}
+
+.pgu-title-rule {
+    width: 74px;
+    height: 4px;
+    margin-top: 22px;
+    background: var(--pgu-wine);
+}
+
+.pgu-subtitle {
+    max-width: 560px;
+    margin: 24px 0 0;
+    font-size: 24px;
+    line-height: 1.35;
+    font-weight: 400;
+    color: var(--pgu-muted);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Indicadores superiores
+|--------------------------------------------------------------------------
+*/
+.pgu-main-metrics {
+    margin-top: 46px;
+    width: 618px;
+    display: grid;
+    grid-template-columns: 150px 1px 150px 1px 150px;
+    column-gap: 48px;
+    align-items: start;
+}
+
+.pgu-main-metric {
+    min-height: 116px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.pgu-main-metric-number {
+    font-size: 64px;
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+    font-weight: 740;
+    color: var(--pgu-wine);
+}
+
+.pgu-main-metric-rule {
+    width: 44px;
+    height: 3px;
+    margin-top: 13px;
+    margin-bottom: 13px;
+    background: var(--pgu-wine);
+}
+
+.pgu-main-metric-label {
+    font-size: 18px;
+    line-height: 1.24;
+    font-weight: 400;
+    color: #444444;
+}
+
+.pgu-main-metric-separator {
+    width: 1px;
+    height: 116px;
+    background: var(--pgu-soft-line);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Box explicativo
+|--------------------------------------------------------------------------
+*/
+.pgu-insight-box {
+    position: relative;
+    width: 545px;
+    height: 112px;
+    margin-top: 48px;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--pgu-border);
+    background: rgba(255, 255, 255, 0.72);
+    clip-path: polygon(0 0, 100% 0, 100% 78%, 94% 100%, 0 100%);
+    box-sizing: border-box;
+}
+
+.pgu-insight-accent {
+    position: absolute;
+    left: 0;
+    top: 20px;
+    width: 4px;
+    height: 78px;
+    background: var(--pgu-wine);
+}
+
+.pgu-insight-icon-wrap {
+    width: 64px;
+    height: 64px;
+    margin-left: 30px;
+    margin-right: 30px;
+    color: var(--pgu-wine);
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+}
+
+.pgu-insight-icon {
+    width: 58px;
+    height: 58px;
+    display: block;
+}
+
+.pgu-insight-text {
+    width: 380px;
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.45;
+    font-weight: 400;
+    color: #3F3F3F;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Indicadores inferiores
+|--------------------------------------------------------------------------
+*/
+.pgu-bottom-metrics {
+    margin-top: 36px;
+    width: 520px;
+    height: 88px;
+    display: grid;
+    grid-template-columns: 230px 1px 260px;
+    align-items: center;
+}
+
+.pgu-bottom-metric {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.pgu-bottom-separator {
+    width: 1px;
+    height: 66px;
+    background: var(--pgu-soft-line);
+}
+
+.pgu-bottom-icon-circle {
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    color: var(--pgu-wine);
+    flex: 0 0 auto;
+}
+
+.pgu-bottom-icon-circle svg {
+    width: 68px;
+    height: 68px;
+    display: block;
+}
+
+.pgu-bottom-icon-hourglass {
+    color: var(--pgu-wine);
+}
+
+.pgu-bottom-number {
+    font-size: 30px;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    font-weight: 740;
+    color: var(--pgu-wine);
+}
+
+.pgu-bottom-label {
+    margin-top: 5px;
+    font-size: 15px;
+    line-height: 1.25;
+    font-weight: 400;
+    color: #454545;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Donut principal
+|--------------------------------------------------------------------------
+*/
+.pgu-donut-area {
+    position: absolute;
+    width: 620px;
+    height: 620px;
+    top: 24px;
+    /* Inset maior que o spec (-8px): libera margem à direita para o callout “Avanço consolidado” sem clip do .pgu-slide */
+    right: 52px;
+}
+
+.pgu-donut-svg {
+    width: 620px;
+    height: 620px;
+    overflow: visible;
+    display: block;
+    transform: translateX(-18px);
+}
+
+.pgu-radial-marks line {
+    stroke: #eeeeee;
+    stroke-width: 1;
+    opacity: 0.82;
+}
+
+.pgu-donut-base {
+    opacity: 1;
+}
+
+.pgu-donut-progress {
+    transition: stroke-dasharray 0.9s ease;
+}
+
+.pgu-donut-center-number {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    font-weight: 760;
+    letter-spacing: -0.06em;
+    fill: #111111;
+}
+
+.pgu-donut-center-label {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 400;
+    fill: #4D4D4D;
+}
+
+.pgu-callout-line-solid {
+    fill: none;
+    stroke: #8C8C8C;
+    stroke-width: 1.4;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+}
+
+.pgu-callout-line-dashed {
+    fill: none;
+    stroke: #A9A9A9;
+    stroke-width: 1.4;
+    stroke-dasharray: 3 3;
+    stroke-linecap: round;
+    opacity: 0.95;
+}
+
+.pgu-callout-top-number {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 26px;
+    font-weight: 740;
+    letter-spacing: -0.035em;
+    fill: var(--pgu-wine);
+}
+
+.pgu-callout-top-label {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    fill: #3E3E3E;
+}
+
+.pgu-callout-bottom-number {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 740;
+    letter-spacing: -0.035em;
+    fill: #6C6C6C;
+}
+
+.pgu-callout-bottom-label {
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    fill: #646464;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Escala fluida: mantém proporção 1366×768 dentro do shell 16:9
+|--------------------------------------------------------------------------
+*/
+.pgu-slide-scale {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1366px;
+    height: 768px;
+    transform-origin: top left;
+    transform: scale(calc(100cqw / 1366px));
+}
+
+/*
+|--------------------------------------------------------------------------
+| Responsividade mantendo proporção
+|--------------------------------------------------------------------------
+*/
+@media (max-width: 1400px) {
+    .pgu-slide-shell {
+        transform-origin: center;
+    }
+
+    .pgu-slide-scale {
+        transform-origin: top left;
+    }
+}
+
+@media (max-width: 900px) {
+    .pgu-stage {
+        padding: 12px;
+        align-items: start;
+    }
+
+    .pgu-slide-shell {
+        width: 100%;
+        overflow: auto;
+    }
+}

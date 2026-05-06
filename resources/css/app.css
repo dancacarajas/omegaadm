@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+@import './pgu-cover.css';
+@import './pgu-slide.css';
+@import './pgu-slide-2.css';
+@import './pgu-slide-3.css';
+@import './pgu-slide-4.css';
+@import './pgu-slide-5.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -27,6 +33,11 @@
     --color-pgu-muted: #64748b;
     --color-pgu-subtle: #94a3b8;
     --radius-pgu: 1.25rem;
+}
+
+/* Apresentação PGU / slides executivos: Inter Variable via npm (sem Google Fonts). */
+[data-pgu-apresentacao] {
+    font-family: 'Inter Variable', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -99,4 +110,8 @@ select:-webkit-autofill {
 .bs-stepper .content.step-visible {
     display: block !important;
     visibility: visible !important;
+}
+
+[x-cloak] {
+    display: none !important;
 }

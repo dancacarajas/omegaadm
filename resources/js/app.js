@@ -1,7 +1,9 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
 import * as echarts from 'echarts';
-import { createIcons, icons } from 'lucide';
+import { CountUp } from 'countup.js';
+import { initAppLucideIcons } from './charts/icons.js';
+import './charts/pgu-slide1-premium.js';
 import Stepper from 'bs-stepper';
 import ApexCharts from 'apexcharts';
 import './pgu-dashboard';
@@ -9,15 +11,12 @@ import 'bs-stepper/dist/css/bs-stepper.min.css';
 
 window.Alpine = Alpine;
 window.echarts = echarts;
+window.ApexCharts = ApexCharts;
+window.CountUp = CountUp;
 Alpine.start();
 
 document.addEventListener('DOMContentLoaded', () => {
-    createIcons({
-        icons,
-        attrs: {
-            'stroke-width': 1.8,
-        },
-    });
+    initAppLucideIcons();
 
     document.querySelectorAll('[data-apex-chart]').forEach((element) => {
         const configElement = document.querySelector(element.getAttribute('data-apex-chart'));

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ContratoHistogramaController;
 use App\Http\Controllers\DashboardController;
@@ -39,11 +40,31 @@ Route::middleware(['installed', 'guest'])->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installed', 'auth'])->name('logout');
 
+Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(function () {
+    Route::redirect('/', '/publico/contratos/histograma');
+    Route::get('contratos/histograma', [ContratoHistogramaController::class, 'index'])->name('contratos.histograma.index');
+    Route::get('contratos/pgu-visao-completa', [PguDashboardController::class, 'index'])->name('dashboard.pgu');
+    Route::get('contratos/apresentacao', [PguDashboardController::class, 'apresentacao'])->name('contratos.apresentacao');
+    Route::get('exportar-pgu-powerpoint', [PguDashboardController::class, 'exportarPowerPoint'])->name('pgu.export.ppt');
+});
+
 Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('contratos/histograma', [ContratoHistogramaController::class, 'index'])->name('contratos.histograma.index');
+    Route::get('contratos/acoes-recomendadas', [ContratoAcoesRecomendadasController::class, 'index'])->name('contratos.acoes-recomendadas.index');
+    Route::post('contratos/acoes-recomendadas', [ContratoAcoesRecomendadasController::class, 'salvar'])->name('contratos.acoes-recomendadas.salvar');
     Route::get('contratos/histograma/status-cronograma', fn () => redirect()->route('dashboard.pgu'))->name('contratos.histograma.status-cronograma');
     Route::get('/dashboard/pgu', [PguDashboardController::class, 'index'])->name('dashboard.pgu');
+    Route::get('contratos/apresentacao', [PguDashboardController::class, 'apresentacao'])->name('contratos.apresentacao');
+    Route::get('/pgu-cover', function () {
+        return view('dashboard.pgu-cover');
+    })->name('pgu.cover');
+    Route::get('/pgu-slide', [PguDashboardController::class, 'pguSlide'])->name('pgu.slide');
+    Route::get('/pgu-slide-2', [PguDashboardController::class, 'pguSlide2'])->name('pgu.slide.2');
+    Route::get('/pgu-slide-3', [PguDashboardController::class, 'pguSlide3'])->name('pgu.slide.3');
+    Route::get('/pgu-slide-4', [PguDashboardController::class, 'pguSlide4'])->name('pgu.slide.4');
+    Route::get('/pgu-slide-5', [PguDashboardController::class, 'pguSlide5'])->name('pgu.slide.5');
+    Route::get('/exportar-pgu-powerpoint', [PguDashboardController::class, 'exportarPowerPoint'])->name('pgu.export.ppt');
     Route::post('contratos/histograma', [ContratoHistogramaController::class, 'salvar'])->name('contratos.histograma.salvar');
     Route::resource('contratos', ContratoController::class);
     Route::resource('usuarios', UsuarioController::class);

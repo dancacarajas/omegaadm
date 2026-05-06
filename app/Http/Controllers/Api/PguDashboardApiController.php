@@ -17,6 +17,16 @@ class PguDashboardApiController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        return response()->json($this->assembleDashboard($request));
+    }
+
+    /**
+     * Monta o payload do dashboard PGU (reutilizado pela API JSON e pela apresentação Blade).
+     *
+     * @return array<string, mixed>
+     */
+    public function assembleDashboard(Request $request): array
+    {
         $data = $request->validate([
             'contrato' => ['required', 'string', 'max:255'],
             'competencia' => ['required', 'date_format:Y-m'],
@@ -95,7 +105,7 @@ class PguDashboardApiController extends Controller
             })->count();
         }
 
-        return response()->json([
+        return [
             'summary' => [
                 'overall_progress' => $overallProgress,
                 'overall_progress_delta' => $progressDelta,
@@ -128,7 +138,7 @@ class PguDashboardApiController extends Controller
                 'pgu' => round((float) ($totaisMaoDeObra?->sum_pgu ?? 0), 2),
                 'pos_pgu' => round((float) ($totaisMaoDeObra?->sum_pos_pgu ?? 0), 2),
             ],
-        ]);
+        ];
     }
 
     /**

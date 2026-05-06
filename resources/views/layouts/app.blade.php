@@ -48,7 +48,7 @@
                     $veiculosOpen = request()->routeIs('veiculos.*');
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
-                    $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu');
+                    $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu') || request()->routeIs('contratos.apresentacao');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                 @endphp
@@ -155,9 +155,17 @@
                                     <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
                                     Histograma
                                 </a>
+                                <a href="{{ route('contratos.apresentacao') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('contratos.apresentacao') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                                    Apresentação
+                                </a>
+                                <a href="{{ route('contratos.acoes-recomendadas.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('contratos.acoes-recomendadas.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-pen-line" class="h-4 w-4"></i>
+                                    Ações Recomendadas
+                                </a>
                                 <a href="{{ route('dashboard.pgu') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('dashboard.pgu') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="calendar-clock" class="h-4 w-4"></i>
-                                    PGU Command Center
+                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+                                    PGU — visão completa
                                 </a>
                             </div>
                         </div>
@@ -274,6 +282,13 @@
                         <div class="mb-5 flex items-center gap-3 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-3 text-sm font-semibold text-brand-burgundy shadow-sm">
                             <i data-lucide="circle-check" class="h-5 w-5"></i>
                             <span>{{ session('success') }}</span>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="mb-5 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm">
+                            <i data-lucide="triangle-alert" class="h-5 w-5"></i>
+                            <span>{{ session('error') }}</span>
                         </div>
                     @endif
 

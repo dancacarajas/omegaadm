@@ -1,0 +1,113 @@
+@import "@fontsource-variable/inter";
+
+:root {
+    --pgu5-wine: #8B0B24;
+    --pgu5-black: #111111;
+    --pgu5-muted: #5D5D5D;
+    --pgu5-soft-line: #DCDCDC;
+}
+
+.pgu5-stage {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #ececec;
+    padding: 24px;
+    box-sizing: border-box;
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.pgu5-apresentacao-embed .pgu5-stage {
+    min-height: 0;
+    display: block;
+    padding: 0;
+    background: transparent;
+}
+
+.pgu5-slide-shell {
+    position: relative;
+    width: min(100%, 1366px);
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.16);
+    container-type: inline-size;
+}
+
+.pgu5-apresentacao-embed .pgu5-slide-shell {
+    width: 100%;
+    max-width: none;
+}
+
+.pgu5-slide-scale {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1366px;
+    height: 768px;
+    transform-origin: top left;
+    transform: scale(calc(100cqw / 1366px));
+}
+
+.pgu5-slide {
+    position: relative;
+    width: 1366px;
+    height: 768px;
+    overflow: hidden;
+    padding: 38px 38px 24px 38px;
+    box-sizing: border-box;
+    isolation: isolate;
+    background: url('/capaslide.png') center / cover no-repeat;
+}
+
+.pgu5-slide-logo { position: absolute; top: 30px; right: 20px; z-index: 5; pointer-events: none; }
+.pgu5-slide-logo-img { display: block; object-fit: contain; max-height: 42px; max-width: 165px; width: auto; height: auto; }
+.pgu5-content { position: relative; z-index: 4; width: 1118px; }
+.pgu5-eyebrow { display: flex; align-items: center; gap: 14px; }
+.pgu5-eyebrow-line { display: block; width: 36px; height: 3px; background: var(--pgu5-wine); }
+.pgu5-eyebrow-text { font-size: 13px; line-height: 1; font-weight: 500; letter-spacing: .30em; text-transform: uppercase; color: #252525; }
+.pgu5-title { margin: 28px 0 0; max-width: 880px; font-size: 48px; line-height: 1.04; letter-spacing: -0.045em; font-weight: 760; color: var(--pgu5-black); }
+.pgu5-subtitle { margin: 12px 0 0; max-width: 720px; font-size: 19px; line-height: 1.35; font-weight: 400; color: var(--pgu5-muted); }
+
+.pgu5-table-card { position: relative; width: 1118px; margin-top: 22px; border: 1px solid rgba(80,80,80,0.25); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.64); backdrop-filter: blur(1px); }
+.pgu5-table-topline { position: absolute; left: 0; top: 0; width: 100%; height: 4px; background: var(--pgu5-wine); z-index: 2; }
+.pgu5-table-grid { display: grid; grid-template-columns: 72px 235px 134px 170px 1fr 158px; align-items: center; }
+.pgu5-table-header { height: 50px; padding-top: 3px; border-bottom: 1px solid rgba(0,0,0,0.18); color: var(--pgu5-wine); font-size: 16px; font-weight: 700; text-align: center; }
+.pgu5-header-empty { height: 100%; }
+.pgu5-table-header > div:not(:last-child) { border-right: 1px solid rgba(0,0,0,0.20); }
+.pgu5-table-row { height: 61px; border-bottom: 1px solid rgba(0,0,0,0.13); }
+.pgu5-table-row:last-child { border-bottom: none; }
+.pgu5-table-row > div { height: 100%; display: flex; align-items: center; }
+.pgu5-table-row > div:not(:last-child) { border-right: 1px solid rgba(0,0,0,0.14); }
+.pgu5-function-icon { justify-content: center; color: var(--pgu5-wine); }
+.pgu5-function-icon svg { width: 38px; height: 38px; display: block; }
+.pgu5-function-name { padding-left: 18px; font-size: 16.5px; line-height: 1.15; font-weight: 680; color: #171717; }
+.pgu5-pendency-value { justify-content: center; font-size: 28px; line-height: 1; font-weight: 760; letter-spacing: -0.05em; color: var(--pgu5-wine); }
+.pgu5-action-text { padding-left: 16px; padding-right: 12px; font-size: 15px; line-height: 1.25; font-weight: 400; color: #222; }
+.pgu5-owner-text { justify-content: center; padding: 0 10px; font-size: 15px; line-height: 1.2; font-weight: 400; color: #222; text-align: center; }
+
+.pgu5-risk-pill { height: 38px; min-width: 128px; margin: 0 auto; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border-radius: 999px; font-size: 16px; line-height: 1; font-weight: 580; }
+.pgu5-risk-pill.is-critical { color: #fff; background: linear-gradient(90deg, #8B0B24 0%, #B1002E 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+.pgu5-risk-pill.is-high { color: #fff; background: linear-gradient(90deg, rgba(139,11,36,0.78) 0%, rgba(139,11,36,0.54) 100%); }
+.pgu5-risk-pill.is-attention { color: #2E2E2E; background: rgba(255,255,255,0.72); border: 1.5px solid rgba(139,11,36,0.72); }
+
+.pgu5-focus-box { width: 800px; height: 88px; margin-top: 16px; display: flex; align-items: center; border: 2px solid rgba(139,11,36,0.82); border-radius: 10px; background: rgba(255,255,255,0.68); }
+.pgu5-focus-icon { width: 118px; height: 88px; display: grid; place-items: center; color: var(--pgu5-wine); flex: 0 0 auto; }
+.pgu5-focus-icon svg { width: 74px; height: 74px; display: block; }
+.pgu5-focus-divider { width: 1px; height: 58px; background: rgba(0,0,0,0.22); }
+.pgu5-focus-text { margin: 0; padding-left: 32px; max-width: 590px; font-size: 21px; line-height: 1.35; font-weight: 500; color: #111; }
+.pgu5-focus-text strong { color: var(--pgu5-wine); font-weight: 760; }
+
+.pgu5-bottom-metrics { width: 760px; margin-top: 20px; display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center; }
+.pgu5-bottom-metric { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pgu5-bottom-separator { width: 1px; height: 64px; background: var(--pgu5-soft-line); justify-self: center; }
+.pgu5-bottom-icon-circle { width: 64px; height: 64px; display: grid; place-items: center; color: var(--pgu5-wine); flex: 0 0 auto; }
+.pgu5-bottom-icon-circle svg { width: 64px; height: 64px; display: block; }
+.pgu5-bottom-number { font-size: 38px; line-height: .96; letter-spacing: -0.05em; font-weight: 760; color: var(--pgu5-wine); }
+.pgu5-bottom-label { margin-top: 6px; font-size: 13px; line-height: 1.2; font-weight: 400; color: #343434; max-width: 150px; }
+
+@media (max-width: 900px) {
+    .pgu5-stage { padding: 12px; align-items: start; }
+    .pgu5-slide-shell { width: 100%; overflow: auto; }
+}

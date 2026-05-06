@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends($layout ?? 'layouts.app')
 
 @section('title', 'PGU Command Center - Omega286')
 @section('eyebrow', 'Contrato')
