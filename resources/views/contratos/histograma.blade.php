@@ -144,11 +144,19 @@
                                 $linhaConcluida = ! $ehGrupo
                                     && ! $linhaAtrasada
                                     && (float) $linha->pgu <= (float) $linha->pre_pgu + 0.00001;
+                                $histogramaTrEstado = 'histograma-tr-item';
+                                if ($ehGrupo) {
+                                    $histogramaTrEstado = 'histograma-tr-grupo';
+                                } elseif ($linhaAtrasada) {
+                                    $histogramaTrEstado = 'histograma-tr-atrasada';
+                                } elseif ($linhaConcluida) {
+                                    $histogramaTrEstado = 'histograma-tr-concluida';
+                                }
                             @endphp
                             <tr
                                 data-row
                                 id="hist-linha-{{ $linha->id }}"
-                                class="scroll-mt-24 transition-colors {{ $linha->tipo_linha === 'grupo' ? 'bg-[#f8f4d9]/80 font-bold text-brand-black' : '' }} {{ $linhaAtrasada ? 'bg-red-50/95 ring-1 ring-inset ring-red-200 border-l-4 border-red-600' : '' }} {{ $linhaConcluida ? 'bg-emerald-50/95 ring-1 ring-inset ring-emerald-200/80 border-l-4 border-emerald-600' : '' }} {{ ! $ehGrupo && ! $linhaAtrasada && ! $linhaConcluida ? 'bg-white hover:bg-zinc-50/80' : '' }}"
+                                class="scroll-mt-24 transition-colors {{ $histogramaTrEstado }}"
                             >
                                 <td class="px-3 py-2.5 align-middle">
                                     <select name="linhas[{{ $i }}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold shadow-sm">
@@ -211,12 +219,10 @@
                 const emptyRow = () => tbody.querySelector('[data-empty-row]');
 
                 const rowBaseCls = (tipo) =>
-                    tipo === 'grupo'
-                        ? 'bg-[#f8f4d9]/80 font-bold text-brand-black'
-                        : 'bg-white hover:bg-zinc-50/80';
+                    tipo === 'grupo' ? 'histograma-tr-grupo' : 'histograma-tr-item';
 
                 const rowHtml = (idx, tipo = 'item') => `
-                    <tr data-row class="${rowBaseCls(tipo)} transition-colors">
+                    <tr data-row class="scroll-mt-24 transition-colors ${rowBaseCls(tipo)}">
                         <td class="px-3 py-2.5 align-middle">
                             <select name="linhas[${idx}][tipo_linha]" data-field="tipo" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs font-semibold shadow-sm">
                                 <option value="item" ${tipo === 'item' ? 'selected' : ''}>Item</option>
@@ -272,13 +278,16 @@
                 const BADGE_CONCLUIDA_ON =
                     'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white';
 
-                const CLS_RED = ['bg-red-50/95', 'ring-1', 'ring-inset', 'ring-red-200', 'border-l-4', 'border-red-600'];
-                const CLS_GREEN = ['bg-emerald-50/95', 'ring-1', 'ring-inset', 'ring-emerald-200/80', 'border-l-4', 'border-emerald-600'];
-                const CLS_ITEM_NEUTRAL = ['bg-white', 'hover:bg-zinc-50/80'];
-                const CLS_GROUP = ['bg-[#f8f4d9]/80', 'font-bold', 'text-brand-black'];
+                const HIST_TR = {
+                    grupo: 'histograma-tr-grupo',
+                    atrasada: 'histograma-tr-atrasada',
+                    concluida: 'histograma-tr-concluida',
+                    item: 'histograma-tr-item',
+                };
+                const HIST_TR_ALL = Object.values(HIST_TR);
 
                 const stripRowStateClasses = (tr) => {
-                    tr.classList.remove(...CLS_RED, ...CLS_GREEN, ...CLS_ITEM_NEUTRAL, ...CLS_GROUP);
+                    HIST_TR_ALL.forEach((c) => tr.classList.remove(c));
                 };
 
                 const limitePassou = () => {
@@ -304,7 +313,7 @@
                         badgeC.classList.add('hidden');
 
                         if (!rowIsItem(tr)) {
-                            tr.classList.add(...CLS_GROUP);
+                            tr.classList.add(HIST_TR.grupo);
                             return;
                         }
 
@@ -315,13 +324,13 @@
                         const concluida = pgu <= pre + eps;
 
                         if (atrasada) {
-                            tr.classList.add(...CLS_RED);
+                            tr.classList.add(HIST_TR.atrasada);
                             badgeA.className = BADGE_ATRASO_ON;
                         } else if (concluida) {
-                            tr.classList.add(...CLS_GREEN);
+                            tr.classList.add(HIST_TR.concluida);
                             badgeC.className = BADGE_CONCLUIDA_ON;
                         } else {
-                            tr.classList.add(...CLS_ITEM_NEUTRAL);
+                            tr.classList.add(HIST_TR.item);
                         }
                     });
                 };

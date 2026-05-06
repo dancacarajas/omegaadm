@@ -35,6 +35,26 @@
     --radius-pgu: 1.25rem;
 }
 
+/*
+ * Histograma (contratos): estados de linha via classes fixas + @apply.
+ * Garante que produção (build Tailwind) inclua o CSS mesmo quando utilitários
+ * só aparecem em JS ou em Blade compilado fora do scan da pipeline CI.
+ */
+@layer components {
+    .histograma-tr-grupo {
+        @apply bg-[#f8f4d9]/80 font-bold text-brand-black;
+    }
+    .histograma-tr-atrasada {
+        @apply bg-red-50/95 ring-1 ring-inset ring-red-200 border-l-4 border-red-600;
+    }
+    .histograma-tr-concluida {
+        @apply bg-emerald-50/95 ring-1 ring-inset ring-emerald-200/80 border-l-4 border-emerald-600;
+    }
+    .histograma-tr-item {
+        @apply bg-white hover:bg-zinc-50/80;
+    }
+}
+
 /* Apresentação PGU / slides executivos: Inter Variable via npm (sem Google Fonts). */
 [data-pgu-apresentacao] {
     font-family: 'Inter Variable', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
