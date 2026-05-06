@@ -2,7 +2,7 @@
 
 ## Antes de cada deploy (local)
 
-Sempre que alterar Blade/CSS/JS, gere os assets de producao e envie para o GitHub (o painel Hostinger so puxa o repositorio; sem isso o site fica com CSS antigo e o layout quebra):
+Sempre que alterar Blade/CSS/JS, gere os assets de producao e envie para o GitHub (o painel Hostinger so puxa o repositorio; sem isso o site fica com CSS antigo e o layout quebra). **Dashboard PGU:** se o HTML mostrar o quadro executivo mas o donut “Funções com PGU integral” ficar em branco, quase sempre falta rodar `npm run build` e commitar `public/build` (bundle JS antigo ou canvas com tamanho 0 antes do resize).
 
 ```bash
 npm run build

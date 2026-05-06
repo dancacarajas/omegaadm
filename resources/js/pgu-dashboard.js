@@ -19,6 +19,7 @@ window.pguDashboard = function () {
             await this.loadData();
             this.renderCharts();
             this.bindResize();
+            this.scheduleChartsResize();
         },
         async loadData() {
             this.loading = true;
@@ -42,6 +43,7 @@ window.pguDashboard = function () {
             await this.loadData();
             this.disposeCharts();
             this.renderCharts();
+            this.scheduleChartsResize();
         },
         disposeCharts() {
             Object.values(this.charts).forEach((chart) => chart?.dispose?.());
@@ -49,7 +51,24 @@ window.pguDashboard = function () {
         },
         bindResize() {
             window.addEventListener('resize', () => {
-                Object.values(this.charts).forEach((chart) => chart.resize());
+                Object.values(this.charts).forEach((chart) => chart?.resize?.());
+            });
+        },
+        /** Após fetch + Alpine, o container às vezes ainda tem largura 0; o ECharts desenha canvas vazio. Dois rAF + resize corrige produção. */
+        scheduleChartsResize() {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    Object.values(this.charts).forEach((chart) => {
+                        if (!chart || (typeof chart.isDisposed === 'function' && chart.isDisposed())) {
+                            return;
+                        }
+                        try {
+                            chart.resize();
+                        } catch (_) {
+                            /* ignore */
+                        }
+                    });
+                });
             });
         },
         sanitizeFilePart(str) {
@@ -87,7 +106,12 @@ window.pguDashboard = function () {
         baseChart(id) {
             const element = document.getElementById(id);
             if (!element || !window.echarts) return null;
-            const chart = window.echarts.init(element, null, { renderer: 'canvas' });
+            const ec = window.echarts;
+            const existing = typeof ec.getInstanceByDom === 'function' ? ec.getInstanceByDom(element) : null;
+            if (existing) {
+                existing.dispose();
+            }
+            const chart = ec.init(element, null, { renderer: 'canvas' });
             this.charts[id] = chart;
             return chart;
         },
@@ -137,14 +161,21 @@ window.pguDashboard = function () {
         },
         renderCharts() {
             if (!this.data) return;
-            this.renderDonut();
-            this.renderMaoDeObra();
-            this.renderRanking();
-            this.renderFuncoes100Donut();
-            this.renderPareto();
-            this.renderTrend();
-            this.renderHeatmap();
-            this.renderTreemap();
+            const run = (name, fn) => {
+                try {
+                    fn.call(this);
+                } catch (e) {
+                    console.error(`[PGU] gráfico ${name}:`, e);
+                }
+            };
+            run('chartDonut', () => this.renderDonut());
+            run('chartMaoDeObra', () => this.renderMaoDeObra());
+            run('chartRanking', () => this.renderRanking());
+            run('chartFuncoes100Donut', () => this.renderFuncoes100Donut());
+            run('chartPareto', () => this.renderPareto());
+            run('chartTrend', () => this.renderTrend());
+            run('chartHeatmap', () => this.renderHeatmap());
+            run('chartTreemap', () => this.renderTreemap());
         },
         renderDonut() {
             const chart = this.baseChart('chartDonut');
