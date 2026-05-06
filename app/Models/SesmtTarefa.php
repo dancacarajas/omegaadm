@@ -20,6 +20,14 @@ class SesmtTarefa extends Model
         'INSPECOES',
     ];
 
+    /** Tipos considerados críticos para indicador (não concluídos ou fora do prazo). */
+    public const TIPOS_CRITICOS = [
+        'ART',
+        'PAEBM',
+        'INSPECOES',
+        'MINISTRAR_TREINAMENTO',
+    ];
+
     public const LABELS = [
         'ART' => 'ART',
         'OS' => 'OS',
@@ -57,5 +65,27 @@ class SesmtTarefa extends Model
     public function getLabelAttribute(): string
     {
         return self::LABELS[$this->tipo] ?? $this->tipo;
+    }
+
+    public function estaVencida(): bool
+    {
+        if ($this->status === 'concluido' || $this->data_prevista === null) {
+            return false;
+        }
+
+        return $this->data_prevista->copy()->startOfDay()->lt(now()->startOfDay());
+    }
+
+    public function pendenciaEhCritica(): bool
+    {
+        if ($this->status === 'concluido') {
+            return false;
+        }
+
+        if ($this->estaVencida()) {
+            return true;
+        }
+
+        return in_array($this->tipo, self::TIPOS_CRITICOS, true);
     }
 }

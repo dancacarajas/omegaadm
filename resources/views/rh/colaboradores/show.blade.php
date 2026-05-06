@@ -96,9 +96,15 @@
 
     <div class="grid gap-5 xl:grid-cols-[320px_1fr]">
         <aside class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div class="flex h-28 w-28 items-center justify-center rounded-xl bg-brand-burgundy text-4xl font-bold text-white">
-                {{ mb_substr($colaborador->nome, 0, 1) }}
-            </div>
+            @if (filled($colaborador->foto_path))
+                <div class="h-28 w-28 overflow-hidden rounded-xl ring-1 ring-zinc-200">
+                    <img src="{{ $colaborador->urlFotoPerfil() }}" alt="Foto de perfil" class="h-full w-full object-cover">
+                </div>
+            @else
+                <div class="flex h-28 w-28 items-center justify-center rounded-xl bg-brand-burgundy text-4xl font-bold text-white">
+                    {{ mb_substr($colaborador->nome, 0, 1) }}
+                </div>
+            @endif
             <h2 class="mt-5 text-xl font-bold text-brand-black">{{ $colaborador->nome }}</h2>
             <p class="mt-1 text-sm text-brand-gray">{{ $colaborador->cargo ?: 'Cargo não informado' }}</p>
             <div class="mt-5 rounded-md bg-brand-burgundy-soft px-3 py-2 text-sm font-semibold text-brand-burgundy">

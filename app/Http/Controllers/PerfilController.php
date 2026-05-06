@@ -14,7 +14,7 @@ class PerfilController extends Controller
             'dashboard' => 'Painel',
             'rh' => 'RH',
             'veiculos' => 'Veículos',
-            'sesmt' => 'SESMT',
+            'sesmt' => 'SSMA',
             'contratos' => 'Contratos',
             'patrimonial' => 'Patrimonial',
             'medicao' => 'Medição',

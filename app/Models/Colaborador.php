@@ -5,7 +5,6 @@ namespace App\Models;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-
 class Colaborador extends Model
 {
     protected $table = 'colaboradores';
@@ -108,6 +107,21 @@ class Colaborador extends Model
     public function horarioEscala()
     {
         return $this->belongsTo(HorarioEscala::class, 'horario_escala_id');
+    }
+
+    /**
+     * Caminho público da foto (requer `php artisan storage:link`).
+     * Usa URL relativa ao host atual para evitar divergência de porta com APP_URL.
+     */
+    public function urlFotoPerfil(): ?string
+    {
+        if (blank($this->foto_path)) {
+            return null;
+        }
+
+        $path = str_replace('\\', '/', (string) $this->foto_path);
+
+        return '/storage/'.ltrim($path, '/');
     }
 
     /**

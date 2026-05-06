@@ -129,9 +129,15 @@
                         <tr class="transition hover:bg-brand-gray-soft/60">
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-burgundy-soft text-sm font-bold text-brand-burgundy">
-                                        {{ mb_substr($colaborador->nome, 0, 1) }}
-                                    </div>
+                                    @if (filled($colaborador->foto_path))
+                                        <div class="h-10 w-10 shrink-0 overflow-hidden rounded-lg ring-1 ring-zinc-200">
+                                            <img src="{{ $colaborador->urlFotoPerfil() }}" alt="" class="h-full w-full object-cover">
+                                        </div>
+                                    @else
+                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-burgundy-soft text-sm font-bold text-brand-burgundy">
+                                            {{ mb_substr($colaborador->nome, 0, 1) }}
+                                        </div>
+                                    @endif
                                     <div>
                                         <p class="font-semibold text-brand-black">{{ $colaborador->nome }}</p>
                                         <p class="text-xs text-brand-gray">{{ $colaborador->telefone ?: ($colaborador->cpf ?: 'CPF não informado') }}</p>

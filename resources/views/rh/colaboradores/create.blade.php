@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-    <form method="POST" action="{{ route('rh.efetivo.store') }}">
+    <form method="POST" action="{{ route('rh.efetivo.store') }}" enctype="multipart/form-data">
         @csrf
         <div class="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-brand-gray text-white shadow-sm">
             <div class="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">

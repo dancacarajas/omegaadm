@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-    <form method="POST" action="{{ route('rh.efetivo.update', $colaborador) }}">
+    <form method="POST" action="{{ route('rh.efetivo.update', $colaborador) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         <div class="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-brand-gray text-white shadow-sm">

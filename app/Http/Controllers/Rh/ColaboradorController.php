@@ -8,6 +8,7 @@ use App\Models\HorarioEscala;
 use App\Support\SimpleSpreadsheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -47,7 +48,14 @@ class ColaboradorController extends Controller
 
     public function store(Request $request)
     {
-        Colaborador::create($this->withMobilizacaoStatus($this->validatedData($request)));
+        $data = $this->validatedData($request);
+        unset($data['foto_perfil']);
+        $data = $this->withMobilizacaoStatus($data);
+        $foto = $this->storeFotoPerfil($request, null);
+        if ($foto !== null) {
+            $data['foto_path'] = $foto;
+        }
+        Colaborador::create($data);
 
         return redirect()
             ->route('rh.efetivo.index')
@@ -71,7 +79,14 @@ class ColaboradorController extends Controller
 
     public function update(Request $request, Colaborador $colaborador)
     {
-        $colaborador->update($this->withMobilizacaoStatus($this->validatedData($request, $colaborador)));
+        $data = $this->validatedData($request, $colaborador);
+        unset($data['foto_perfil']);
+        $data = $this->withMobilizacaoStatus($data);
+        $foto = $this->storeFotoPerfil($request, $colaborador);
+        if ($foto !== null) {
+            $data['foto_path'] = $foto;
+        }
+        $colaborador->update($data);
 
         return redirect()
             ->route('rh.efetivo.show', $colaborador)
@@ -188,6 +203,20 @@ class ColaboradorController extends Controller
     private function validatedData(Request $request, ?Colaborador $colaborador = null): array
     {
         return $request->validate($this->validatedDataRules($colaborador));
+    }
+
+    private function storeFotoPerfil(Request $request, ?Colaborador $colaborador = null): ?string
+    {
+        if (! $request->hasFile('foto_perfil')) {
+            return null;
+        }
+
+        $path = $request->file('foto_perfil')->store('rh/colaboradores/fotos', 'public');
+        if ($colaborador?->foto_path) {
+            Storage::disk('public')->delete($colaborador->foto_path);
+        }
+
+        return $path;
     }
 
     private function withMobilizacaoStatus(array $data): array
@@ -403,6 +432,7 @@ class ColaboradorController extends Controller
         return [
             'matricula' => ['nullable', 'string', 'max:40', Rule::unique('colaboradores', 'matricula')->ignore($colaborador)],
             'nome' => ['required', 'string', 'max:255'],
+            'foto_perfil' => ['nullable', 'file', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
             'telefone' => ['nullable', 'string', 'max:40'],
             'filiacao_pai' => ['nullable', 'string', 'max:255'],
             'filiacao_mae' => ['nullable', 'string', 'max:255'],

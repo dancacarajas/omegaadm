@@ -51,6 +51,7 @@
                     $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu') || request()->routeIs('contratos.apresentacao');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
+                    $ssmaOpen = request()->routeIs('sesmt.*');
                 @endphp
 
                 <nav class="flex-1 px-4 py-5 text-sm">
@@ -133,10 +134,44 @@
                         </div>
                         @endif
                         @if ($podeModulo('sesmt'))
-                        <a href="{{ route('sesmt.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('sesmt.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="hard-hat" class="h-5 w-5"></i>
-                            SESMT
-                        </a>
+                        <div data-menu-group="ssma">
+                            <button type="button" data-menu-toggle="ssma" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $ssmaOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="hard-hat" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">SSMA</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $ssmaOpen ? 'rotate-180' : '' }}" data-menu-chevron="ssma"></i>
+                            </button>
+
+                            <div data-menu-panel="ssma" class="{{ $ssmaOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('sesmt.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.index') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-check" class="h-4 w-4"></i>
+                                    Controle de Conformidade
+                                </a>
+                                <a href="{{ route('sesmt.plano-acao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.plano-acao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="list-todo" class="h-4 w-4"></i>
+                                    Plano de Ação
+                                </a>
+                                <a href="{{ route('sesmt.riscos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.riscos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="shield-alert" class="h-4 w-4"></i>
+                                    Gestão de Riscos
+                                </a>
+                                <a href="{{ route('sesmt.epi-epc.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.epi-epc.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="construction" class="h-4 w-4"></i>
+                                    Gestão de EPI/EPC
+                                </a>
+                                <a href="{{ route('sesmt.meio-ambiente.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.meio-ambiente.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="leaf" class="h-4 w-4"></i>
+                                    Meio Ambiente
+                                </a>
+                                <a href="{{ route('sesmt.registros.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros.*') && ! request()->routeIs('sesmt.registros.prazos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="calendar-range" class="h-4 w-4"></i>
+                                    Registro Mensal
+                                </a>
+                                <a href="{{ route('sesmt.registros.prazos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros.prazos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="timer" class="h-4 w-4"></i>
+                                    Prazos (SLA)
+                                </a>
+                            </div>
+                        </div>
                         @endif
                         @if ($podeModulo('contratos'))
                         <div data-menu-group="contratos">

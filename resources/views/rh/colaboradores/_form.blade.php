@@ -48,6 +48,25 @@
                 <span class="{{ $labelClass }}">Matrícula</span>
                 <input name="matricula" value="{{ $value('matricula') }}" class="{{ $inputClass }}">
             </label>
+            <div class="md:col-span-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-5">
+                <div class="flex flex-wrap items-start gap-4">
+                    @if (filled($colaborador->foto_path))
+                        <div class="shrink-0">
+                            <p class="{{ $labelClass }} mb-2">Pré-visualização</p>
+                            <img src="{{ $colaborador->urlFotoPerfil() }}" alt="Foto de perfil atual" class="h-28 w-28 rounded-xl object-cover shadow-sm ring-1 ring-zinc-200">
+                        </div>
+                    @endif
+                    <div class="min-w-0 flex-1">
+                        <span class="{{ $labelClass }}">Anexar foto de perfil</span>
+                        <p class="mt-1 text-xs font-medium text-brand-gray">Opcional. JPG, PNG, GIF ou WebP até 5&nbsp;MB. Aparece na ficha do colaborador e em telas SSMA (ex.: equipe do Kaizen).</p>
+                        <input type="file" name="foto_perfil" accept="image/jpeg,image/png,image/webp,image/gif" class="mt-3 block w-full text-sm font-medium text-brand-black file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy-soft file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-burgundy">
+                        @error('foto_perfil') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
+                        @if (filled($colaborador->foto_path))
+                            <p class="mt-2 text-xs text-brand-gray">Para trocar a foto, anexe um novo arquivo e salve o cadastro.</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
             <label>
                 <span class="{{ $labelClass }}">Telefone</span>
                 <input name="telefone" value="{{ $value('telefone') }}" class="{{ $inputClass }}">

@@ -90,6 +90,12 @@ select:-webkit-autofill {
     color: white;
 }
 
+/* Etapa com todos os campos e anexos preenchidos (mesmo visual bordô do step ativo) */
+.bs-stepper .step.is-complete .bs-stepper-circle {
+    background: var(--brand-burgundy);
+    color: white;
+}
+
 .bs-stepper .bs-stepper-label {
     margin: 0;
     color: var(--brand-gray);
@@ -98,6 +104,10 @@ select:-webkit-autofill {
 }
 
 .bs-stepper .step.active .bs-stepper-label {
+    color: var(--brand-burgundy);
+}
+
+.bs-stepper .step.is-complete .bs-stepper-label {
     color: var(--brand-burgundy);
 }
 

@@ -62,6 +62,7 @@ docker compose down
 Documentacao completa da implementacao e implantacao:
 
 - `EXPORTACAO_PPT_PGU.md`
+- `MANUAL_IMPLANTACAO_EXPORTACAO_PPT.md` (manual operacional completo de deploy e validacao)
 
 Rota de exportacao:
 

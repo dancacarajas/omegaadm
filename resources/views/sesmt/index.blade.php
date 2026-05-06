@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'SESMT - Omega286')
-@section('eyebrow', 'Seguranca do Trabalho')
-@section('page-title', 'SESMT')
+@section('title', 'Controle de Conformidade — SSMA - Omega286')
+@section('eyebrow', 'SSMA / Controle de Conformidade')
+@section('page-title', 'Controle de Conformidade')
 
 @section('actions')
     <form method="POST" action="{{ route('sesmt.sync') }}">
@@ -26,25 +26,115 @@
         $statusClass = [
             'pendente' => 'border-brand-burgundy/20 bg-brand-burgundy-soft text-brand-burgundy',
             'em_andamento' => 'border-zinc-200 bg-brand-gray-soft text-brand-gray',
-            'concluido' => 'border-brand-burgundy/20 bg-brand-burgundy-soft text-brand-burgundy',
+            'concluido' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
         ];
     @endphp
 
+    <section class="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Total (resultado)</p>
+            <p class="mt-1 text-2xl font-bold text-brand-black">{{ $indicadores['total_resultado'] }}</p>
+            <p class="mt-1 text-xs text-brand-gray">De {{ $indicadores['total_ativos'] }} ativos no efetivo</p>
+        </article>
+        <article class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-emerald-800">100% conformes</p>
+            <p class="mt-1 text-2xl font-bold text-emerald-900">{{ $indicadores['conformes_100'] }}</p>
+            <p class="mt-1 text-xs text-emerald-800">Todas as pendências concluídas</p>
+        </article>
+        <article class="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-amber-900">Com pendência</p>
+            <p class="mt-1 text-2xl font-bold text-amber-950">{{ $indicadores['com_pendencia'] }}</p>
+            <p class="mt-1 text-xs text-amber-900">Colaboradores no recorte</p>
+        </article>
+        <article class="rounded-xl border border-red-200 bg-red-50/50 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-red-800">Pendências críticas</p>
+            <p class="mt-1 text-2xl font-bold text-red-900">{{ $indicadores['pendencias_criticas'] }}</p>
+            <p class="mt-1 text-xs text-red-800">Vencidas ou tipo crítico (ART, PAEBM, inspeções, treinamento)</p>
+        </article>
+        <article class="rounded-xl border border-red-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Pendências vencidas</p>
+            <p class="mt-1 text-2xl font-bold text-red-700">{{ $indicadores['pendencias_vencidas'] }}</p>
+            <p class="mt-1 text-xs text-brand-gray">Fora da data prevista e não concluídas</p>
+        </article>
+        <article class="rounded-xl border border-zinc-200 bg-brand-burgundy-soft/40 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">Conformidade geral</p>
+            <p class="mt-1 text-2xl font-bold text-brand-burgundy">{{ $indicadores['percentual_geral'] }}%</p>
+            <p class="mt-1 text-xs text-brand-gray">Itens concluídos / total no recorte</p>
+        </article>
+    </section>
+
+    <p class="mb-5 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-brand-gray shadow-sm">
+        Matriz de <strong class="text-brand-black">conformidade individual</strong> (ART, OS, anuências, PAEBM, checklist, EPIs, carômetro, passaporte, DDS, treinamento, inspeções). Os indicadores acima refletem o <strong>recorte filtrado</strong> da tabela. Estes dados poderão alimentar o Painel Executivo; o <a href="{{ route('sesmt.registros.index') }}" class="font-semibold text-brand-burgundy underline-offset-2 hover:underline">Registro mensal SSMA</a> permanece separado.
+    </p>
+
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
             <div>
-                <h2 class="text-xl font-bold text-brand-black">Pendencias SESMT por colaborador</h2>
-                <p class="mt-1 text-sm text-brand-gray">Cada coluna representa uma demanda do tecnico de seguranca.</p>
+                <h2 class="text-xl font-bold text-brand-black">Pendências SSMA por colaborador</h2>
+                <p class="mt-1 text-sm text-brand-gray">Cada coluna é uma demanda do técnico de segurança. Use os filtros para focar cargos, status, tipo de pendência, vencidas ou responsável pela tratativa.</p>
             </div>
-            <form method="GET" class="flex flex-col gap-2 sm:flex-row">
-                <label class="relative">
-                    <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
-                    <input name="busca" value="{{ request('busca') }}" placeholder="Buscar colaborador..." class="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-80">
+            <form method="GET" action="{{ route('sesmt.index') }}" class="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <label class="md:col-span-2">
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Busca rápida</span>
+                    <input name="busca" value="{{ request('busca') }}" placeholder="Nome, matrícula ou cargo..." class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                 </label>
-                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                    <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>
-                    Buscar
-                </button>
+                <label>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Cargo</span>
+                    <select name="cargo" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="">Todos</option>
+                        @foreach ($opcoesCargo as $c)
+                            <option value="{{ $c }}" @selected(request('cargo') === $c)>{{ $c }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Colaborador</span>
+                    <select name="colaborador_id" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="">Todos</option>
+                        @foreach ($opcoesColaboradores as $c)
+                            <option value="{{ $c->id }}" @selected((string) request('colaborador_id') === (string) $c->id)>{{ $c->nome }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Status da tarefa</span>
+                    <select name="status_tarefa" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="">Qualquer</option>
+                        @foreach ($statusLabel as $val => $lab)
+                            <option value="{{ $val }}" @selected(request('status_tarefa') === $val)>{{ $lab }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Tipo de pendência</span>
+                    <select name="tipo_pendencia" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="">Qualquer</option>
+                        @foreach ($tipos as $tipo)
+                            <option value="{{ $tipo }}" @selected(request('tipo_pendencia') === $tipo)>{{ $labels[$tipo] }} (aberta)</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Responsável pela tratativa</span>
+                    <input name="responsavel_tratativa" value="{{ request('responsavel_tratativa') }}" placeholder="Nome no cadastro da tarefa" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                </label>
+                <label class="flex flex-col justify-end">
+                    <span class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-brand-black">
+                        <input type="checkbox" name="somente_vencidas" value="1" @checked(request()->boolean('somente_vencidas')) class="h-4 w-4 rounded border-zinc-300 text-brand-burgundy">
+                        Só com pendências vencidas
+                    </span>
+                </label>
+                <div class="flex flex-wrap items-end gap-2 md:col-span-2 lg:col-span-2">
+                    <button type="submit" class="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark sm:flex-none">
+                        <i data-lucide="filter" class="h-4 w-4"></i>
+                        Aplicar filtros
+                    </button>
+                    @if ($filtrosAtivos)
+                        <a href="{{ route('sesmt.index') }}" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+                            Limpar
+                        </a>
+                    @endif
+                </div>
             </form>
         </div>
 
@@ -93,13 +183,19 @@
                                 @endphp
                                 <td class="px-3 py-4">
                                     @if ($tarefa)
+                                        @php $tarefaVencida = $tarefa->estaVencida(); @endphp
+                                        <div class="flex flex-col gap-1">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex h-8 min-w-24 items-center justify-center rounded-full border px-3 text-xs font-bold {{ $statusClass[$tarefa->status] ?? 'border-zinc-200 bg-white text-brand-gray' }}">
+                                            <span class="inline-flex h-8 min-w-24 items-center justify-center rounded-full border px-3 text-xs font-bold {{ $statusClass[$tarefa->status] ?? 'border-zinc-200 bg-white text-brand-gray' }} {{ $tarefaVencida ? 'ring-2 ring-red-300' : '' }}">
                                                 {{ $statusLabel[$tarefa->status] ?? $tarefa->status }}
                                             </span>
                                             <button type="button" data-modal-open="#sesmt-tarefa-{{ $tarefa->id }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-gray shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy" title="Gerenciar {{ $labels[$tipo] }}">
                                                 <i data-lucide="square-pen" class="h-4 w-4"></i>
                                             </button>
+                                        </div>
+                                        @if ($tarefaVencida)
+                                            <span class="text-[10px] font-bold uppercase tracking-wide text-red-600">Vencida</span>
+                                        @endif
                                         </div>
 
                                         <div id="sesmt-tarefa-{{ $tarefa->id }}" data-modal class="fixed inset-0 z-50 hidden">
@@ -108,7 +204,7 @@
                                                 <div class="w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
                                                     <div class="flex items-start justify-between gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/80 p-5">
                                                         <div>
-                                                            <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">SESMT / {{ $labels[$tipo] }}</p>
+                                                            <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">SSMA / {{ $labels[$tipo] }}</p>
                                                             <h3 class="mt-1 text-lg font-bold text-brand-black">{{ $colaborador->nome }}</h3>
                                                             <p class="mt-1 text-sm text-brand-gray">{{ $colaborador->cargo ?: 'Cargo nao informado' }}</p>
                                                         </div>
@@ -132,8 +228,8 @@
                                                             </label>
 
                                                             <label class="space-y-2">
-                                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Responsavel</span>
-                                                                <input name="responsavel" value="{{ $tarefa->responsavel }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10" placeholder="Nome do tecnico">
+                                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Responsável pela tratativa</span>
+                                                                <input name="responsavel" value="{{ $tarefa->responsavel }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10" placeholder="Nome do técnico">
                                                             </label>
 
                                                             <label class="space-y-2">
@@ -180,7 +276,7 @@
                                     <i data-lucide="hard-hat" class="h-7 w-7"></i>
                                 </div>
                                 <p class="mt-4 text-base font-bold text-brand-black">Nenhum colaborador encontrado.</p>
-                                <p class="mt-1 text-sm text-brand-gray">Cadastre colaboradores ativos no Efetivo para gerar as demandas SESMT.</p>
+                                <p class="mt-1 text-sm text-brand-gray">Cadastre colaboradores ativos no Efetivo para gerar as demandas SSMA.</p>
                             </td>
                         </tr>
                     @endforelse
