@@ -131,7 +131,7 @@ class ContratoHistogramaController extends Controller
                 ]);
             }
 
-            ContratoHistogramaRecorte::query()->updateOrCreate(
+            $recorte = ContratoHistogramaRecorte::query()->updateOrCreate(
                 [
                     'contrato' => $data['contrato'],
                     'competencia' => $competencia,
@@ -142,6 +142,42 @@ class ContratoHistogramaController extends Controller
                         : null,
                 ]
             );
+
+            $metrics = $this->buildSnapshotMetrics($linhas);
+
+            $hasHistory = DB::table('contrato_histograma_historicos')
+                ->where('contrato', $data['contrato'])
+                ->whereDate('competencia', $competencia)
+                ->exists();
+
+            if (! $hasHistory) {
+                $baselineAt = $recorte->created_at ?? now();
+                DB::table('contrato_histograma_historicos')->insert([
+                    'contrato' => $data['contrato'],
+                    'competencia' => $competencia,
+                    'snapshot_date' => Carbon::parse($baselineAt)->toDateString(),
+                    'snapshot_at' => Carbon::parse($baselineAt),
+                    'total_functions' => $metrics['total_functions'],
+                    'completed' => $metrics['completed'],
+                    'pending' => $metrics['pending'],
+                    'progress' => $metrics['progress'],
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]);
+            }
+
+            DB::table('contrato_histograma_historicos')->insert([
+                'contrato' => $data['contrato'],
+                'competencia' => $competencia,
+                'snapshot_date' => Carbon::today()->toDateString(),
+                'snapshot_at' => now(),
+                'total_functions' => $metrics['total_functions'],
+                'completed' => $metrics['completed'],
+                'pending' => $metrics['pending'],
+                'progress' => $metrics['progress'],
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]);
         });
 
         return redirect()
@@ -167,5 +203,42 @@ class ContratoHistogramaController extends Controller
         $pgu = (float) $linha->pgu;
 
         return $pgu > $pre + 0.00001;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $linhas
+     * @return array{total_functions:int,completed:float,pending:float,progress:float}
+     */
+    private function buildSnapshotMetrics($linhas): array
+    {
+        $itens = $linhas->filter(fn ($linha) => ($linha['tipo_linha'] ?? 'item') !== 'grupo');
+
+        $totalFunctions = $itens->count();
+        $completed = 0.0;
+        $pending = 0.0;
+        $sumProgress = 0.0;
+
+        foreach ($itens as $linha) {
+            $pre = (float) ($linha['pre_pgu'] ?? 0);
+            $pgu = (float) ($linha['pgu'] ?? 0);
+            $completed += min($pre, $pgu);
+            $pending += max($pgu - $pre, 0);
+
+            if ($pgu > 0) {
+                $progress = min(($pre / $pgu) * 100, 100);
+            } elseif ($pre <= 0) {
+                $progress = 100.0;
+            } else {
+                $progress = 0.0;
+            }
+            $sumProgress += $progress;
+        }
+
+        return [
+            'total_functions' => $totalFunctions,
+            'completed' => round($completed, 2),
+            'pending' => round($pending, 2),
+            'progress' => $totalFunctions > 0 ? round($sumProgress / $totalFunctions, 2) : 0.0,
+        ];
     }
 }

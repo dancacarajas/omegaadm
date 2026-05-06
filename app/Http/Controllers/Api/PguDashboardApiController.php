@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PguDashboardApiController extends Controller
 {
@@ -71,7 +72,15 @@ class PguDashboardApiController extends Controller
         $ranking = $this->buildRankingFromLinhas($linhas);
         $rankingExecutivo = $this->buildRankingExecutivo($ranking, 5);
         $paretoExecutivo = $this->buildParetoExecutivo($rankingExecutivo);
-        $trend = $this->buildTrend($data['contrato'], $competenciaMes, 6);
+        $trendPayload = $this->buildTrend(
+            $data['contrato'],
+            $competenciaMes,
+            (float) $kpisItens['vagas_concluidas_no_pgu'],
+            (float) $kpisItens['vagas_pendentes_por_funcao'],
+            $ranking === [] ? 0.0 : round(collect($ranking)->avg('progress'), 1),
+            6
+        );
+        $trend = $trendPayload['points'];
         $heatmap = $this->buildHeatmapExecutivo($rankingExecutivo);
         $treemap = $this->buildTreemapPendencias($rankingExecutivo);
         $funcoesPgu100 = $this->buildFuncoesPgu100($ranking);
@@ -128,7 +137,7 @@ class PguDashboardApiController extends Controller
             'ranking_executivo' => $rankingExecutivo,
             'pareto_executivo' => $paretoExecutivo,
             'trend' => $trend,
-            'trend_notas' => 'Série por competência mensal (histograma salvo). Evolução diária exige registro futuro por dia.',
+            'trend_notas' => $trendPayload['note'],
             'heatmap' => $heatmap,
             'treemap_pendencias' => $treemap,
             'funcoes_pgu_100' => $funcoesPgu100,
@@ -465,12 +474,119 @@ class PguDashboardApiController extends Controller
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildTrend(string $contrato, Carbon $ateMes, int $meses): array
+    private function buildTrend(
+        string $contrato,
+        Carbon $competenciaMes,
+        float $currentCompleted,
+        float $currentPending,
+        float $currentProgress,
+        int $meses
+    ): array
     {
+        $brTz = 'America/Sao_Paulo';
+        $recorteCreatedAt = DB::table('contrato_histograma_recortes')
+            ->where('contrato', $contrato)
+            ->whereDate('competencia', $competenciaMes->toDateString())
+            ->value('created_at');
+
+        $baselineDateBr = $recorteCreatedAt
+            ? Carbon::parse((string) $recorteCreatedAt, 'UTC')->setTimezone($brTz)->startOfDay()->subDay()
+            : null;
+
+        $hist = DB::table('contrato_histograma_historicos')
+            ->where('contrato', $contrato)
+            ->whereDate('competencia', $competenciaMes->toDateString())
+            ->orderByRaw('COALESCE(snapshot_at, CONCAT(snapshot_date, " 00:00:00"))')
+            ->get();
+
+        if ($hist->isNotEmpty()) {
+            $toBrasilia = static function ($rowDate, $rowDateOnly) use ($brTz): Carbon {
+                if (!empty($rowDate)) {
+                    return Carbon::parse((string) $rowDate, 'UTC')->setTimezone($brTz);
+                }
+
+                return Carbon::createFromFormat('Y-m-d', (string) $rowDateOnly, $brTz)->startOfDay();
+            };
+
+            $dailyRows = $hist->map(function ($row) use ($toBrasilia) {
+                $d = $toBrasilia($row->snapshot_at, $row->snapshot_date);
+
+                return [
+                    'day_key' => $d->format('Y-m-d'),
+                    'date' => $d->format('d/m'),
+                    'completed' => (float) $row->completed,
+                    'pending' => (float) $row->pending,
+                    'progress' => (float) $row->progress,
+                ];
+            })->groupBy('day_key')
+                ->map(fn (Collection $rows) => $rows->last())
+                ->values()
+                ->map(fn (array $row) => [
+                    'date' => $row['date'],
+                    'completed' => (float) $row['completed'],
+                    'pending' => (float) $row['pending'],
+                    'progress' => (float) $row['progress'],
+                ]);
+
+            if ($baselineDateBr) {
+                $baselineLabel = $baselineDateBr->format('d/m');
+                $hasBaseline = $dailyRows->contains(fn (array $row) => $row['date'] === $baselineLabel);
+                if (! $hasBaseline) {
+                    $dailyRows->prepend([
+                        'date' => $baselineLabel,
+                        'completed' => 0.0,
+                        'pending' => 0.0,
+                        'progress' => 0.0,
+                    ]);
+                }
+            }
+
+            $todayLabel = Carbon::now($brTz)->format('d/m');
+            if (! $dailyRows->contains(fn (array $row) => $row['date'] === $todayLabel)) {
+                $dailyRows->push([
+                    'date' => $todayLabel,
+                    'completed' => round($currentCompleted, 1),
+                    'pending' => round($currentPending, 1),
+                    'progress' => round($currentProgress, 1),
+                ]);
+            }
+
+            return [
+                'points' => $dailyRows->all(),
+                'note' => 'Série diária consolidada por data. Alterações no mesmo dia são agrupadas em um único ponto.',
+            ];
+        }
+
+        if ($baselineDateBr) {
+            $baselineLabel = $baselineDateBr->format('d/m');
+            $todayLabel = Carbon::now($brTz)->format('d/m');
+
+            $points = [[
+                'date' => $baselineLabel,
+                'completed' => 0.0,
+                'pending' => 0.0,
+                'progress' => 0.0,
+            ]];
+
+            if ($todayLabel !== $baselineLabel) {
+                $points[] = [
+                    'date' => $todayLabel,
+                    'completed' => round($currentCompleted, 1),
+                    'pending' => round($currentPending, 1),
+                    'progress' => round($currentProgress, 1),
+                ];
+            }
+
+            return [
+                'points' => $points,
+                'note' => 'Série diária consolidada por data. Alterações no mesmo dia são agrupadas em um único ponto.',
+            ];
+        }
+
         $out = [];
 
         for ($i = $meses - 1; $i >= 0; $i--) {
-            $m = $ateMes->copy()->subMonths($i)->startOfMonth();
+            $m = $competenciaMes->copy()->subMonths($i)->startOfMonth();
             $linhas = ContratoHistogramaLinha::query()
                 ->where('contrato', $contrato)
                 ->whereDate('competencia', $m->toDateString())
@@ -502,7 +618,10 @@ class PguDashboardApiController extends Controller
             ];
         }
 
-        return $out;
+        return [
+            'points' => $out,
+            'note' => 'Série mensal por competência (snapshot). Salve atualizações para criar histórico diário no mês selecionado.',
+        ];
     }
 
     /**

@@ -17,7 +17,7 @@
     <section class="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
             <h2 class="text-xl font-bold text-brand-black">Histograma de mão de obra por contrato</h2>
-            <p class="mt-1 text-sm text-brand-gray">Pré-PGU = mobilizados/contratados · PGU = necessidade prevista na competência · Pós-PGU e demais colunas conforme planilha.</p>
+            <p class="mt-1 text-sm text-brand-gray">Competência = mês-base dos dados (snapshot) · Pré-PGU = mobilização disponível · PGU = necessidade prevista · A data limite da Fase 2 é um prazo calendário e pode estar em mês diferente da competência.</p>
         </div>
         <form method="GET" class="grid gap-3 p-5 md:grid-cols-[1fr_170px_auto] md:items-end">
             <label>
@@ -60,7 +60,7 @@
                     <p class="text-sm text-brand-gray">Use “Grupo” para linhas de título e “Item” para linhas detalhadas.</p>
                 </div>
                 <label class="w-full min-w-[220px] max-w-xs lg:w-auto">
-                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Prazo Fase 1 → Fase 2 (PGU)</span>
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data limite da transição Fase 1 → Fase 2</span>
                     <input
                         type="date"
                         name="data_limite_etapa_2"
@@ -68,7 +68,7 @@
                         data-limite-input
                         class="mt-2 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10"
                     >
-                    <p class="mt-1.5 text-xs leading-snug text-brand-gray">Após esta data, cada <strong class="font-semibold text-brand-black">item</strong> com Pré-PGU maior que a PGU fica sinalizado como atraso na transição.</p>
+                    <p class="mt-1.5 text-xs leading-snug text-brand-gray">Após esta data, cada <strong class="font-semibold text-brand-black">item</strong> com <strong>PGU maior que Pré-PGU</strong> (necessidade acima da mobilização) é sinalizado como atraso na transição.</p>
                 </label>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" data-add-grupo class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-brand-black transition hover:border-brand-burgundy hover:text-brand-burgundy">
@@ -86,7 +86,7 @@
             @if ($situacaoPrazo === 'vencido_atraso' && $dataLimiteEtapa2)
                 <div class="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-950">
                     <p class="font-bold">Prazo vencido — transição Fase 1 → Fase 2</p>
-                    <p class="mt-1">Data limite era <strong>{{ $fmtData($dataLimiteEtapa2) }}</strong>. Existem <strong>{{ $contagemAtrasadas }}</strong> item(ns) com Pré-PGU ainda não totalmente coberto pela PGU (destaque em vermelho na tabela).</p>
+                    <p class="mt-1">Data limite era <strong>{{ $fmtData($dataLimiteEtapa2) }}</strong>. Existem <strong>{{ $contagemAtrasadas }}</strong> item(ns) com necessidade de PGU acima da mobilização Pré-PGU (destaque em vermelho na tabela).</p>
                 </div>
             @elseif ($situacaoPrazo === 'vencido_ok' && $dataLimiteEtapa2)
                 <div class="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-950">
@@ -274,7 +274,7 @@
                         }
                         const pre = parseFloat(tr.querySelector('[data-num="pre_pgu"]')?.value || '0');
                         const pgu = parseFloat(tr.querySelector('[data-num="pgu"]')?.value || '0');
-                        const show = pre > 1e-9 && pgu < pre - 1e-9;
+                        const show = pgu > pre + 1e-9;
                         if (show) {
                             tr.classList.add('bg-red-50/90', 'ring-1', 'ring-red-300/80');
                             badge.className = BADGE_ON;
