@@ -6,11 +6,11 @@ use App\Http\Controllers\Concerns\ContratosHistogramaCatalog;
 use App\Http\Controllers\Controller;
 use App\Models\ContratoHistogramaLinha;
 use App\Models\ContratoHistogramaRecorte;
+use App\Models\RecrutamentoVaga;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class PguDashboardApiController extends Controller
 {
@@ -53,25 +53,34 @@ class PguDashboardApiController extends Controller
             }
         }
 
-        $linhas = ContratoHistogramaLinha::query()
+        $vagas = RecrutamentoVaga::query()
             ->where('contrato', $data['contrato'])
-            ->whereDate('competencia', $competenciaMes->toDateString())
-            ->itensParaMetricasPgu()
-            ->orderBy('ordem')
+            ->where(function ($query) use ($competenciaMes) {
+                $query->whereMonth('data_solicitacao', $competenciaMes->month)
+                    ->whereYear('data_solicitacao', $competenciaMes->year)
+                    ->orWhere(function ($q) use ($competenciaMes) {
+                        $q->whereNull('data_solicitacao')
+                            ->whereMonth('created_at', $competenciaMes->month)
+                            ->whereYear('created_at', $competenciaMes->year);
+                    });
+            })
+            ->latest('id')
             ->get();
 
-        $totaisMaoDeObra = ContratoHistogramaLinha::query()
-            ->where('contrato', $data['contrato'])
-            ->whereDate('competencia', $competenciaMes->toDateString())
-            ->itensParaMetricasPgu()
-            ->selectRaw('COALESCE(SUM(mobilizacao), 0) as sum_mobilizacao, COALESCE(SUM(pre_pgu), 0) as sum_pre_pgu, COALESCE(SUM(pgu), 0) as sum_pgu, COALESCE(SUM(pos_pgu), 0) as sum_pos_pgu')
-            ->first();
-
-        $kpisItens = $this->buildKpisMaoDeObraItens($linhas);
-
-        $ranking = $this->buildRankingFromLinhas($linhas);
+        $kpisItens = $this->buildKpisRecrutamento($vagas);
+        $ranking = $this->buildRankingFromVagas($vagas);
         $rankingExecutivo = $this->buildRankingExecutivo($ranking, 5);
         $paretoExecutivo = $this->buildParetoExecutivo($rankingExecutivo);
+        $rankingIndiretas = $this->buildRankingExecutivo(
+            array_values(array_filter($ranking, fn ($r) => str_starts_with((string) ($r['codigo'] ?? ''), '1.1'))),
+            5
+        );
+        $rankingDiretas = $this->buildRankingExecutivo(
+            array_values(array_filter($ranking, fn ($r) => str_starts_with((string) ($r['codigo'] ?? ''), '1.2'))),
+            5
+        );
+        $paretoIndiretas = $this->buildParetoExecutivo($rankingIndiretas);
+        $paretoDiretas = $this->buildParetoExecutivo($rankingDiretas);
         $trendPayload = $this->buildTrend(
             $data['contrato'],
             $competenciaMes,
@@ -81,14 +90,16 @@ class PguDashboardApiController extends Controller
             6
         );
         $trend = $trendPayload['points'];
+        $faseAtual = $this->buildCurrentPhaseProgress($vagas);
+        $faseTrend = $this->buildPhaseTrend($data['contrato'], $competenciaMes, 6);
         $heatmap = $this->buildHeatmapExecutivo($rankingExecutivo);
         $treemap = $this->buildTreemapPendencias($rankingExecutivo);
         $funcoesPgu100 = $this->buildFuncoesPgu100($ranking);
 
         $overallProgress = $ranking === [] ? 0.0 : round(collect($ranking)->avg('progress'), 1);
         $totalPending = (int) round($kpisItens['vagas_pendentes_por_funcao']);
-        $totalFunctions = count($ranking);
-        $completedFunctions = collect($ranking)->filter(function ($r) {
+        $totalFunctions = (int) round(collect($ranking)->sum(fn ($r) => (float) ($r['pgu'] ?? 0)));
+        $completedFunctions = (int) round(collect($ranking)->filter(function ($r) {
             $pre = (float) ($r['pre_pgu'] ?? 0);
             $pgu = (float) ($r['pgu'] ?? 0);
             if ($pre <= 0 && $pgu <= 0) {
@@ -99,20 +110,12 @@ class PguDashboardApiController extends Controller
             }
 
             return (float) ($r['progress'] ?? 0) >= 100;
-        })->count();
+        })->sum(fn ($r) => (float) ($r['completed'] ?? 0)));
         $criticalFunctions = collect($ranking)->where('status', 'critical')->count();
 
         $deadlineRisk = $this->deadlineRisk($deadline, $overallProgress);
         $progressDelta = $this->progressDeltaFromTrend($trend);
-        $itensAtrasadosFase2 = 0;
-        if ($deadline && Carbon::today()->gt($deadline->copy()->startOfDay())) {
-            $itensAtrasadosFase2 = $linhas->filter(function (ContratoHistogramaLinha $l) {
-                $pre = (float) $l->pre_pgu;
-                $pgu = (float) $l->pgu;
-
-                return $pgu > $pre + 0.00001;
-            })->count();
-        }
+        $itensAtrasadosFase2 = (int) collect($ranking)->filter(fn ($row) => ((float) ($row['progress'] ?? 0)) < 100)->count();
 
         return [
             'summary' => [
@@ -136,18 +139,167 @@ class PguDashboardApiController extends Controller
             'ranking' => $ranking,
             'ranking_executivo' => $rankingExecutivo,
             'pareto_executivo' => $paretoExecutivo,
+            'ranking_executivo_indiretas' => $rankingIndiretas,
+            'ranking_executivo_diretas' => $rankingDiretas,
+            'pareto_executivo_indiretas' => $paretoIndiretas,
+            'pareto_executivo_diretas' => $paretoDiretas,
             'trend' => $trend,
             'trend_notas' => $trendPayload['note'],
+            'fase_atual' => $faseAtual,
+            'fase_trend' => $faseTrend,
             'heatmap' => $heatmap,
             'treemap_pendencias' => $treemap,
             'funcoes_pgu_100' => $funcoesPgu100,
             'mao_de_obra' => [
-                'mobilizacao' => round((float) ($totaisMaoDeObra?->sum_mobilizacao ?? 0), 2),
-                'pre_pgu' => round((float) ($totaisMaoDeObra?->sum_pre_pgu ?? 0), 2),
-                'pgu' => round((float) ($totaisMaoDeObra?->sum_pgu ?? 0), 2),
-                'pos_pgu' => round((float) ($totaisMaoDeObra?->sum_pos_pgu ?? 0), 2),
+                'mobilizacao' => round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0), 2),
+                'pre_pgu' => round((float) ($kpisItens['vagas_concluidas_no_pgu'] ?? 0), 2),
+                'pgu' => round((float) ($kpisItens['vagas_em_andamento'] ?? 0), 2),
+                'pos_pgu' => round((float) ($kpisItens['vagas_liberadas'] ?? 0), 2),
             ],
         ];
+    }
+
+    /**
+     * @param  Collection<int, RecrutamentoVaga>  $vagas
+     * @return array<string, mixed>
+     */
+    private function buildKpisRecrutamento(Collection $vagas): array
+    {
+        $previstas = (int) $vagas->sum(fn (RecrutamentoVaga $vaga) => max(1, (int) $vaga->quantidade));
+        $concluidas = 0;
+        $emAndamento = 0;
+        $liberadas = 0;
+        $accInd = ['pgu' => 0, 'concluidas' => 0, 'pendentes' => 0];
+        $accDir = ['pgu' => 0, 'concluidas' => 0, 'pendentes' => 0];
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            $qty = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+            $approved = $this->approvedCandidates($vaga);
+            $approvedCount = $approved->count();
+            $completed = $approved
+                ->filter(fn ($c) => $this->candidateStepDone($state, (int) $c['position'], 'liberacao'))
+                ->count();
+
+            $concluidas += $completed;
+            $emAndamento += max(0, $approvedCount - $completed);
+            $liberadas += $completed;
+
+            $pend = max(0, $qty - $completed);
+            $codigo = trim((string) ($state['origem_histograma_item_codigo'] ?? ''));
+            if (preg_match('/^1\.1(\.|$)/', $codigo) === 1) {
+                $accInd['pgu'] += $qty;
+                $accInd['concluidas'] += $completed;
+                $accInd['pendentes'] += $pend;
+            } elseif (preg_match('/^1\.2(\.|$)/', $codigo) === 1) {
+                $accDir['pgu'] += $qty;
+                $accDir['concluidas'] += $completed;
+                $accDir['pendentes'] += $pend;
+            }
+        }
+
+        $pendentes = max(0, $previstas - $concluidas);
+
+        return [
+            'vagas_pgu_previstas' => $previstas,
+            'vagas_concluidas_no_pgu' => $concluidas,
+            'vagas_pendentes_por_funcao' => $pendentes,
+            'vagas_pre_sem_pgu_informado' => 0,
+            'vagas_em_andamento' => $emAndamento,
+            'vagas_liberadas' => $liberadas,
+            'por_grupo' => [
+                ['grupo' => 'Equipe Indireta', 'pgu' => $accInd['pgu'], 'concluidas' => $accInd['concluidas'], 'pendentes' => $accInd['pendentes']],
+                ['grupo' => 'Equipe Direta', 'pgu' => $accDir['pgu'], 'concluidas' => $accDir['concluidas'], 'pendentes' => $accDir['pendentes']],
+                ['grupo' => 'Total', 'pgu' => $previstas, 'concluidas' => $concluidas, 'pendentes' => $pendentes],
+            ],
+        ];
+    }
+
+    /**
+     * @param  Collection<int, RecrutamentoVaga>  $vagas
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildRankingFromVagas(Collection $vagas): array
+    {
+        $out = [];
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            $qty = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+            $approved = $this->approvedCandidates($vaga);
+            $completed = $approved
+                ->filter(fn ($c) => $this->candidateStepDone($state, (int) $c['position'], 'liberacao'))
+                ->count();
+            $pending = max(0, $qty - $completed);
+            $progress = min(100, round(($completed / max(1, $qty)) * 100, 1));
+            $status = $this->classifyStatus((int) $pending, (float) $progress);
+
+            $out[] = [
+                'linha_id' => $vaga->id,
+                'codigo' => trim((string) ($state['origem_histograma_item_codigo'] ?? '')) ?: null,
+                'funcao' => (string) ($vaga->titulo ?: 'Vaga sem título'),
+                'function' => (string) ($vaga->titulo ?: 'Vaga sem título'),
+                'pre_pgu' => (float) $completed,
+                'pgu' => (float) $qty,
+                'pending' => (int) $pending,
+                'completed' => (float) $completed,
+                'progress' => (float) $progress,
+                'sem_pgu_informado' => false,
+                'status' => $status,
+                'status_label' => $this->statusLabel($status),
+            ];
+        }
+
+        usort($out, fn ($a, $b) => $b['pending'] <=> $a['pending']);
+
+        return $out;
+    }
+
+    private function approvedCandidates(RecrutamentoVaga $vaga): Collection
+    {
+        $state = $vaga->form_state ?? [];
+        $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+
+        return collect(range(1, $quantity))
+            ->map(fn ($position) => [
+                'position' => $position,
+                'name' => $state["candidato_{$position}_nome_completo"] ?? '',
+                'status' => $state["candidato_{$position}_status"] ?? 'pendente',
+            ])
+            ->filter(fn ($candidate) => $candidate['status'] === 'aprovado' && filled($candidate['name']))
+            ->values();
+    }
+
+    private function candidateStepDone(array $state, int $position, string $step): bool
+    {
+        if ($step === 'treinamentos') {
+            return filled($state["candidato_{$position}_treinamentos_data_inicio"] ?? null)
+                && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null);
+        }
+
+        if ($step === 'assinatura') {
+            return filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+        }
+
+        if ($step === 'sgc') {
+            $hasPendency = filled($state["candidato_{$position}_sgc_pendencia_descricao"] ?? null);
+            $pendencyDone = $hasPendency
+                ? filled($state["candidato_{$position}_sgc_data_nova_postagem"] ?? null)
+                : filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+
+            return filled($state["candidato_{$position}_sgc_data_postagem"] ?? null)
+                && filled($state["candidato_{$position}_sgc_numero_postagem"] ?? null)
+                && $pendencyDone
+                && filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+        }
+
+        if ($step === 'liberacao') {
+            return filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
+                && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
+                && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
+        }
+
+        return false;
     }
 
     /**
@@ -483,117 +635,24 @@ class PguDashboardApiController extends Controller
         int $meses
     ): array
     {
-        $brTz = 'America/Sao_Paulo';
-        $recorteCreatedAt = DB::table('contrato_histograma_recortes')
-            ->where('contrato', $contrato)
-            ->whereDate('competencia', $competenciaMes->toDateString())
-            ->value('created_at');
-
-        $baselineDateBr = $recorteCreatedAt
-            ? Carbon::parse((string) $recorteCreatedAt, 'UTC')->setTimezone($brTz)->startOfDay()->subDay()
-            : null;
-
-        $hist = DB::table('contrato_histograma_historicos')
-            ->where('contrato', $contrato)
-            ->whereDate('competencia', $competenciaMes->toDateString())
-            ->orderByRaw('COALESCE(snapshot_at, CONCAT(snapshot_date, " 00:00:00"))')
-            ->get();
-
-        if ($hist->isNotEmpty()) {
-            $toBrasilia = static function ($rowDate, $rowDateOnly) use ($brTz): Carbon {
-                if (!empty($rowDate)) {
-                    return Carbon::parse((string) $rowDate, 'UTC')->setTimezone($brTz);
-                }
-
-                return Carbon::createFromFormat('Y-m-d', (string) $rowDateOnly, $brTz)->startOfDay();
-            };
-
-            $dailyRows = $hist->map(function ($row) use ($toBrasilia) {
-                $d = $toBrasilia($row->snapshot_at, $row->snapshot_date);
-
-                return [
-                    'day_key' => $d->format('Y-m-d'),
-                    'date' => $d->format('d/m'),
-                    'completed' => (float) $row->completed,
-                    'pending' => (float) $row->pending,
-                    'progress' => (float) $row->progress,
-                ];
-            })->groupBy('day_key')
-                ->map(fn (Collection $rows) => $rows->last())
-                ->values()
-                ->map(fn (array $row) => [
-                    'date' => $row['date'],
-                    'completed' => (float) $row['completed'],
-                    'pending' => (float) $row['pending'],
-                    'progress' => (float) $row['progress'],
-                ]);
-
-            if ($baselineDateBr) {
-                $baselineLabel = $baselineDateBr->format('d/m');
-                $hasBaseline = $dailyRows->contains(fn (array $row) => $row['date'] === $baselineLabel);
-                if (! $hasBaseline) {
-                    $dailyRows->prepend([
-                        'date' => $baselineLabel,
-                        'completed' => 0.0,
-                        'pending' => 0.0,
-                        'progress' => 0.0,
-                    ]);
-                }
-            }
-
-            $todayLabel = Carbon::now($brTz)->format('d/m');
-            if (! $dailyRows->contains(fn (array $row) => $row['date'] === $todayLabel)) {
-                $dailyRows->push([
-                    'date' => $todayLabel,
-                    'completed' => round($currentCompleted, 1),
-                    'pending' => round($currentPending, 1),
-                    'progress' => round($currentProgress, 1),
-                ]);
-            }
-
-            return [
-                'points' => $dailyRows->all(),
-                'note' => 'Série diária consolidada por data. Alterações no mesmo dia são agrupadas em um único ponto.',
-            ];
-        }
-
-        if ($baselineDateBr) {
-            $baselineLabel = $baselineDateBr->format('d/m');
-            $todayLabel = Carbon::now($brTz)->format('d/m');
-
-            $points = [[
-                'date' => $baselineLabel,
-                'completed' => 0.0,
-                'pending' => 0.0,
-                'progress' => 0.0,
-            ]];
-
-            if ($todayLabel !== $baselineLabel) {
-                $points[] = [
-                    'date' => $todayLabel,
-                    'completed' => round($currentCompleted, 1),
-                    'pending' => round($currentPending, 1),
-                    'progress' => round($currentProgress, 1),
-                ];
-            }
-
-            return [
-                'points' => $points,
-                'note' => 'Série diária consolidada por data. Alterações no mesmo dia são agrupadas em um único ponto.',
-            ];
-        }
-
         $out = [];
 
         for ($i = $meses - 1; $i >= 0; $i--) {
             $m = $competenciaMes->copy()->subMonths($i)->startOfMonth();
-            $linhas = ContratoHistogramaLinha::query()
+            $vagas = RecrutamentoVaga::query()
                 ->where('contrato', $contrato)
-                ->whereDate('competencia', $m->toDateString())
-                ->itensParaMetricasPgu()
+                ->where(function ($query) use ($m) {
+                    $query->whereMonth('data_solicitacao', $m->month)
+                        ->whereYear('data_solicitacao', $m->year)
+                        ->orWhere(function ($q) use ($m) {
+                            $q->whereNull('data_solicitacao')
+                                ->whereMonth('created_at', $m->month)
+                                ->whereYear('created_at', $m->year);
+                        });
+                })
                 ->get();
 
-            if ($linhas->isEmpty()) {
+            if ($vagas->isEmpty()) {
                 $out[] = [
                     'date' => $m->format('m/Y'),
                     'completed' => 0,
@@ -604,8 +663,8 @@ class PguDashboardApiController extends Controller
                 continue;
             }
 
-            $ranking = $this->buildRankingFromLinhas($linhas);
-            $kpMes = $this->buildKpisMaoDeObraItens($linhas);
+            $ranking = $this->buildRankingFromVagas($vagas);
+            $kpMes = $this->buildKpisRecrutamento($vagas);
             $sumCompleted = $kpMes['vagas_concluidas_no_pgu'];
             $sumPending = $kpMes['vagas_pendentes_por_funcao'];
             $avgProgress = $ranking === [] ? 0.0 : round(collect($ranking)->avg('progress'), 1);
@@ -620,8 +679,106 @@ class PguDashboardApiController extends Controller
 
         return [
             'points' => $out,
-            'note' => 'Série mensal por competência (snapshot). Salve atualizações para criar histórico diário no mês selecionado.',
+            'note' => 'Série mensal por competência com base no avanço das vagas do recrutamento.',
         ];
+    }
+
+    /**
+     * @param  Collection<int, RecrutamentoVaga>  $vagas
+     * @return array<int, array{fase:string,valor:int}>
+     */
+    private function buildCurrentPhaseProgress(Collection $vagas): array
+    {
+        $counts = [
+            'recrutamento' => 0,
+            'exame_medico' => 0,
+            'treinamentos_assinatura' => 0,
+            'sgc' => 0,
+            'liberacao' => 0,
+        ];
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            $approved = $this->approvedCandidates($vaga);
+
+            foreach ($approved as $candidate) {
+                $position = (int) $candidate['position'];
+                $counts['recrutamento']++;
+                if ($this->candidateStepDone($state, $position, 'treinamentos')) {
+                    $counts['exame_medico']++;
+                }
+                if ($this->candidateStepDone($state, $position, 'assinatura')) {
+                    $counts['treinamentos_assinatura']++;
+                }
+                if ($this->candidateStepDone($state, $position, 'sgc')) {
+                    $counts['sgc']++;
+                }
+                if ($this->candidateStepDone($state, $position, 'liberacao')) {
+                    $counts['liberacao']++;
+                }
+            }
+        }
+
+        return [
+            ['fase' => 'Recrutamento', 'valor' => $counts['recrutamento']],
+            ['fase' => 'Exame Médico', 'valor' => $counts['exame_medico']],
+            ['fase' => 'Trein. + Assinatura', 'valor' => $counts['treinamentos_assinatura']],
+            ['fase' => 'Postagem SGC', 'valor' => $counts['sgc']],
+            ['fase' => 'Liberação', 'valor' => $counts['liberacao']],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, int|string>>
+     */
+    private function buildPhaseTrend(string $contrato, Carbon $competenciaMes, int $meses): array
+    {
+        $out = [];
+
+        for ($i = $meses - 1; $i >= 0; $i--) {
+            $m = $competenciaMes->copy()->subMonths($i)->startOfMonth();
+            $vagas = RecrutamentoVaga::query()
+                ->where('contrato', $contrato)
+                ->where(function ($query) use ($m) {
+                    $query->whereMonth('data_solicitacao', $m->month)
+                        ->whereYear('data_solicitacao', $m->year)
+                        ->orWhere(function ($q) use ($m) {
+                            $q->whereNull('data_solicitacao')
+                                ->whereMonth('created_at', $m->month)
+                                ->whereYear('created_at', $m->year);
+                        });
+                })
+                ->get();
+
+            $counts = $this->buildCurrentPhaseProgress($vagas);
+            $row = ['date' => $m->format('m/Y')];
+            foreach ($counts as $count) {
+                $fase = (string) ($count['fase'] ?? '');
+                $valor = (int) ($count['valor'] ?? 0);
+                if ($fase === 'Recrutamento') {
+                    $row['recrutamento'] = $valor;
+                } elseif ($fase === 'Exame Médico') {
+                    $row['exame_medico'] = $valor;
+                } elseif ($fase === 'Trein. + Assinatura') {
+                    $row['treinamentos_assinatura'] = $valor;
+                } elseif ($fase === 'Postagem SGC') {
+                    $row['sgc'] = $valor;
+                } elseif ($fase === 'Liberação') {
+                    $row['liberacao'] = $valor;
+                }
+            }
+
+            $row += [
+                'recrutamento' => 0,
+                'exame_medico' => 0,
+                'treinamentos_assinatura' => 0,
+                'sgc' => 0,
+                'liberacao' => 0,
+            ];
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     /**

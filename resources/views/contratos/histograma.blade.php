@@ -114,7 +114,7 @@
             @endif
 
             <div class="border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-xs text-brand-gray">
-                <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas <span class="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">Item</span> com fundo verde = <strong>PGU ≤ Pré-PGU</strong> (necessidade coberta pela mobilização — concluída neste critério). Linhas em vermelho = prazo Fase 2 vencido e <strong>PGU &gt; Pré-PGU</strong>. Linhas amarelas = <strong>Grupo</strong> (título).</p>
+                <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas <span class="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">Item</span> ficam verdes quando <strong>todas as vagas da função concluírem os steps do recrutamento</strong>. Enquanto não concluir, a linha mostra barra de progresso. Linhas amarelas = <strong>Grupo</strong> (título).</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -137,24 +137,21 @@
                         @forelse ($linhas as $i => $linha)
                             @php
                                 $ehGrupo = ($linha->tipo_linha ?? '') === 'grupo';
-                                $linhaAtrasada = $dataLimiteEtapa2
-                                    && ! $ehGrupo
-                                    && \Carbon\Carbon::today()->gt(\Carbon\Carbon::parse($dataLimiteEtapa2)->startOfDay())
-                                    && (float) $linha->pgu > (float) $linha->pre_pgu + 0.00001;
-                                $linhaConcluida = ! $ehGrupo
-                                    && ! $linhaAtrasada
-                                    && (float) $linha->pgu <= (float) $linha->pre_pgu + 0.00001;
+                                $rhStatus = $linhaRecrutamentoStatus[$linha->id] ?? ['percent' => 0, 'completed' => false];
+                                $linhaConcluida = ! $ehGrupo && (bool) ($rhStatus['completed'] ?? false);
+                                $linhaProgress = (int) ($rhStatus['percent'] ?? 0);
+                                $linhaMobilizacao = (float) ($rhStatus['mobilizacao'] ?? $linha->mobilizacao);
                                 $histogramaTrEstado = 'histograma-tr-item';
                                 if ($ehGrupo) {
                                     $histogramaTrEstado = 'histograma-tr-grupo';
-                                } elseif ($linhaAtrasada) {
-                                    $histogramaTrEstado = 'histograma-tr-atrasada';
                                 } elseif ($linhaConcluida) {
                                     $histogramaTrEstado = 'histograma-tr-concluida';
                                 }
                             @endphp
                             <tr
                                 data-row
+                                data-rh-progress="{{ $linhaProgress }}"
+                                data-rh-completed="{{ $linhaConcluida ? '1' : '0' }}"
                                 id="hist-linha-{{ $linha->id }}"
                                 class="scroll-mt-24 transition-colors {{ $histogramaTrEstado }}"
                             >
@@ -168,18 +165,25 @@
                                 <td class="px-3 py-2.5 align-middle" data-desc-cell>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <input name="linhas[{{ $i }}][descricao]" value="{{ $linha->descricao }}" required class="min-w-0 flex-1 rounded border border-zinc-200 bg-white px-2 text-xs h-9 shadow-sm">
-                                        <span
-                                            data-atraso-badge
-                                            class="{{ $linhaAtrasada ? 'inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white' : 'hidden' }}"
-                                        >Atrasado F2</span>
+                                        <span data-atraso-badge class="hidden">Atrasado F2</span>
                                         <span
                                             data-concluida-badge
                                             class="{{ $linhaConcluida ? 'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white' : 'hidden' }}"
                                         >Concluída</span>
                                     </div>
+                                    @if (! $ehGrupo && ! $linhaConcluida)
+                                        <div class="mt-2">
+                                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
+                                                <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ $linhaProgress }}%"></div>
+                                            </div>
+                                            <p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-gray">Avanço recrutamento: {{ $linhaProgress }}%</p>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-3 py-2.5 align-middle"><input name="linhas[{{ $i }}][unidade]" value="{{ $linha->unidade }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
-                                <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linha->mobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao"></td>
+                                <td class="px-3 py-2.5 align-middle">
+                                    <input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linhaMobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao" readonly>
+                                </td>
                                 <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pre_pgu]" value="{{ $linha->pre_pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pre_pgu"></td>
                                 <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pgu]" value="{{ $linha->pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pgu"></td>
                                 <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pos_pgu]" value="{{ $linha->pos_pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pos_pgu"></td>
@@ -261,6 +265,10 @@
                 const recalcTotals = () => {
                     const totals = { mobilizacao: 0, pre_pgu: 0, pgu: 0, pos_pgu: 0, desmobilizacao: 0 };
                     tbody.querySelectorAll('[data-row]').forEach((tr) => {
+                        const tipo = tr.querySelector('[data-field="tipo"]')?.value || 'item';
+                        if (tipo === 'grupo') {
+                            return;
+                        }
                         Object.keys(totals).forEach((k) => {
                             const v = parseFloat(tr.querySelector(`[data-num="${k}"]`)?.value || '0');
                             totals[k] += Number.isNaN(v) ? 0 : v;
@@ -273,8 +281,6 @@
                 };
 
                 const limiteInput = form.querySelector('[data-limite-input]');
-                const BADGE_ATRASO_ON =
-                    'inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white';
                 const BADGE_CONCLUIDA_ON =
                     'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white';
 
@@ -290,23 +296,14 @@
                     HIST_TR_ALL.forEach((c) => tr.classList.remove(c));
                 };
 
-                const limitePassou = () => {
-                    const L = (form.dataset.limite || '').trim();
-                    const H = (form.dataset.hoje || '').trim();
-                    if (!L || !H) return false;
-                    const dL = new Date(`${L}T12:00:00`);
-                    const dH = new Date(`${H}T12:00:00`);
-                    if (Number.isNaN(dL.getTime()) || Number.isNaN(dH.getTime())) return false;
-                    return dH > dL;
-                };
                 const rowIsItem = (tr) => (tr.querySelector('[data-field="tipo"]')?.value || 'item') === 'item';
 
                 const refreshRowStates = () => {
-                    const lateGlobal = limitePassou();
                     tbody.querySelectorAll('[data-row]').forEach((tr) => {
                         const badgeA = tr.querySelector('[data-atraso-badge]');
                         const badgeC = tr.querySelector('[data-concluida-badge]');
                         if (!badgeA || !badgeC) return;
+                            const rhCompleted = tr.dataset.rhCompleted === '1';
 
                         stripRowStateClasses(tr);
                         badgeA.classList.add('hidden');
@@ -317,16 +314,7 @@
                             return;
                         }
 
-                        const pre = parseFloat(tr.querySelector('[data-num="pre_pgu"]')?.value || '0');
-                        const pgu = parseFloat(tr.querySelector('[data-num="pgu"]')?.value || '0');
-                        const eps = 1e-9;
-                        const atrasada = lateGlobal && pgu > pre + eps;
-                        const concluida = pgu <= pre + eps;
-
-                        if (atrasada) {
-                            tr.classList.add(HIST_TR.atrasada);
-                            badgeA.className = BADGE_ATRASO_ON;
-                        } else if (concluida) {
+                            if (rhCompleted) {
                             tr.classList.add(HIST_TR.concluida);
                             badgeC.className = BADGE_CONCLUIDA_ON;
                         } else {

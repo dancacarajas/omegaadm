@@ -1,0 +1,406 @@
+        $etapasInput = $data['etapas'] ?? [];
+        $etapas = [];
+        foreach (SsmaRegistroMensal::ETAPAS as $slug => $label) {
+            if ($slug === 'auditoria_mensal') {
+                $item = $etapasInput['auditoria_mensal'] ?? [];
+                $passou = $item['passou_auditoria'] ?? null;
+
+                $path1 = null;
+                $path2 = null;
+                if ($request->hasFile('etapas.auditoria_mensal.evidencia_1')) {
+                    $path1 = $request->file('etapas.auditoria_mensal.evidencia_1')->store('ssma/registros/evidencias', 'public');
+                }
+                if ($request->hasFile('etapas.auditoria_mensal.evidencia_2')) {
+                    $path2 = $request->file('etapas.auditoria_mensal.evidencia_2')->store('ssma/registros/evidencias', 'public');
+                }
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'passou_auditoria' => $passou,
+                    'data_auditoria' => $item['data_auditoria'] ?? null,
+                    'auditor' => $item['auditor'] ?? null,
+                    'local' => $item['local'] ?? null,
+                    'descricao' => $item['descricao'] ?? null,
+                    'nota' => $item['nota'] ?? null,
+                    'evidencia_1_path' => $path1,
+                    'evidencia_2_path' => $path2,
+                    'realizado' => $passou === 'sim',
+                    'data_referencia' => $item['data_auditoria'] ?? null,
+                    'responsavel' => $item['auditor'] ?? null,
+                    'observacoes' => $item['descricao'] ?? null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'inspecao_mensal_canteiro') {
+                $item = $etapasInput['inspecao_mensal_canteiro'] ?? [];
+                $passou = $item['passou_inspecao'] ?? null;
+
+                $path1 = null;
+                $path2 = null;
+                if ($request->hasFile('etapas.inspecao_mensal_canteiro.evidencia_1')) {
+                    $path1 = $request->file('etapas.inspecao_mensal_canteiro.evidencia_1')->store('ssma/registros/evidencias', 'public');
+                }
+                if ($request->hasFile('etapas.inspecao_mensal_canteiro.evidencia_2')) {
+                    $path2 = $request->file('etapas.inspecao_mensal_canteiro.evidencia_2')->store('ssma/registros/evidencias', 'public');
+                }
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'passou_inspecao' => $passou,
+                    'data_inspecao' => $item['data_inspecao'] ?? null,
+                    'inspetor' => $item['inspetor'] ?? null,
+                    'local' => $item['local'] ?? null,
+                    'descricao' => $item['descricao'] ?? null,
+                    'nota' => $item['nota'] ?? null,
+                    'evidencia_1_path' => $path1,
+                    'evidencia_2_path' => $path2,
+                    'realizado' => $passou === 'sim',
+                    'data_referencia' => $item['data_inspecao'] ?? null,
+                    'responsavel' => $item['inspetor'] ?? null,
+                    'observacoes' => $item['descricao'] ?? null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'treinamentos_mensais') {
+                $item = $etapasInput['treinamentos_mensais'] ?? [];
+                $linhas = collect($item['linhas'] ?? [])
+                    ->map(function ($linha) {
+                        return [
+                            'rac' => (bool) ($linha['rac'] ?? false),
+                            'nr' => (bool) ($linha['nr'] ?? false),
+                            'pro_outros' => trim((string) ($linha['pro_outros'] ?? '')),
+                            'data' => $linha['data'] ?? null,
+                            'instrutor' => trim((string) ($linha['instrutor'] ?? '')),
+                            'titulo_descricao' => trim((string) ($linha['titulo_descricao'] ?? '')),
+                        ];
+                    })
+                    ->filter(function ($linha) {
+                        return $linha['rac']
+                            || $linha['nr']
+                            || $linha['pro_outros'] !== ''
+                            || ! empty($linha['data'])
+                            || $linha['instrutor'] !== ''
+                            || $linha['titulo_descricao'] !== '';
+                    })
+                    ->values()
+                    ->all();
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'linhas' => $linhas,
+                    'realizado' => count($linhas) > 0,
+                    'data_referencia' => $linhas[0]['data'] ?? null,
+                    'responsavel' => $linhas[0]['instrutor'] ?? null,
+                    'observacoes' => count($linhas).' treinamento(s) registrado(s) no mês.',
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'registro_acoes_proativas') {
+                $item = $etapasInput['registro_acoes_proativas'] ?? [];
+                $blocos = [
+                    'quase_acidente' => ['max' => 4, 'campos' => ['data', 'local', 'descricao']],
+                    'termo_interdicao_vale' => ['max' => 4, 'campos' => ['data', 'local', 'descricao', 'emissor']],
+                    'termo_notificacao_vale' => ['max' => 4, 'campos' => ['data', 'local', 'descricao', 'emissor']],
+                    'interdicao_interna_omega' => ['max' => 6, 'campos' => ['data', 'local', 'descricao', 'emissor']],
+                    'notificacao_interna_omega' => ['max' => 6, 'campos' => ['data', 'local', 'descricao', 'emissor']],
+                ];
+
+                $out = [];
+                $totalLinhas = 0;
+                foreach ($blocos as $blocoKey => $cfg) {
+                    $max = (int) ($cfg['max'] ?? 4);
+                    $linhas = collect($item[$blocoKey]['linhas'] ?? [])
+                        ->take($max)
+                        ->map(function ($linha) use ($cfg) {
+                            $dados = [];
+                            foreach ($cfg['campos'] as $campo) {
+                                $valor = $linha[$campo] ?? null;
+                                $dados[$campo] = is_string($valor) ? trim($valor) : $valor;
+                            }
+
+                            return $dados;
+                        })
+                        ->filter(function ($linha) use ($cfg) {
+                            foreach ($cfg['campos'] as $campo) {
+                                if (! empty($linha[$campo])) {
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        })
+                        ->values()
+                        ->all();
+
+                    $out[$blocoKey] = ['linhas' => $linhas];
+                    $totalLinhas += count($linhas);
+                }
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'blocos' => $out,
+                    'realizado' => $totalLinhas > 0,
+                    'data_referencia' => null,
+                    'responsavel' => null,
+                    'observacoes' => $totalLinhas > 0 ? $totalLinhas.' registro(s) proativo(s) no mês.' : null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'boas_praticas_kaizen') {
+                $item = $etapasInput['boas_praticas_kaizen'] ?? [];
+                $ids = collect($item['colaborador_ids'] ?? [])
+                    ->map(fn ($id) => (int) $id)
+                    ->filter(fn ($id) => $id > 0)
+                    ->unique()
+                    ->values();
+
+                $colabRows = $ids->isEmpty()
+                    ? collect()
+                    : Colaborador::query()
+                        ->whereIn('id', $ids->all())
+                        ->orderBy('nome')
+                        ->get(['id', 'nome', 'matricula', 'foto_path']);
+
+                $fotoAntesPath = null;
+                $fotoDepoisPath = null;
+                if ($request->hasFile('etapas.boas_praticas_kaizen.foto_antes')) {
+                    $fotoAntesPath = $request->file('etapas.boas_praticas_kaizen.foto_antes')->store('ssma/registros/kaizen', 'public');
+                }
+                if ($request->hasFile('etapas.boas_praticas_kaizen.foto_depois')) {
+                    $fotoDepoisPath = $request->file('etapas.boas_praticas_kaizen.foto_depois')->store('ssma/registros/kaizen', 'public');
+                }
+
+                $titulo = isset($item['titulo']) ? trim((string) $item['titulo']) : '';
+                $responsaveis = isset($item['responsaveis']) ? trim((string) $item['responsaveis']) : '';
+                $ganhos = isset($item['ganhos_processo']) ? trim((string) $item['ganhos_processo']) : '';
+
+                $colaboradoresSnapshot = $colabRows->map(fn (Colaborador $c) => [
+                    'id' => $c->id,
+                    'nome' => $c->nome,
+                    'matricula' => $c->matricula,
+                    'foto_path' => $c->foto_path,
+                ])->values()->all();
+
+                $preenchido = $titulo !== ''
+                    || $responsaveis !== ''
+                    || $ganhos !== ''
+                    || $fotoAntesPath
+                    || $fotoDepoisPath
+                    || $colaboradoresSnapshot !== [];
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'titulo' => $titulo !== '' ? $titulo : null,
+                    'responsaveis' => $responsaveis !== '' ? $responsaveis : null,
+                    'ganhos_processo' => $ganhos !== '' ? $ganhos : null,
+                    'foto_antes_path' => $fotoAntesPath,
+                    'foto_depois_path' => $fotoDepoisPath,
+                    'colaboradores' => $colaboradoresSnapshot,
+                    'realizado' => $preenchido,
+                    'data_referencia' => null,
+                    'responsavel' => $responsaveis !== '' ? $responsaveis : null,
+                    'observacoes' => $preenchido ? 'Projeto Kaizen (boas práticas) registrado.' : null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'acoes_reativas') {
+                $item = $etapasInput['acoes_reativas'] ?? [];
+                $blocos = [
+                    'primeiros_socorros' => ['max' => 3, 'campos' => ['data', 'local', 'descricao']],
+                    'restricao_trabalho' => ['max' => 3, 'campos' => ['data', 'local', 'descricao']],
+                    'tratamento_medico' => ['max' => 7, 'campos' => ['data', 'local', 'descricao']],
+                    'regra_ouro' => ['max' => 3, 'campos' => ['data', 'local', 'descricao']],
+                    'telemetria' => ['max' => 7, 'campos' => ['data', 'local', 'descricao']],
+                ];
+
+                $out = [];
+                $totalLinhas = 0;
+                foreach ($blocos as $blocoKey => $cfg) {
+                    $max = (int) ($cfg['max'] ?? 3);
+                    $linhas = collect($item[$blocoKey]['linhas'] ?? [])
+                        ->take($max)
+                        ->map(function ($linha) use ($cfg) {
+                            $dados = [];
+                            foreach ($cfg['campos'] as $campo) {
+                                $valor = $linha[$campo] ?? null;
+                                $dados[$campo] = is_string($valor) ? trim($valor) : $valor;
+                            }
+
+                            return $dados;
+                        })
+                        ->filter(function ($linha) use ($cfg) {
+                            foreach ($cfg['campos'] as $campo) {
+                                if (! empty($linha[$campo])) {
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        })
+                        ->values()
+                        ->all();
+
+                    $out[$blocoKey] = ['linhas' => $linhas];
+                    $totalLinhas += count($linhas);
+                }
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'blocos' => $out,
+                    'realizado' => $totalLinhas > 0,
+                    'data_referencia' => null,
+                    'responsavel' => null,
+                    'observacoes' => $totalLinhas > 0 ? $totalLinhas.' registro(s) em indicadores reativos.' : null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'campanha_seguranca') {
+                $item = $etapasInput['campanha_seguranca'] ?? [];
+                $campanhasSalvas = [];
+
+                foreach ($item['itens'] ?? [] as $idx => $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+
+                    $titulo = isset($row['titulo']) ? trim((string) $row['titulo']) : '';
+                    $local = isset($row['local']) ? trim((string) $row['local']) : '';
+                    $resp = isset($row['responsavel_campanha']) ? trim((string) $row['responsavel_campanha']) : '';
+                    $gerencia = isset($row['gerencia']) ? trim((string) $row['gerencia']) : '';
+                    $desc = isset($row['descricao']) ? trim((string) $row['descricao']) : '';
+                    $dataReuniao = $row['data_reuniao'] ?? null;
+
+                    $path1 = null;
+                    $path2 = null;
+                    $key1 = "etapas.campanha_seguranca.itens.$idx.evidencia_1";
+                    $key2 = "etapas.campanha_seguranca.itens.$idx.evidencia_2";
+                    if ($request->hasFile($key1)) {
+                        $path1 = $request->file($key1)->store('ssma/registros/campanha_seguranca', 'public');
+                    }
+                    if ($request->hasFile($key2)) {
+                        $path2 = $request->file($key2)->store('ssma/registros/campanha_seguranca', 'public');
+                    }
+
+                    $linhaPreenchida = $titulo !== ''
+                        || $local !== ''
+                        || $resp !== ''
+                        || $gerencia !== ''
+                        || $desc !== ''
+                        || ! empty($dataReuniao)
+                        || $path1
+                        || $path2;
+
+                    if (! $linhaPreenchida) {
+                        continue;
+                    }
+
+                    $campanhasSalvas[] = [
+                        'titulo' => $titulo !== '' ? $titulo : null,
+                        'local' => $local !== '' ? $local : null,
+                        'responsavel_campanha' => $resp !== '' ? $resp : null,
+                        'gerencia' => $gerencia !== '' ? $gerencia : null,
+                        'data_reuniao' => $dataReuniao,
+                        'descricao' => $desc !== '' ? $desc : null,
+                        'evidencia_1_path' => $path1,
+                        'evidencia_2_path' => $path2,
+                    ];
+                }
+
+                $n = count($campanhasSalvas);
+                $primeiraTitulo = $campanhasSalvas[0]['titulo'] ?? null;
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'campanhas' => $campanhasSalvas,
+                    'realizado' => $n > 0,
+                    'data_referencia' => $campanhasSalvas[0]['data_reuniao'] ?? null,
+                    'responsavel' => $campanhasSalvas[0]['responsavel_campanha'] ?? null,
+                    'observacoes' => $n > 0
+                        ? ($n === 1
+                            ? ($primeiraTitulo ?? 'Campanha de segurança registrada.')
+                            : $n.' campanhas de segurança registradas.')
+                        : null,
+                ];
+
+                continue;
+            }
+
+            if ($slug === 'registro_acidente') {
+                $item = $etapasInput['registro_acidente'] ?? [];
+                $linhasSalvas = collect($item['linhas'] ?? [])
+                    ->take(7)
+                    ->filter(fn ($row) => is_array($row))
+                    ->map(function ($row) {
+                        $bool = fn ($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN);
+
+                        return [
+                            'material' => $bool($row['material'] ?? false),
+                            'pessoal' => $bool($row['pessoal'] ?? false),
+                            'ambiental' => $bool($row['ambiental'] ?? false),
+                            'data' => $row['data'] ?? null,
+                            'hora' => isset($row['hora']) ? trim((string) $row['hora']) : '',
+                            'local' => isset($row['local']) ? trim((string) $row['local']) : '',
+                            'descricao' => isset($row['descricao']) ? trim((string) $row['descricao']) : '',
+                        ];
+                    })
+                    ->filter(function ($linha) {
+                        return $linha['material']
+                            || $linha['pessoal']
+                            || $linha['ambiental']
+                            || ! empty($linha['data'])
+                            || $linha['hora'] !== ''
+                            || $linha['local'] !== ''
+                            || $linha['descricao'] !== '';
+                    })
+                    ->values()
+                    ->all();
+
+                $path1 = null;
+                $path2 = null;
+                if ($request->hasFile('etapas.registro_acidente.evidencia_1')) {
+                    $path1 = $request->file('etapas.registro_acidente.evidencia_1')->store('ssma/registros/acidentes', 'public');
+                }
+                if ($request->hasFile('etapas.registro_acidente.evidencia_2')) {
+                    $path2 = $request->file('etapas.registro_acidente.evidencia_2')->store('ssma/registros/acidentes', 'public');
+                }
+
+                $n = count($linhasSalvas);
+                $preenchido = $n > 0 || $path1 || $path2;
+
+                $etapas[$slug] = [
+                    'label' => $label,
+                    'linhas' => $linhasSalvas,
+                    'evidencia_1_path' => $path1,
+                    'evidencia_2_path' => $path2,
+                    'realizado' => $preenchido,
+                    'data_referencia' => $linhasSalvas[0]['data'] ?? null,
+                    'responsavel' => null,
+                    'observacoes' => $preenchido
+                        ? ($n > 0 ? $n.' linha(s) de registro de acidente/incidente.' : 'Evidências de acidente anexadas.')
+                        : null,
+                ];
+
+                continue;
+            }
+
+            $item = $etapasInput[$slug] ?? [];
+            $etapas[$slug] = [
+                'label' => $label,
+                'realizado' => (bool) ($item['realizado'] ?? false),
+                'data_referencia' => $item['data_referencia'] ?? null,
+                'responsavel' => $item['responsavel'] ?? null,
+                'observacoes' => $item['observacoes'] ?? null,
+            ];
+        }

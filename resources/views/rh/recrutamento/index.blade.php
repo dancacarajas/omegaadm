@@ -273,11 +273,44 @@
                     <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
                     <input name="busca" value="{{ request('busca') }}" placeholder="Buscar por vaga, contrato, gestor..." class="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-96">
                 </label>
+                <label>
+                    <select name="contrato" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-72">
+                        <option value="">Selecione o centro de custo</option>
+                        @foreach (($centrosDeCusto ?? collect()) as $centroDeCusto)
+                            <option value="{{ $centroDeCusto }}" @selected(($contratoSelecionado ?? '') === $centroDeCusto)>{{ $centroDeCusto }}</option>
+                        @endforeach
+                    </select>
+                </label>
                 <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
                     <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>
                     Buscar
                 </button>
             </form>
+        </div>
+
+        <div class="border-b border-zinc-200 bg-white px-5 py-4">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="rounded-lg border border-zinc-200 bg-zinc-50/70 px-4 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Fichas de vaga</p>
+                    <p class="mt-1 text-2xl font-black text-brand-black">{{ $indicadores['fichas'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-zinc-200 bg-zinc-50/70 px-4 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Vagas previstas</p>
+                    <p class="mt-1 text-2xl font-black text-brand-black">{{ $indicadores['total_vagas'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-zinc-200 bg-amber-50 px-4 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-amber-700">Em abertura</p>
+                    <p class="mt-1 text-2xl font-black text-amber-800">{{ $indicadores['em_abertura'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-blue-700">Candidatos aprovados</p>
+                    <p class="mt-1 text-2xl font-black text-blue-800">{{ $indicadores['aprovados'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Liberados</p>
+                    <p class="mt-1 text-2xl font-black text-emerald-800">{{ $indicadores['liberados'] ?? 0 }}</p>
+                </div>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -415,7 +448,7 @@
                                                             ],
                                                             [
                                                                 'key' => 'treinamentos',
-                                                                'title' => 'Treinamentos',
+                                                                'title' => 'Exame Médico',
                                                                 'status' => $trainingFollowUp($vaga, $candidate['position']),
                                                                 'done' => $candidateStepDone($vaga, $candidate['position'], 'treinamentos'),
                                                             ],
@@ -493,12 +526,17 @@
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="user-round-search" class="h-7 w-7"></i>
                                 </div>
-                                <p class="mt-4 text-base font-bold text-brand-black">Nenhuma vaga cadastrada.</p>
-                                <p class="mt-1 text-sm text-brand-gray">Crie uma vaga para iniciar o fluxo de recrutamento.</p>
-                                <a href="{{ route('rh.recrutamento.create') }}" class="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                                    <i data-lucide="plus" class="h-4 w-4"></i>
-                                    Nova vaga
-                                </a>
+                                @if (blank($contratoSelecionado ?? ''))
+                                    <p class="mt-4 text-base font-bold text-brand-black">Selecione um centro de custo para visualizar as vagas.</p>
+                                    <p class="mt-1 text-sm text-brand-gray">A listagem só é exibida após selecionar o contrato no filtro.</p>
+                                @else
+                                    <p class="mt-4 text-base font-bold text-brand-black">Nenhuma vaga cadastrada.</p>
+                                    <p class="mt-1 text-sm text-brand-gray">Crie uma vaga para iniciar o fluxo de recrutamento.</p>
+                                    <a href="{{ route('rh.recrutamento.create') }}" class="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                                        <i data-lucide="plus" class="h-4 w-4"></i>
+                                        Nova vaga
+                                    </a>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

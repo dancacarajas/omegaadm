@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ContratosHistogramaCatalog;
 use App\Models\ContratoHistogramaLinha;
 use App\Models\ContratoHistogramaRecorte;
+use App\Models\RecrutamentoVaga;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ContratoHistogramaController extends Controller
@@ -28,6 +30,7 @@ class ContratoHistogramaController extends Controller
 
         $linhas = collect();
         $recorte = null;
+        $linhaRecrutamentoStatus = [];
         if ($contratoSelecionado !== '') {
             $linhas = ContratoHistogramaLinha::query()
                 ->where('contrato', $contratoSelecionado)
@@ -35,10 +38,32 @@ class ContratoHistogramaController extends Controller
                 ->orderBy('ordem')
                 ->get();
 
+            if ($linhas->isNotEmpty()) {
+                $linhasArray = $linhas->map(function (ContratoHistogramaLinha $linha) {
+                    return [
+                        'tipo_linha' => $linha->tipo_linha,
+                        'item_codigo' => $linha->item_codigo,
+                        'descricao' => $linha->descricao,
+                        'unidade' => $linha->unidade,
+                        'mobilizacao' => (float) $linha->mobilizacao,
+                        'pre_pgu' => (float) $linha->pre_pgu,
+                        'pgu' => (float) $linha->pgu,
+                        'pos_pgu' => (float) $linha->pos_pgu,
+                        'desmobilizacao' => (float) $linha->desmobilizacao,
+                    ];
+                });
+
+                // Garante sincronização de histogramas já cadastrados sem depender de novo salvamento manual.
+                $this->syncRecrutamentoFromHistograma($contratoSelecionado, $competencia, $linhasArray);
+            }
+
+            $linhaRecrutamentoStatus = $this->buildLinhaRecrutamentoStatus($contratoSelecionado, $competenciaMes, $linhas);
+
             $recorte = ContratoHistogramaRecorte::query()
                 ->where('contrato', $contratoSelecionado)
                 ->whereDate('competencia', $competencia)
                 ->first();
+
         }
 
         $dataLimiteEtapa2 = $recorte?->data_limite_etapa_2?->format('Y-m-d');
@@ -58,12 +83,13 @@ class ContratoHistogramaController extends Controller
             }
         }
 
+        $linhasItem = $linhas->filter(fn (ContratoHistogramaLinha $linha) => ($linha->tipo_linha ?? 'item') !== 'grupo');
         $totais = [
-            'mobilizacao' => (float) $linhas->sum('mobilizacao'),
-            'pre_pgu' => (float) $linhas->sum('pre_pgu'),
-            'pgu' => (float) $linhas->sum('pgu'),
-            'pos_pgu' => (float) $linhas->sum('pos_pgu'),
-            'desmobilizacao' => (float) $linhas->sum('desmobilizacao'),
+            'mobilizacao' => (float) $linhasItem->sum('mobilizacao'),
+            'pre_pgu' => (float) $linhasItem->sum('pre_pgu'),
+            'pgu' => (float) $linhasItem->sum('pgu'),
+            'pos_pgu' => (float) $linhasItem->sum('pos_pgu'),
+            'desmobilizacao' => (float) $linhasItem->sum('desmobilizacao'),
         ];
 
         return view('contratos.histograma', [
@@ -77,6 +103,7 @@ class ContratoHistogramaController extends Controller
             'contagemAtrasadas' => $contagemAtrasadas,
             'situacaoPrazo' => $situacaoPrazo,
             'diasAteLimite' => $diasAteLimite,
+            'linhaRecrutamentoStatus' => $linhaRecrutamentoStatus,
             'layout' => $this->isPublicRoute($request) ? 'layouts.public-contratos' : 'layouts.app',
         ]);
     }
@@ -176,6 +203,8 @@ class ContratoHistogramaController extends Controller
                 'updated_at' => now(),
                 'created_at' => now(),
             ]);
+
+            $this->syncRecrutamentoFromHistograma($data['contrato'], $competencia, $linhas);
         });
 
         return redirect()
@@ -238,5 +267,262 @@ class ContratoHistogramaController extends Controller
             'pending' => round($pending, 2),
             'progress' => $totalFunctions > 0 ? round($sumProgress / $totalFunctions, 2) : 0.0,
         ];
+    }
+
+    /**
+     * Gera/atualiza vagas de recrutamento a partir dos itens do histograma.
+     * O histograma passa a ser previsão de quantitativo por função (coluna Pré-PGU).
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $linhas
+     */
+    private function syncRecrutamentoFromHistograma(string $contrato, string $competencia, $linhas): void
+    {
+        $competenciaYm = Carbon::parse($competencia)->format('Y-m');
+        $funcoes = collect($linhas)
+            ->filter(fn ($linha) => ($linha['tipo_linha'] ?? 'item') !== 'grupo')
+            ->map(function ($linha) {
+                $descricao = trim((string) ($linha['descricao'] ?? ''));
+                $codigo = trim((string) ($linha['item_codigo'] ?? ''));
+                if ($descricao === '') {
+                    $descricao = $codigo !== '' ? "Função {$codigo}" : 'Função sem descrição';
+                }
+
+                return [
+                    'descricao' => $descricao,
+                    'pre_pgu' => (float) ($linha['pre_pgu'] ?? 0),
+                    'item_codigo' => $codigo,
+                ];
+            })
+            ->groupBy('descricao')
+            ->map(function ($rows, $descricao) {
+                return [
+                    'descricao' => (string) $descricao,
+                    'pre_total' => (float) collect($rows)->sum('pre_pgu'),
+                    'item_codigo' => (string) (collect($rows)->pluck('item_codigo')->filter()->first() ?? ''),
+                ];
+            })
+            ->values();
+
+        $existentes = RecrutamentoVaga::query()
+            ->where('contrato', $contrato)
+            ->where('form_state->origem_histograma', true)
+            ->where('form_state->origem_histograma_competencia', $competenciaYm)
+            ->get()
+            ->groupBy(fn (RecrutamentoVaga $vaga) => mb_strtolower(trim((string) $vaga->titulo)));
+
+        $keepIds = [];
+
+        foreach ($funcoes as $funcao) {
+            $quantidadePlanejada = (int) ceil((float) $funcao['pre_total']);
+            if ($quantidadePlanejada <= 0) {
+                continue;
+            }
+
+            $descricao = (string) $funcao['descricao'];
+            $itemCodigo = (string) $funcao['item_codigo'];
+            $origemKey = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
+            $tituloKey = mb_strtolower(trim($descricao));
+
+            $vagaExistente = optional($existentes->get($tituloKey))->first();
+
+            if ($vagaExistente) {
+                $state = $vagaExistente->form_state ?? [];
+                $state['vaga_quantidade'] = (string) $quantidadePlanejada;
+                $state['vaga_contrato'] = $contrato;
+                $state['origem_histograma_pre_total'] = (float) $funcao['pre_total'];
+
+                $vagaExistente->update([
+                    'titulo' => $descricao,
+                    'quantidade' => $quantidadePlanejada,
+                    'contrato' => $contrato,
+                    'tipo' => $vagaExistente->tipo ?: 'Nova vaga',
+                    'status' => $vagaExistente->status ?: 'Em abertura',
+                    'form_state' => $state,
+                ]);
+                $keepIds[] = $vagaExistente->id;
+                continue;
+            }
+
+            $created = RecrutamentoVaga::query()->create([
+                'titulo' => $descricao,
+                'quantidade' => $quantidadePlanejada,
+                'prioridade' => null,
+                'tipo' => 'Nova vaga',
+                'contrato' => $contrato,
+                'gestor' => null,
+                'local' => null,
+                'data_solicitacao' => now()->toDateString(),
+                'previsao_inicio' => null,
+                'salario' => null,
+                'status' => 'Em abertura',
+                'descricao' => 'Gerada automaticamente a partir do histograma.',
+                'requisitos' => null,
+                'form_state' => [
+                    'vaga_titulo' => $descricao,
+                    'vaga_quantidade' => (string) $quantidadePlanejada,
+                    'vaga_tipo' => 'Nova vaga',
+                    'vaga_status' => 'Em abertura',
+                    'vaga_contrato' => $contrato,
+                    'vaga_data_solicitacao' => now()->toDateString(),
+                    'origem_histograma' => true,
+                    'origem_histograma_key' => $origemKey,
+                    'origem_histograma_competencia' => $competenciaYm,
+                    'origem_histograma_item_codigo' => $itemCodigo,
+                    'origem_histograma_pre_total' => (float) $funcao['pre_total'],
+                ],
+            ]);
+            $keepIds[] = $created->id;
+        }
+
+        RecrutamentoVaga::query()
+            ->where('contrato', $contrato)
+            ->where('form_state->origem_histograma', true)
+            ->where('form_state->origem_histograma_competencia', $competenciaYm)
+            ->when(! empty($keepIds), fn ($query) => $query->whereNotIn('id', $keepIds))
+            ->delete();
+    }
+
+    /**
+     * @param  Collection<int, ContratoHistogramaLinha>  $linhas
+     * @return array<int, array{percent:int,completed:bool}>
+     */
+    private function buildLinhaRecrutamentoStatus(string $contrato, string $competenciaMes, Collection $linhas): array
+    {
+        $status = [];
+        $linhasItem = $linhas
+            ->filter(fn (ContratoHistogramaLinha $linha) => ($linha->tipo_linha ?? '') !== 'grupo');
+
+        if ($linhasItem->isEmpty()) {
+            return $status;
+        }
+
+        $titulos = $linhasItem
+            ->map(fn (ContratoHistogramaLinha $linha) => trim((string) $linha->descricao))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $vagasPorTitulo = RecrutamentoVaga::query()
+            ->where('contrato', $contrato)
+            ->where('form_state->origem_histograma_competencia', $competenciaMes)
+            ->whereIn('titulo', $titulos->all())
+            ->get()
+            ->groupBy(fn (RecrutamentoVaga $vaga) => trim((string) $vaga->titulo));
+
+        foreach ($linhas as $linha) {
+            if (($linha->tipo_linha ?? '') === 'grupo') {
+                $status[$linha->id] = ['percent' => 0, 'completed' => false, 'mobilizacao' => 0];
+                continue;
+            }
+
+            $titulo = trim((string) $linha->descricao);
+            $vagas = $vagasPorTitulo->get($titulo, collect());
+            if ($vagas->isEmpty()) {
+                $status[$linha->id] = ['percent' => 0, 'completed' => false, 'mobilizacao' => 0];
+                continue;
+            }
+
+            $percents = $vagas
+                ->map(fn (RecrutamentoVaga $vaga) => $this->computeRhFlowProgressPercent($vaga));
+            $mobilizacao = (int) $vagas
+                ->sum(fn (RecrutamentoVaga $vaga) => $this->countCompletedCandidates($vaga));
+
+            $avg = (int) round($percents->avg() ?? 0);
+            $allDone = $percents->every(fn (int $percent) => $percent >= 100);
+
+            $status[$linha->id] = [
+                'percent' => max(0, min(100, $avg)),
+                'completed' => $allDone,
+                'mobilizacao' => $mobilizacao,
+            ];
+        }
+
+        return $status;
+    }
+
+    private function computeRhFlowProgressPercent(RecrutamentoVaga $vaga): int
+    {
+        $state = $vaga->form_state ?? [];
+        $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+        $approved = collect(range(1, $quantity))
+            ->map(fn ($position) => [
+                'position' => $position,
+                'name' => $state["candidato_{$position}_nome_completo"] ?? '',
+                'status' => $state["candidato_{$position}_status"] ?? 'pendente',
+            ])
+            ->filter(fn ($candidate) => $candidate['status'] === 'aprovado' && filled($candidate['name']))
+            ->values();
+
+        $approvedCount = $approved->count();
+        $candidateSteps = ['treinamentos', 'assinatura', 'sgc', 'liberacao'];
+
+        $checks = collect($state)
+            ->filter(fn ($value, $key) => str_starts_with((string) $key, 'rh-check-'))
+            ->values()
+            ->slice(0, 3);
+        $done = $checks->count() > 0 && $checks->every(fn ($value) => (bool) $value) ? 1.0 : 0.0;
+
+        foreach ($candidateSteps as $step) {
+            if ($approvedCount === 0) {
+                continue;
+            }
+
+            $doneInStep = $approved
+                ->filter(fn ($candidate) => $this->candidateStepDone($state, (int) $candidate['position'], $step))
+                ->count();
+            $done += $doneInStep / $approvedCount;
+        }
+
+        return (int) round(($done / (1 + count($candidateSteps))) * 100);
+    }
+
+    private function countCompletedCandidates(RecrutamentoVaga $vaga): int
+    {
+        $state = $vaga->form_state ?? [];
+        $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+
+        return collect(range(1, $quantity))
+            ->filter(function (int $position) use ($state) {
+                $status = $state["candidato_{$position}_status"] ?? 'pendente';
+                $name = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
+                if ($status !== 'aprovado' || $name === '') {
+                    return false;
+                }
+
+                return $this->candidateStepDone($state, $position, 'liberacao');
+            })
+            ->count();
+    }
+
+    private function candidateStepDone(array $state, int $position, string $step): bool
+    {
+        if ($step === 'treinamentos') {
+            return filled($state["candidato_{$position}_treinamentos_data_inicio"] ?? null)
+                && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null);
+        }
+
+        if ($step === 'assinatura') {
+            return filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+        }
+
+        if ($step === 'sgc') {
+            $hasPendency = filled($state["candidato_{$position}_sgc_pendencia_descricao"] ?? null);
+            $pendencyDone = $hasPendency
+                ? filled($state["candidato_{$position}_sgc_data_nova_postagem"] ?? null)
+                : filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+
+            return filled($state["candidato_{$position}_sgc_data_postagem"] ?? null)
+                && filled($state["candidato_{$position}_sgc_numero_postagem"] ?? null)
+                && $pendencyDone
+                && filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+        }
+
+        if ($step === 'liberacao') {
+            return filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
+                && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
+                && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
+        }
+
+        return false;
     }
 }

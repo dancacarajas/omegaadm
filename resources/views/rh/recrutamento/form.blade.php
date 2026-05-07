@@ -15,8 +15,8 @@
     @php
         $steps = [
             ['id' => 'step-recrutamento', 'number' => '01', 'label' => 'Recrutamento e Seleção'],
-            ['id' => 'step-treinamentos', 'number' => '02', 'label' => 'Treinamentos'],
-            ['id' => 'step-assinatura', 'number' => '03', 'label' => 'Assinatura Documental'],
+            ['id' => 'step-treinamentos', 'number' => '02', 'label' => 'Exame Médico'],
+            ['id' => 'step-assinatura', 'number' => '03', 'label' => 'Treinamentos e Assinatura Documental'],
             ['id' => 'step-sgc', 'number' => '04', 'label' => 'Postagem SGC'],
             ['id' => 'step-liberacao', 'number' => '05', 'label' => 'Liberação para Atividades'],
         ];
@@ -173,7 +173,7 @@
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <h3 class="text-lg font-black text-brand-black">Ação da etapa</h3>
-                        <p class="mt-2 text-xs text-brand-gray">Quando concluir os itens, avance para Treinamentos.</p>
+                        <p class="mt-2 text-xs text-brand-gray">Quando concluir os itens, avance para Exame Médico.</p>
                         <button type="button" class="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white" data-rh-next-step="step-treinamentos" data-rh-save-next>Concluir Passo 01</button>
                         <button type="submit" class="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
                             <i data-lucide="save" class="h-4 w-4"></i>
@@ -186,8 +186,8 @@
             <div id="step-treinamentos" class="content" role="tabpanel" aria-labelledby="step-treinamentos-trigger" data-rh-step="step-treinamentos">
                 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
-                        <h2 class="text-3xl font-black text-[#3f0812]">Treinamentos</h2>
-                        <p class="mt-2 text-sm text-brand-gray">Cada candidato aprovado segue com treinamento próprio, sem depender das outras posições da vaga.</p>
+                        <h2 class="text-3xl font-black text-[#3f0812]">Exame Médico</h2>
+                        <p class="mt-2 text-sm text-brand-gray">Cada candidato aprovado segue com exame médico individual, sem depender das outras posições da vaga.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="treinamentos"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
@@ -200,8 +200,8 @@
             <div id="step-assinatura" class="content" role="tabpanel" aria-labelledby="step-assinatura-trigger" data-rh-step="step-assinatura">
                 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
-                        <h2 class="text-3xl font-black text-[#3f0812]">Assinatura Documental</h2>
-                        <p class="mt-2 text-sm text-brand-gray">A assinatura documental é feita por candidato aprovado.</p>
+                        <h2 class="text-3xl font-black text-[#3f0812]">Treinamentos e Assinatura Documental</h2>
+                        <p class="mt-2 text-sm text-brand-gray">Neste passo, valide a etapa de treinamentos e finalize a assinatura documental por candidato aprovado.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="assinatura"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
@@ -277,8 +277,8 @@
                 treinamentos: {
                     checks: [
                         ['matriz', 'Matriz definida', 'Cursos alinhados ao cargo e contrato.'],
-                        ['realizados', 'Treinamentos realizados', 'Presença e conclusão registradas.'],
-                        ['certificados', 'Certificados emitidos', 'Comprovantes prontos para anexar.'],
+                        ['realizados', 'Exames realizados', 'Atendimento e conclusão registrados.'],
+                        ['certificados', 'ASO emitido', 'Comprovante do exame pronto para anexar.'],
                     ],
                 },
                 assinatura: {
@@ -359,12 +359,15 @@
 
             const trainingFollowUp = (position) => {
                 const state = loadState();
+                const scheduledAt = parseDate(state[`candidato_${position}_treinamentos_data_agendamento`] || '');
                 const plannedEnd = parseDate(state[`candidato_${position}_treinamentos_data_fim`] || '');
                 const confirmedAt = parseDate(state[`candidato_${position}_treinamentos_data_confirmacao`] || '');
 
                 if (!plannedEnd) {
                     return {
-                        label: 'Informe a data fim programada para acompanhar o prazo de 5 dias.',
+                        label: scheduledAt
+                            ? 'Exame agendado. Informe a data fim programada para acompanhar o prazo.'
+                            : 'Informe a data do agendamento e a data fim programada para acompanhar o prazo de 5 dias.',
                         className: 'border-zinc-200 bg-brand-gray-soft text-brand-gray',
                     };
                 }
@@ -390,13 +393,13 @@
 
                 if (delay > 0) {
                     return {
-                        label: `Treinamentos atrasados ha ${delay} dia${delay > 1 ? 's' : ''}.`,
+                        label: `Exame médico atrasado ha ${delay} dia${delay > 1 ? 's' : ''}.`,
                         className: 'border-red-200 bg-red-50 text-red-700',
                     };
                 }
 
                 return {
-                    label: 'Treinamentos dentro do prazo programado.',
+                    label: 'Exame médico dentro do prazo programado.',
                     className: 'border-amber-200 bg-amber-50 text-amber-700',
                 };
             };
@@ -409,7 +412,7 @@
 
                 if (!trainingConfirmedAt) {
                     return {
-                        label: 'Aguardando confirmação dos treinamentos para iniciar a contagem.',
+                        label: 'Aguardando confirmação do exame médico para iniciar a contagem.',
                         className: 'border-zinc-200 bg-brand-gray-soft text-brand-gray',
                     };
                 }
@@ -426,7 +429,7 @@
                 const duration = daysBetween(trainingConfirmedAt, signatureConfirmedAt);
 
                 return {
-                    label: `Assinatura concluída em ${duration} dia${duration > 1 ? 's' : ''} após os treinamentos.`,
+                    label: `Assinatura concluída em ${duration} dia${duration > 1 ? 's' : ''} após o exame médico.`,
                     className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
                 };
             };
@@ -492,6 +495,7 @@
 
                 Array.from({ length: quantity }, (_, index) => index + 1).forEach((position) => {
                     const trainingDateFields = [
+                        `candidato_${position}_treinamentos_data_agendamento`,
                         `candidato_${position}_treinamentos_data_inicio`,
                         `candidato_${position}_treinamentos_data_fim`,
                         `candidato_${position}_treinamentos_data_confirmacao`,
@@ -813,7 +817,11 @@
                                 ${step === 'treinamentos' ? `
                                     <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
                                         <label class="space-y-2">
-                                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início dos treinamentos</span>
+                                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data do agendamento do exame médico</span>
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_agendamento" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                        </label>
+                                        <label class="space-y-2">
+                                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início do exame médico</span>
                                             <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
                                         <label class="space-y-2">
@@ -830,6 +838,22 @@
                                     </div>
                                 ` : ''}
                                 ${step === 'assinatura' ? `
+                                    <div class="mb-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4">
+                                        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Etapa Treinamentos</p>
+                                        <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                            <label class="space-y-2">
+                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início dos treinamentos</span>
+                                                <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            </label>
+                                            <label class="space-y-2">
+                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de confirmação dos treinamentos</span>
+                                                <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            </label>
+                                        </div>
+                                        <div class="mt-3 rounded-xl border px-4 py-3 text-sm font-semibold ${trainingFollowUp(candidate.position).className}">
+                                            ${trainingFollowUp(candidate.position).label}
+                                        </div>
+                                    </div>
                                     <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data programada da assinatura contratual</span>

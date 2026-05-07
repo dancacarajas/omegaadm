@@ -10,6 +10,72 @@ window.pguDashboard = function () {
         contrato: '',
         competencia: '',
         dataLimite: '',
+        visaoAba: 'diretoria',
+        clienteMenuOpen: false,
+        clienteEvolucaoMenuOpen: false,
+        clienteCoberturaMenuOpen: false,
+        clienteMapaMenuOpen: false,
+        setVisaoAba(tab) {
+            this.visaoAba = tab;
+            this.clienteMenuOpen = false;
+            this.clienteEvolucaoMenuOpen = false;
+            this.clienteCoberturaMenuOpen = false;
+            this.clienteMapaMenuOpen = false;
+            queueMicrotask(() => this.scheduleChartsResize());
+            setTimeout(() => this.scheduleChartsResize(), 120);
+        },
+        toggleClienteMenu() {
+            this.clienteMenuOpen = !this.clienteMenuOpen;
+        },
+        closeClienteMenu() {
+            this.clienteMenuOpen = false;
+        },
+        toggleClienteEvolucaoMenu() {
+            this.clienteEvolucaoMenuOpen = !this.clienteEvolucaoMenuOpen;
+        },
+        closeClienteEvolucaoMenu() {
+            this.clienteEvolucaoMenuOpen = false;
+        },
+        toggleClienteCoberturaMenu() {
+            this.clienteCoberturaMenuOpen = !this.clienteCoberturaMenuOpen;
+        },
+        closeClienteCoberturaMenu() {
+            this.clienteCoberturaMenuOpen = false;
+        },
+        toggleClienteMapaMenu() {
+            this.clienteMapaMenuOpen = !this.clienteMapaMenuOpen;
+        },
+        closeClienteMapaMenu() {
+            this.clienteMapaMenuOpen = false;
+        },
+        clienteInfo() {
+            window.alert('Panorama Executivo do PGU (Visão Cliente): mostra a distribuição das vagas por fase do recrutamento e o percentual consolidado da fase final sobre o total de vagas monitoradas.');
+        },
+        exportClientePanorama() {
+            this.exportChartPng('chartClientePanorama');
+            this.closeClienteMenu();
+        },
+        clienteEvolucaoInfo() {
+            window.alert('Evolução da Base Funcional: colunas mostram vagas consolidadas por competência e a linha mostra o % de cobertura monitorada no período.');
+        },
+        exportClienteEvolucao() {
+            this.exportChartPng('chartClienteEvolucao');
+            this.closeClienteEvolucaoMenu();
+        },
+        clienteCoberturaInfo() {
+            window.alert('Cobertura Operacional Monitorada: mostra o acompanhamento por frente operacional com base nas fases do recrutamento e a cobertura relativa ao total de vagas mapeadas.');
+        },
+        exportClienteCobertura() {
+            this.exportChartPng('chartClienteCobertura');
+            this.closeClienteCoberturaMenu();
+        },
+        clienteMapaInfo() {
+            window.alert('Mapa de Consolidação por Função: detalha por função o total mapeado, consolidado, em evolução e o índice de consolidação.');
+        },
+        exportClienteMapa() {
+            this.exportChartPng('chartClienteMapaDonut');
+            this.closeClienteMapaMenu();
+        },
         /** Slides da apresentação PGU (abas superiores). */
         abaApresentacao: 'capa',
         setAbaApresentacao(slug) {
@@ -27,6 +93,212 @@ window.pguDashboard = function () {
             const lim = Math.max(0, Number(n) || 5);
             if (!Array.isArray(r)) return [];
             return r.slice(0, lim);
+        },
+        paretoMetrics(items) {
+            const list = Array.isArray(items) ? items : [];
+            const totalPendencias = list.reduce((acc, row) => acc + Number(row?.pending || 0), 0);
+            const top3Pendencias = list.slice(0, 3).reduce((acc, row) => acc + Number(row?.pending || 0), 0);
+            const concentracaoTop3 = totalPendencias > 0 ? (top3Pendencias / totalPendencias) * 100 : 0;
+            return {
+                totalPendencias: Math.round(totalPendencias),
+                top3Pendencias: Math.round(top3Pendencias),
+                concentracaoTop3: Math.round(concentracaoTop3 * 10) / 10,
+                itens: list.length,
+            };
+        },
+        clientePanorama() {
+            const summary = this.data?.summary || {};
+            const mapeadas = Number(summary.total_functions || 0);
+            const consolidadas = Number(summary.completed_functions || 0);
+            const emEvolucao = Math.max(0, mapeadas - consolidadas);
+            const pctConsolidada = mapeadas > 0 ? (consolidadas / mapeadas) * 100 : 0;
+            const pctEvolucao = Math.max(0, 100 - pctConsolidada);
+            return {
+                mapeadas,
+                consolidadas,
+                emEvolucao,
+                monitoradas: mapeadas > 0 ? 100 : 0,
+                pctConsolidada: Math.round(pctConsolidada * 10) / 10,
+                pctEvolucao: Math.round(pctEvolucao * 10) / 10,
+            };
+        },
+        clienteFases() {
+            const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
+            const colors = ['#6F1731', '#8B2C4A', '#A9445F', '#C3627A', '#D9879A'];
+            return fases.map((f, idx) => ({
+                name: f?.fase || `Fase ${idx + 1}`,
+                value: Math.max(0, Number(f?.valor || 0)),
+                color: colors[idx] || colors[colors.length - 1],
+            }));
+        },
+        clienteFasesComPercentual() {
+            const fases = this.clienteFases();
+            const total = Math.max(1, Number(this.data?.summary?.total_functions || 0));
+            return fases.map((f) => ({
+                ...f,
+                percent: (Number(f.value || 0) / total) * 100,
+            }));
+        },
+        clienteEvolucaoSeries() {
+            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            return trend.map((p) => ({
+                date: p?.date || '',
+                consolidadas: Math.max(0, Number(p?.completed || 0)),
+                emEvolucao: Math.max(0, Number(p?.pending || 0)),
+                indice: Math.max(0, Math.min(100, Number(p?.progress || 0))),
+            }));
+        },
+        competenciaLabelVisaoCliente() {
+            const raw = String(this.competencia || '').trim();
+            if (!raw) return 'N/A';
+            const match = raw.match(/^(\d{4})-(\d{2})$/);
+            if (!match) return raw;
+            const meses = [
+                'JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO',
+                'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO',
+            ];
+            const ano = match[1];
+            const mesIdx = Math.max(1, Math.min(12, Number(match[2]))) - 1;
+            return `${meses[mesIdx]} / ${ano}`;
+        },
+        clienteEvolucaoResumo() {
+            const series = this.clienteEvolucaoSeries();
+            if (series.length === 0) {
+                return {
+                    mapeadas: 0,
+                    consolidadas: 0,
+                    emEvolucao: 0,
+                    indice: 0,
+                    coberturaMonitorada: 0,
+                };
+            }
+            const last = series[series.length - 1];
+            const mapeadas = Math.max(0, Math.round(last.consolidadas + last.emEvolucao));
+            const indice = mapeadas > 0 ? (last.consolidadas / mapeadas) * 100 : 0;
+            return {
+                mapeadas,
+                consolidadas: Math.round(last.consolidadas),
+                emEvolucao: Math.round(last.emEvolucao),
+                indice: Math.round(indice * 10) / 10,
+                coberturaMonitorada: mapeadas > 0 ? 100 : 0,
+            };
+        },
+        clienteCoberturaFrentes() {
+            const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
+            const totalMapeadas = Math.max(0, Number(this.data?.summary?.total_functions || 0));
+            return fases.map((f) => {
+                const monitoradas = Math.max(0, Number(f?.valor || 0));
+                const cobertura = totalMapeadas > 0 ? (monitoradas / totalMapeadas) * 100 : 0;
+                return {
+                    frente: String(f?.fase || 'Frente'),
+                    monitoradas,
+                    cobertura: Math.max(0, Math.min(100, Math.round(cobertura * 10) / 10)),
+                };
+            });
+        },
+        clienteCoberturaResumo() {
+            const grupos = this.clienteCoberturaGrupos();
+            const mapeadas = grupos.reduce((acc, g) => acc + Number(g.mapeadas || 0), 0);
+            const monitoradas = grupos.reduce((acc, g) => acc + Number(g.monitoradas || 0), 0);
+            const frentesAcompanhadas = grupos.length;
+            const coberturaOperacional = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
+            return {
+                mapeadas: Math.round(mapeadas),
+                monitoradas: Math.round(monitoradas),
+                coberturaOperacional: Math.max(0, Math.min(100, Math.round(coberturaOperacional * 10) / 10)),
+                frentesAcompanhadas,
+            };
+        },
+        clienteCoberturaGrupos() {
+            const ranking = Array.isArray(this.data?.ranking_executivo) ? this.data.ranking_executivo : [];
+            const baseRows = ranking
+                .map((r) => {
+                    const mapeadas = Math.max(0, Math.round(Number(r?.qty || 0)));
+                    const monitoradas = mapeadas > 0 ? mapeadas : 0;
+                    const cobertura = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
+                    return {
+                        grupo: String(r?.funcao || 'Função'),
+                        mapeadas,
+                        monitoradas,
+                        cobertura: Math.max(0, Math.min(100, Math.round(cobertura * 10) / 10)),
+                        status: monitoradas >= mapeadas ? 'Monitorado' : 'Parcial',
+                    };
+                })
+                .filter((r) => r.mapeadas > 0)
+                .sort((a, b) => b.mapeadas - a.mapeadas);
+
+            if (baseRows.length <= 6) {
+                return baseRows;
+            }
+
+            const top = baseRows.slice(0, 5);
+            const others = baseRows.slice(5);
+            const mapeadasOutras = others.reduce((acc, r) => acc + r.mapeadas, 0);
+            const monitoradasOutras = others.reduce((acc, r) => acc + r.monitoradas, 0);
+            top.push({
+                grupo: 'Outras Funções',
+                mapeadas: mapeadasOutras,
+                monitoradas: monitoradasOutras,
+                cobertura: mapeadasOutras > 0 ? Math.round((monitoradasOutras / mapeadasOutras) * 1000) / 10 : 0,
+                status: monitoradasOutras >= mapeadasOutras ? 'Monitorado' : 'Parcial',
+            });
+            return top;
+        },
+        clienteConsolidacaoRows() {
+            const ranking = Array.isArray(this.data?.ranking_executivo) ? this.data.ranking_executivo : [];
+            return ranking
+                .map((r) => {
+                    const total = Math.max(0, Number(r?.qty || 0));
+                    const consolidadas = Math.max(0, Number(r?.completed || 0));
+                    const emEvolucao = Math.max(0, total - consolidadas);
+                    const indice = total > 0 ? (consolidadas / total) * 100 : 0;
+                    return {
+                        funcao: String(r?.funcao || 'Função'),
+                        total: Math.round(total),
+                        consolidadas: Math.round(consolidadas),
+                        emEvolucao: Math.round(emEvolucao),
+                        indice: Math.round(indice * 10) / 10,
+                    };
+                })
+                .filter((r) => r.total > 0)
+                .sort((a, b) => b.total - a.total);
+        },
+        clienteConsolidacaoResumo() {
+            const rows = this.clienteConsolidacaoRows();
+            const mapeadas = rows.reduce((acc, r) => acc + r.total, 0);
+            const consolidadas = rows.reduce((acc, r) => acc + r.consolidadas, 0);
+            const emEvolucao = rows.reduce((acc, r) => acc + r.emEvolucao, 0);
+            const indice = mapeadas > 0 ? (consolidadas / mapeadas) * 100 : 0;
+            const delta = Number(this.data?.summary?.progress_delta || 0);
+            return {
+                mapeadas: Math.round(mapeadas),
+                consolidadas: Math.round(consolidadas),
+                emEvolucao: Math.round(emEvolucao),
+                coberturaMonitorada: mapeadas > 0 ? 100 : 0,
+                indice: Math.round(indice * 10) / 10,
+                delta: Math.round(delta * 10) / 10,
+            };
+        },
+        wrapLabelText(text, maxChars = 14) {
+            const parts = String(text || '').split(' ');
+            const lines = [];
+            let current = '';
+            parts.forEach((part) => {
+                const probe = current ? `${current} ${part}` : part;
+                if (probe.length > maxChars && current) {
+                    lines.push(current);
+                    current = part;
+                } else {
+                    current = probe;
+                }
+            });
+            if (current) lines.push(current);
+            return lines.join('\n');
+        },
+        vagasConcluidasTotal() {
+            const items = this.data?.funcoes_pgu_100;
+            if (!Array.isArray(items)) return 0;
+            return Math.round(items.reduce((acc, row) => acc + Number(row?.completed || 0), 0));
         },
         initFromDataset() {
             const root = document.querySelector('[data-pgu-dashboard]');
@@ -193,10 +465,467 @@ window.pguDashboard = function () {
             run('chartMaoDeObra', () => this.renderMaoDeObra());
             run('chartRanking', () => this.renderRanking());
             run('chartFuncoes100Donut', () => this.renderFuncoes100Donut());
-            run('chartPareto', () => this.renderPareto());
+            run('chartParetoIndiretas', () => this.renderPareto('chartParetoIndiretas', this.data.pareto_executivo_indiretas || []));
+            run('chartParetoDiretas', () => this.renderPareto('chartParetoDiretas', this.data.pareto_executivo_diretas || []));
             run('chartTrend', () => this.renderTrend());
             run('chartHeatmap', () => this.renderHeatmap());
             run('chartTreemap', () => this.renderTreemap());
+            run('chartClientePanorama', () => this.renderClientePanorama());
+            run('chartClienteEvolucao', () => this.renderClienteEvolucao());
+            run('chartClienteCoberturaDonut', () => this.renderClienteCoberturaDonut());
+            run('chartClienteMapaDonut', () => this.renderClienteMapaDonut());
+        },
+        renderClientePanorama() {
+            const chart = this.baseChart('chartClientePanorama');
+            if (!chart) return;
+            const p = this.clientePanorama();
+            const fases = this.clienteFases();
+            const totalFases = Math.max(1, Number(this.data?.summary?.total_functions || 0));
+            const faseFinal = fases[fases.length - 1] || { name: 'Liberação', value: 0 };
+            const pctFinal = (Number(faseFinal.value || 0) / totalFases) * 100;
+            const donutData = fases.map((f) => {
+                const pct = (Number(f.value || 0) / totalFases) * 100;
+                return {
+                    value: f.value,
+                    name: f.name,
+                    labelText: `${f.name}: ${this.formatPctPtBr(pct)}%`,
+                };
+            });
+            chart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 13 },
+                    formatter: (d) => {
+                        const v = Number(d.value || 0);
+                        const pct = totalFases > 0 ? (v / totalFases) * 100 : 0;
+                        return `<strong>${d.name}</strong><br/>Candidatos: ${this.formatQtyPtBr(v)}<br/>Participação: ${this.formatPctPtBr(pct)}%`;
+                    },
+                },
+                color: fases.map((f) => f.color),
+                title: { show: false },
+                graphic: [
+                    {
+                        type: 'text',
+                        left: 'center',
+                        top: '42%',
+                        silent: true,
+                        style: {
+                            text: `{big|${this.formatPctPtBr(pctFinal)}%}\n{sub|${faseFinal.name}}`,
+                            textAlign: 'center',
+                            textVerticalAlign: 'middle',
+                            rich: {
+                                big: { fontSize: 50, fontWeight: 800, fill: '#6F1731', lineHeight: 56 },
+                                sub: { fontSize: 16, fontWeight: 600, fill: '#475569', lineHeight: 24 },
+                            },
+                        },
+                    },
+                ],
+                legend: {
+                    show: true,
+                    bottom: 6,
+                    left: 'center',
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: '#475569', fontSize: 11 },
+                    data: donutData.map((d) => d.labelText),
+                },
+                series: [
+                    {
+                        name: 'Panorama',
+                        type: 'pie',
+                        radius: ['46%', '64%'],
+                        center: ['50%', '46%'],
+                        avoidLabelOverlap: false,
+                        minShowLabelAngle: 0,
+                        label: {
+                            show: true,
+                            position: 'outside',
+                            alignTo: 'edge',
+                            edgeDistance: 8,
+                            bleedMargin: 0,
+                            width: 180,
+                            overflow: 'break',
+                            color: '#334155',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            formatter: (p) => {
+                                const row = donutData[p.dataIndex];
+                                if (!row) return `${p.name}`;
+                                const pct = this.formatPctPtBr((Number(row.value || 0) / totalFases) * 100);
+                                return `${row.name}\n${pct}%`;
+                            },
+                        },
+                        labelLayout: {
+                            hideOverlap: false,
+                            moveOverlap: 'shiftY',
+                        },
+                        labelLine: {
+                            show: true,
+                            length: 16,
+                            length2: 12,
+                            smooth: false,
+                            lineStyle: { color: '#94A3B8', width: 1 },
+                        },
+                        itemStyle: {
+                            borderColor: '#fff',
+                            borderWidth: 5,
+                            borderRadius: 12,
+                        },
+                        emphasis: { scale: false },
+                        data: donutData,
+                    },
+                ],
+            });
+        },
+        renderClienteEvolucao() {
+            const chart = this.baseChart('chartClienteEvolucao');
+            if (!chart) return;
+            const series = this.clienteEvolucaoSeries();
+            if (series.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem histórico para o período',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
+                    },
+                });
+                return;
+            }
+
+            const labels = series.map((s) => s.date);
+            const consolidadas = series.map((s) => s.consolidadas);
+            const emEvolucao = series.map((s) => s.emEvolucao);
+            const indice = series.map((s) => s.indice);
+            const totais = series.map((s) => s.consolidadas + s.emEvolucao);
+            const maxTotal = Math.max(...totais, 1);
+            const echarts = window.echarts;
+            const barConsolidadas = echarts?.graphic?.LinearGradient
+                ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#6F1731' },
+                    { offset: 1, color: '#9B2C4A' },
+                ])
+                : '#6F1731';
+            const barEvolucao = '#D1D5DB';
+
+            chart.setOption({
+                backgroundColor: 'transparent',
+                animationDuration: 600,
+                animationEasing: 'cubicOut',
+                grid: { left: 56, right: 64, top: 44, bottom: 46 },
+                legend: {
+                    top: 0,
+                    textStyle: { color: '#475569', fontSize: 12 },
+                    data: ['Funções consolidadas', 'Funções em evolução', 'Índice de Evolução (%)'],
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 13 },
+                    formatter: (params) => {
+                        const cons = params.find((p) => p.seriesName === 'Funções consolidadas');
+                        const evol = params.find((p) => p.seriesName === 'Funções em evolução');
+                        const line = params.find((p) => p.seriesName === 'Índice de Evolução (%)');
+                        if (!cons || !evol || !line) return '';
+                        const total = Number(cons.value || 0) + Number(evol.value || 0);
+                        return `<strong>${cons.name}</strong><br/>Mapeadas: ${this.formatQtyPtBr(total)}<br/>Consolidadas: ${this.formatQtyPtBr(cons.value)}<br/>Em evolução: ${this.formatQtyPtBr(evol.value)}<br/>Índice: ${this.formatPctPtBr(line.value)}%`;
+                    },
+                },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisTick: { show: false },
+                    axisLine: { lineStyle: { color: '#E2E8F0' } },
+                    axisLabel: { color: '#334155', fontSize: 12 },
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Número de Funções',
+                        min: 0,
+                        max: Math.ceil(maxTotal * 1.25),
+                        splitLine: { lineStyle: { color: '#EEF2F7' } },
+                        axisLabel: { color: '#64748B' },
+                    },
+                    {
+                        type: 'value',
+                        name: 'Índice de Evolução (%)',
+                        min: 0,
+                        max: 100,
+                        axisLabel: { color: '#64748B', formatter: '{value}%' },
+                        splitLine: { show: false },
+                    },
+                ],
+                series: [
+                    {
+                        name: 'Funções consolidadas',
+                        type: 'bar',
+                        stack: 'total',
+                        barWidth: '48%',
+                        data: consolidadas,
+                        itemStyle: { color: barConsolidadas, borderRadius: [6, 6, 0, 0] },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            color: '#FFFFFF',
+                            fontWeight: 800,
+                            formatter: (p) => this.formatQtyPtBr(p.value),
+                        },
+                    },
+                    {
+                        name: 'Funções em evolução',
+                        type: 'bar',
+                        stack: 'total',
+                        barWidth: '48%',
+                        data: emEvolucao,
+                        itemStyle: { color: barEvolucao, borderRadius: [6, 6, 0, 0] },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            color: '#374151',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            formatter: (p) => this.formatQtyPtBr(p.value),
+                        },
+                    },
+                    {
+                        name: 'Índice de Evolução (%)',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        data: indice,
+                        lineStyle: { color: '#6F1731', width: 2.5 },
+                        itemStyle: { color: '#FFFFFF', borderColor: '#6F1731', borderWidth: 2 },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#6F1731',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            formatter: (p) => `${this.formatPctPtBr(p.value)}%`,
+                        },
+                    },
+                    {
+                        name: 'Totais',
+                        type: 'bar',
+                        stack: 'total',
+                        silent: true,
+                        barWidth: '48%',
+                        data: totais.map(() => 0),
+                        itemStyle: { color: 'transparent' },
+                        tooltip: { show: false },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#111827',
+                            fontWeight: 800,
+                            formatter: (p) => this.formatQtyPtBr(totais[p.dataIndex] || 0),
+                        },
+                    },
+                ],
+            });
+        },
+        renderClienteCobertura() {
+            const chart = this.baseChart('chartClienteCobertura');
+            if (!chart) return;
+            const frentes = this.clienteCoberturaFrentes();
+            if (frentes.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem dados de cobertura no período',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
+                    },
+                });
+                return;
+            }
+
+            const categorias = frentes.map((f) => f.frente);
+            const cobertura = frentes.map((f) => f.cobertura);
+            const monitoradas = frentes.map((f) => f.monitoradas);
+
+            chart.setOption({
+                backgroundColor: 'transparent',
+                animationDuration: 600,
+                grid: { left: 120, right: 40, top: 44, bottom: 32 },
+                legend: {
+                    top: 0,
+                    textStyle: { color: '#475569', fontSize: 12 },
+                    data: ['Funções monitoradas', 'Cobertura'],
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 13 },
+                    formatter: (params) => {
+                        const bar = params.find((p) => p.seriesName === 'Cobertura');
+                        if (!bar) return '';
+                        const idx = bar.dataIndex;
+                        return `<strong>${categorias[idx]}</strong><br/>Funções monitoradas: ${this.formatQtyPtBr(monitoradas[idx] || 0)}<br/>Cobertura: ${this.formatPctPtBr(cobertura[idx] || 0)}%`;
+                    },
+                },
+                xAxis: {
+                    type: 'value',
+                    min: 0,
+                    max: 100,
+                    axisLabel: { color: '#64748B', formatter: '{value}%' },
+                    splitLine: { lineStyle: { color: '#EEF2F7' } },
+                },
+                yAxis: {
+                    type: 'category',
+                    data: categorias,
+                    axisTick: { show: false },
+                    axisLine: { show: false },
+                    axisLabel: { color: '#1F2937', fontWeight: 600 },
+                },
+                series: [
+                    {
+                        name: 'Cobertura',
+                        type: 'bar',
+                        data: cobertura,
+                        barWidth: 18,
+                        itemStyle: {
+                            color: '#6F1731',
+                            borderRadius: [0, 8, 8, 0],
+                        },
+                        label: {
+                            show: true,
+                            position: 'right',
+                            color: '#6F1731',
+                            fontWeight: 800,
+                            formatter: (p) => `${this.formatPctPtBr(p.value)}%`,
+                        },
+                    },
+                    {
+                        name: 'Funções monitoradas',
+                        type: 'scatter',
+                        symbolSize: 0,
+                        data: monitoradas,
+                    },
+                ],
+            });
+        },
+        renderClienteCoberturaDonut() {
+            const chart = this.baseChart('chartClienteCoberturaDonut');
+            if (!chart) return;
+            const resumo = this.clienteCoberturaResumo();
+            const monitoradas = Math.max(0, Number(resumo.monitoradas || 0));
+            const mapeadas = Math.max(0, Number(resumo.mapeadas || 0));
+            const pendentes = Math.max(0, mapeadas - monitoradas);
+            const cobertura = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
+
+            if (mapeadas === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem base mapeada',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
+                    },
+                });
+                return;
+            }
+
+            chart.setOption({
+                backgroundColor: 'transparent',
+                color: ['#166534', '#D1D5DB'],
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 13 },
+                    formatter: (p) => `${p.name}: ${this.formatQtyPtBr(p.value)}`,
+                },
+                title: {
+                    text: `${this.formatPctPtBr(cobertura)}%`,
+                    subtext: 'Funções\nMonitoradas',
+                    left: 'center',
+                    top: '42%',
+                    textAlign: 'center',
+                    textVerticalAlign: 'middle',
+                    textStyle: { color: '#166534', fontSize: 44, fontWeight: 900 },
+                    subtextStyle: { color: '#334155', fontSize: 24, fontWeight: 600, lineHeight: 30 },
+                },
+                legend: { show: false },
+                series: [
+                    {
+                        name: 'Cobertura',
+                        type: 'pie',
+                        radius: ['62%', '82%'],
+                        center: ['50%', '48%'],
+                        label: { show: false },
+                        itemStyle: { borderColor: '#FFFFFF', borderWidth: 4 },
+                        data: [
+                            { name: 'Monitoradas', value: monitoradas },
+                            { name: 'Pendentes', value: pendentes },
+                        ],
+                    },
+                ],
+            });
+        },
+        renderClienteMapaDonut() {
+            const chart = this.baseChart('chartClienteMapaDonut');
+            if (!chart) return;
+            const r = this.clienteConsolidacaoResumo();
+            if (r.mapeadas === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem dados de consolidação',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
+                    },
+                });
+                return;
+            }
+            chart.setOption({
+                backgroundColor: 'transparent',
+                color: ['#166534', '#EAB308'],
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 12 },
+                    formatter: (p) => `${p.name}: ${this.formatQtyPtBr(p.value)} (${this.formatPctPtBr(p.percent)}%)`,
+                },
+                title: {
+                    text: `${this.formatPctPtBr(r.indice)}%`,
+                    subtext: 'Consolidada',
+                    left: 'center',
+                    top: '40%',
+                    textAlign: 'center',
+                    textStyle: { color: '#1F2937', fontSize: 30, fontWeight: 900 },
+                    subtextStyle: { color: '#475569', fontSize: 14, fontWeight: 600 },
+                },
+                legend: {
+                    orient: 'vertical',
+                    bottom: 0,
+                    left: 'left',
+                    textStyle: { color: '#475569', fontSize: 11 },
+                },
+                series: [{
+                    name: 'Distribuição',
+                    type: 'pie',
+                    radius: ['56%', '74%'],
+                    center: ['52%', '40%'],
+                    label: { show: false },
+                    itemStyle: { borderColor: '#fff', borderWidth: 3 },
+                    data: [
+                        { name: `Consolidadas: ${r.consolidadas}`, value: r.consolidadas },
+                        { name: `Em Evolução: ${r.emEvolucao}`, value: r.emEvolucao },
+                    ],
+                }],
+            });
         },
         renderDonut() {
             const chart = this.baseChart('chartDonut');
@@ -284,105 +1013,131 @@ window.pguDashboard = function () {
         renderMaoDeObra() {
             const chart = this.baseChart('chartMaoDeObra');
             if (!chart) return;
-            const m = this.data.mao_de_obra || {};
-            const categories = ['Mobilização', 'Pré-PGU', 'PGU', 'Pós-PGU'];
-            const keys = ['mobilizacao', 'pre_pgu', 'pgu', 'pos_pgu'];
-            const values = keys.map((k) => Math.max(0, Number(m[k] ?? 0)));
-            const maxVal = Math.max(...values, 1);
+            const fases = this.data.fase_atual || [];
+            if (fases.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem dados de fases',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
+                    },
+                });
+                return;
+            }
+
+            const ordered = [...fases].map((f, idx) => ({
+                name: f.fase || `Fase ${idx + 1}`,
+                value: Math.max(0, Number(f.valor ?? 0)),
+            }));
+            const totalEntrada = Math.max(1, Number(ordered[0]?.value ?? 1));
+            const categories = ordered.map((f) => f.name);
+            const values = ordered.map((f) => f.value);
+            const percents = ordered.map((f) => Math.max(0, Math.min(100, (f.value / totalEntrada) * 100)));
+            const maxValue = Math.max(...values, 1);
             const echarts = window.echarts;
-            const barColor = (top, bottom) => {
-                if (!echarts?.graphic?.LinearGradient) return top;
-                return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: top },
-                    { offset: 1, color: bottom },
-                ]);
-            };
-            const palette = [
-                { top: '#94A3B8', bottom: '#64748B' },
-                { top: '#2DD4BF', bottom: '#0D9488' },
-                { top: '#0F766E', bottom: '#115E59' },
-                { top: '#5EEAD4', bottom: '#14B8A6' },
-            ];
+            const barGradient = echarts?.graphic?.LinearGradient
+                ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#0EA5E9' },
+                    { offset: 1, color: '#0369A1' },
+                ])
+                : '#0284C7';
 
             chart.setOption({
                 backgroundColor: 'transparent',
-                animationDuration: 550,
+                animationDuration: 600,
                 animationEasing: 'cubicOut',
-                grid: { left: 48, right: 24, top: 48, bottom: 56, containLabel: true },
+                grid: { left: 48, right: 24, top: 42, bottom: 62 },
                 tooltip: {
                     trigger: 'axis',
-                    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(15, 23, 42, 0.06)' } },
+                    axisPointer: { type: 'shadow' },
                     backgroundColor: '#0F172A',
                     borderWidth: 0,
                     padding: [12, 14],
                     textStyle: { color: '#FFFFFF', fontSize: 13 },
                     formatter: (params) => {
-                        const p = params[0];
-                        if (!p) return '';
-                        const i = p.dataIndex;
-                        const label = categories[i];
-                        const val = values[i];
-                        return `<strong>${label}</strong><br/>Volume: ${this.formatQtyPtBr(val)}`;
+                        const bar = params.find((p) => p.seriesName === 'Candidatos');
+                        const line = params.find((p) => p.seriesName === 'Avanço acumulado');
+                        if (!bar) return '';
+                        const idx = bar.dataIndex;
+                        const acumulado = line ? Number(line.value || 0) : (percents[idx] ?? 0);
+                        const prev = idx > 0 ? values[idx - 1] : values[0];
+                        const etapa = prev > 0 ? (values[idx] / prev) * 100 : 0;
+                        return `<strong>${bar.name}</strong><br/>Candidatos: ${this.formatQtyPtBr(bar.value)}<br/>Avanço acumulado: ${this.formatPctPtBr(acumulado)}%<br/>Conversão da etapa: ${this.formatPctPtBr(etapa)}%`;
                     },
+                },
+                legend: {
+                    top: 4,
+                    textStyle: { color: '#64748B', fontSize: 12 },
+                    data: ['Candidatos', 'Avanço acumulado'],
                 },
                 xAxis: {
                     type: 'category',
                     data: categories,
+                    axisTick: { show: false },
                     axisLine: { lineStyle: { color: '#E2E8F0' } },
-                    axisTick: { show: false },
                     axisLabel: {
-                        color: '#475569',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        interval: 0,
-                        formatter: (name) => (name.length > 12 ? `${name.slice(0, 11)}…` : name),
-                    },
-                },
-                yAxis: {
-                    type: 'value',
-                    max: Math.ceil(maxVal * 1.08),
-                    min: 0,
-                    splitLine: { lineStyle: { color: '#F1F5F9', type: 'dashed' } },
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                    axisLabel: {
-                        color: '#94A3B8',
+                        color: '#334155',
                         fontSize: 12,
-                        formatter: (v) =>
-                            Number.isInteger(v) ? String(v) : String(v).replace('.', ','),
+                        interval: 0,
                     },
                 },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Candidatos',
+                        min: 0,
+                        max: Math.ceil(maxValue * 1.15),
+                        axisLabel: { color: '#64748B' },
+                        splitLine: { lineStyle: { color: '#EEF2F7' } },
+                    },
+                    {
+                        type: 'value',
+                        name: '',
+                        min: 0,
+                        max: 100,
+                        axisLabel: { show: false },
+                        axisTick: { show: false },
+                        axisLine: { show: false },
+                        splitLine: { show: false },
+                    },
+                ],
                 series: [
                     {
-                        name: 'Volume',
+                        name: 'Candidatos',
                         type: 'bar',
                         barWidth: '42%',
-                        barCategoryGap: '28%',
-                        data: values.map((val, i) => ({
-                            value: val,
-                            itemStyle: {
-                                color: barColor(palette[i].top, palette[i].bottom),
-                                borderRadius: [10, 10, 4, 4],
-                                shadowColor: 'rgba(15, 118, 110, 0.18)',
-                                shadowBlur: 12,
-                                shadowOffsetY: 4,
-                            },
-                        })),
+                        data: values,
+                        itemStyle: {
+                            color: barGradient,
+                            borderRadius: [8, 8, 0, 0],
+                        },
                         label: {
                             show: true,
                             position: 'top',
-                            distance: 8,
                             color: '#0F172A',
-                            fontSize: 15,
                             fontWeight: 700,
+                            fontSize: 12,
                             formatter: (p) => this.formatQtyPtBr(p.value),
                         },
-                        emphasis: {
-                            focus: 'self',
-                            itemStyle: {
-                                shadowBlur: 20,
-                                shadowColor: 'rgba(15, 118, 110, 0.35)',
-                            },
+                    },
+                    {
+                        name: 'Avanço acumulado',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 7,
+                        data: percents,
+                        lineStyle: { color: '#2563EB', width: 3 },
+                        itemStyle: { color: '#2563EB' },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#1D4ED8',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            formatter: (p) => `${this.formatPctPtBr(p.value)}%`,
                         },
                     },
                 ],
@@ -512,7 +1267,7 @@ window.pguDashboard = function () {
             if (!chart) return;
             const items = this.data.funcoes_pgu_100 || [];
             const summary = this.data.summary || {};
-            const n100 = items.length;
+            const n100 = Math.round(items.reduce((acc, row) => acc + Number(row?.completed || 0), 0));
             const total = Number(summary.total_functions ?? 0);
             const nDemais = Math.max(0, total - n100);
 
@@ -520,8 +1275,8 @@ window.pguDashboard = function () {
                 chart.setOption({
                     backgroundColor: 'transparent',
                     title: {
-                        text: 'Sem funções no recorte',
-                        subtext: 'Não há linhas de histograma para esta competência.',
+                        text: 'Sem vagas no recorte',
+                        subtext: 'Não há vagas monitoradas para esta competência.',
                         left: 'center',
                         top: 'middle',
                         textAlign: 'center',
@@ -552,7 +1307,7 @@ window.pguDashboard = function () {
                         silent: true,
                         z: 10,
                         style: {
-                            text: `{main|${n100}}\n{sub|Pré cobre PGU}\n{ratio|${n100}\u2009/\u2009${total}}`,
+                            text: `{main|${n100}}\n{sub|Vagas concluídas}\n{ratio|${n100}\u2009/\u2009${total}}`,
                             textAlign: 'center',
                             textVerticalAlign: 'middle',
                             rich: {
@@ -592,9 +1347,9 @@ window.pguDashboard = function () {
                     textStyle: { color: '#FFFFFF', fontSize: 13 },
                     formatter: (p) => {
                         if (p.dataIndex === 0) {
-                            return `<strong>100% cobertura</strong><br/>${n100} função(ões) — ${this.formatPctPtBr(pctIntegral)}% do total`;
+                            return `<strong>100% cobertura</strong><br/>${n100} vaga(s) — ${this.formatPctPtBr(pctIntegral)}% do total`;
                         }
-                        return `<strong>Demais funções</strong><br/>${nDemais} com falta de mobilização ou PGU não informado`;
+                        return `<strong>Demais vagas</strong><br/>${nDemais} ainda não concluídas`;
                     },
                 },
                 legend: {
@@ -644,10 +1399,9 @@ window.pguDashboard = function () {
                 ],
             });
         },
-        renderPareto() {
-            const chart = this.baseChart('chartPareto');
+        renderPareto(chartId, items) {
+            const chart = this.baseChart(chartId);
             if (!chart) return;
-            const items = this.data.pareto_executivo || [];
             if (items.length === 0) {
                 chart.setOption({
                     title: {
@@ -779,7 +1533,7 @@ window.pguDashboard = function () {
         renderTrend() {
             const chart = this.baseChart('chartTrend');
             if (!chart) return;
-            const items = this.data.trend || [];
+            const items = this.data.fase_trend || [];
             chart.setOption({
                 backgroundColor: 'transparent',
                 grid: { left: 48, right: 52, top: 40, bottom: 40 },
@@ -793,10 +1547,7 @@ window.pguDashboard = function () {
                         const mes = params.name;
                         const nome = params.seriesName;
                         const v = params.value;
-                        if (nome === 'Avanço médio') {
-                            return `<strong>${mes}</strong><br/>${nome}: ${this.formatPctPtBr(v)}%`;
-                        }
-                        return `<strong>${mes}</strong><br/>${nome}: ${this.formatQtyPtBr(v)} vagas`;
+                        return `<strong>${mes}</strong><br/>${nome}: ${this.formatQtyPtBr(v)} candidato(s)`;
                     },
                 },
                 legend: { top: 4, textStyle: { color: '#64748B' } },
@@ -811,62 +1562,79 @@ window.pguDashboard = function () {
                 yAxis: [
                     {
                         type: 'value',
-                        name: 'Vagas',
+                        name: 'Candidatos',
                         nameTextStyle: { color: '#64748B' },
                         axisLabel: { color: '#64748B' },
                         splitLine: { lineStyle: { color: '#EEF2F7' } },
                     },
-                    {
-                        type: 'value',
-                        name: '% avanço médio',
-                        min: 0,
-                        max: 100,
-                        nameTextStyle: { color: '#2563EB' },
-                        axisLabel: { color: '#2563EB', formatter: '{value}%' },
-                        splitLine: { show: false },
-                    },
                 ],
                 series: [
                     {
-                        name: 'Pendentes',
+                        name: 'Recrutamento',
                         type: 'line',
                         yAxisIndex: 0,
                         smooth: true,
                         showSymbol: true,
                         symbolSize: 9,
                         triggerLineEvent: true,
-                        lineStyle: { width: 2.5, color: '#D97706' },
-                        itemStyle: { color: '#D97706' },
-                        areaStyle: { color: 'rgba(217, 119, 6, 0.12)' },
+                        lineStyle: { width: 2.5, color: '#6366F1' },
+                        itemStyle: { color: '#6366F1' },
+                        areaStyle: { color: 'rgba(99, 102, 241, 0.10)' },
                         emphasis: { focus: 'series' },
-                        data: items.map((item) => item.pending),
+                        data: items.map((item) => item.recrutamento ?? 0),
                     },
                     {
-                        name: 'Coberto (min Pré, PGU)',
+                        name: 'Exame Médico',
                         type: 'line',
                         yAxisIndex: 0,
                         smooth: true,
                         showSymbol: true,
                         symbolSize: 9,
                         triggerLineEvent: true,
-                        lineStyle: { width: 2.5, color: '#059669' },
-                        itemStyle: { color: '#059669' },
-                        areaStyle: { color: 'rgba(5, 150, 105, 0.12)' },
+                        lineStyle: { width: 2.5, color: '#0EA5E9' },
+                        itemStyle: { color: '#0EA5E9' },
+                        areaStyle: { color: 'rgba(14, 165, 233, 0.10)' },
                         emphasis: { focus: 'series' },
-                        data: items.map((item) => item.completed),
+                        data: items.map((item) => item.exame_medico ?? 0),
                     },
                     {
-                        name: 'Avanço médio',
+                        name: 'Trein. + Assinatura',
                         type: 'line',
-                        yAxisIndex: 1,
+                        yAxisIndex: 0,
                         smooth: true,
                         showSymbol: true,
                         symbolSize: 10,
                         triggerLineEvent: true,
-                        lineStyle: { width: 3, color: '#2563EB' },
-                        itemStyle: { color: '#2563EB' },
+                        lineStyle: { width: 3, color: '#10B981' },
+                        itemStyle: { color: '#10B981' },
                         emphasis: { focus: 'series' },
-                        data: items.map((item) => item.progress),
+                        data: items.map((item) => item.treinamentos_assinatura ?? 0),
+                    },
+                    {
+                        name: 'Postagem SGC',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        smooth: true,
+                        showSymbol: true,
+                        symbolSize: 9,
+                        triggerLineEvent: true,
+                        lineStyle: { width: 2.5, color: '#F59E0B' },
+                        itemStyle: { color: '#F59E0B' },
+                        emphasis: { focus: 'series' },
+                        data: items.map((item) => item.sgc ?? 0),
+                    },
+                    {
+                        name: 'Liberação',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        smooth: true,
+                        showSymbol: true,
+                        symbolSize: 9,
+                        triggerLineEvent: true,
+                        lineStyle: { width: 2.5, color: '#EF4444' },
+                        itemStyle: { color: '#EF4444' },
+                        emphasis: { focus: 'series' },
+                        data: items.map((item) => item.liberacao ?? 0),
                     },
                 ],
             });

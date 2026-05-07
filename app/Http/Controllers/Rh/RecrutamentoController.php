@@ -9,12 +9,29 @@ use App\Models\RecrutamentoVaga;
 use App\Support\ContratoAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class RecrutamentoController extends Controller
 {
     public function index()
     {
-        $vagas = ContratoAccess::applyContratoString(RecrutamentoVaga::query())
+        $contratoSelecionado = trim((string) request('contrato'));
+
+        $centrosDeCusto = ContratoAccess::applyContratoModel(Contrato::query())
+            ->where('status', 'Ativo')
+            ->orderBy('centro_custo')
+            ->get(['centro_custo'])
+            ->pluck('centro_custo')
+            ->map(fn ($valor) => trim((string) $valor))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $vagasQuery = ContratoAccess::applyContratoString(RecrutamentoVaga::query())
+            ->when($contratoSelecionado === '', fn ($query) => $query->whereRaw('1 = 0'))
+            ->when($contratoSelecionado !== '', function ($query) use ($contratoSelecionado) {
+                $query->where('contrato', $contratoSelecionado);
+            })
             ->when(request('busca'), function ($query, string $busca) {
                 $query->where(function ($query) use ($busca) {
                     $query->where('titulo', 'like', "%{$busca}%")
@@ -23,12 +40,16 @@ class RecrutamentoController extends Controller
                         ->orWhere('local', 'like', "%{$busca}%")
                         ->orWhere('status', 'like', "%{$busca}%");
                 });
-            })
+            });
+
+        $vagas = (clone $vagasQuery)
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
-        return view('rh.recrutamento.index', compact('vagas'));
+        $indicadores = $this->buildIndicadores((clone $vagasQuery)->get());
+
+        return view('rh.recrutamento.index', compact('vagas', 'centrosDeCusto', 'contratoSelecionado', 'indicadores'));
     }
 
     public function create()
@@ -69,6 +90,16 @@ class RecrutamentoController extends Controller
     public function edit(RecrutamentoVaga $recrutamento)
     {
         $this->authorizeContratoString($recrutamento->contrato);
+
+        $state = $this->applyContratoCatalogData($recrutamento->form_state ?? []);
+        if (($recrutamento->form_state ?? []) !== $state) {
+            $recrutamento->forceFill([
+                'form_state' => $state,
+                'gestor' => $state['vaga_gestor'] ?? $recrutamento->gestor,
+                'local' => $state['vaga_local'] ?? $recrutamento->local,
+            ])->saveQuietly();
+            $recrutamento->refresh();
+        }
 
         return view('rh.recrutamento.form', ['vaga' => $recrutamento]);
     }
@@ -122,6 +153,7 @@ class RecrutamentoController extends Controller
 
         $state = json_decode($validated['form_state'] ?? '{}', true) ?: [];
         $state = $this->enforceContratoState($state);
+        $state = $this->applyContratoCatalogData($state);
 
         return [
             'titulo' => $state['vaga_titulo'] ?? null,
@@ -183,6 +215,29 @@ class RecrutamentoController extends Controller
         return array_merge($state, $this->loggedContratoDefaults());
     }
 
+    private function applyContratoCatalogData(array $state): array
+    {
+        $selected = trim((string) ($state['vaga_contrato'] ?? ''));
+        if ($selected === '') {
+            return $state;
+        }
+
+        $contrato = Contrato::query()
+            ->where('numero', $selected)
+            ->orWhere('centro_custo', $selected)
+            ->orWhere('nome', $selected)
+            ->first();
+
+        if (! $contrato) {
+            return $state;
+        }
+
+        $state['vaga_gestor'] = (string) ($contrato->gestor ?? '');
+        $state['vaga_local'] = (string) ($contrato->local_execucao ?? '');
+
+        return $state;
+    }
+
     private function syncCandidatosAssinadosComEfetivo(RecrutamentoVaga $vaga): void
     {
         $state = $vaga->form_state ?? [];
@@ -239,5 +294,48 @@ class RecrutamentoController extends Controller
         if ($changed) {
             $vaga->forceFill(['form_state' => $state])->saveQuietly();
         }
+    }
+
+    /**
+     * @param  Collection<int, RecrutamentoVaga>  $vagas
+     * @return array<string, int>
+     */
+    private function buildIndicadores(Collection $vagas): array
+    {
+        $totalVagas = (int) $vagas->sum(fn (RecrutamentoVaga $vaga) => max(1, (int) $vaga->quantidade));
+        $fichas = $vagas->count();
+        $emAbertura = $vagas->where('status', 'Em abertura')->count();
+
+        $aprovados = 0;
+        $liberados = 0;
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+
+            foreach (range(1, $quantity) as $position) {
+                $name = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
+                $status = (string) ($state["candidato_{$position}_status"] ?? 'pendente');
+                if ($status !== 'aprovado' || $name === '') {
+                    continue;
+                }
+
+                $aprovados++;
+                $doneLiberacao = filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
+                    && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
+                    && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
+                if ($doneLiberacao) {
+                    $liberados++;
+                }
+            }
+        }
+
+        return [
+            'fichas' => $fichas,
+            'total_vagas' => $totalVagas,
+            'em_abertura' => $emAbertura,
+            'aprovados' => $aprovados,
+            'liberados' => $liberados,
+        ];
     }
 }
