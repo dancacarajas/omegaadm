@@ -99,6 +99,7 @@ class PguDashboardApiController extends Controller
         $overallProgress = $ranking === [] ? 0.0 : round(collect($ranking)->avg('progress'), 1);
         $totalPending = (int) round($kpisItens['vagas_pendentes_por_funcao']);
         $totalFunctions = (int) round(collect($ranking)->sum(fn ($r) => (float) ($r['pgu'] ?? 0)));
+        /** Vagas consolidadas só em linhas 100% (legado / slides que usam “integral” por linha). */
         $completedFunctions = (int) round(collect($ranking)->filter(function ($r) {
             $pre = (float) ($r['pre_pgu'] ?? 0);
             $pgu = (float) ($r['pgu'] ?? 0);
@@ -111,11 +112,20 @@ class PguDashboardApiController extends Controller
 
             return (float) ($r['progress'] ?? 0) >= 100;
         })->sum(fn ($r) => (float) ($r['completed'] ?? 0)));
+        /** Total de vagas com liberação / consolidadas no PGU (soma de `completed` em todo o ranking) — base do % consolidado vs total_functions. */
+        $vagasConcluidas = (int) round(collect($ranking)->sum(fn ($r) => (float) ($r['completed'] ?? 0)));
         $criticalFunctions = collect($ranking)->where('status', 'critical')->count();
 
         $deadlineRisk = $this->deadlineRisk($deadline, $overallProgress);
         $progressDelta = $this->progressDeltaFromTrend($trend);
         $itensAtrasadosFase2 = (int) collect($ranking)->filter(fn ($row) => ((float) ($row['progress'] ?? 0)) < 100)->count();
+        $cycleStartAt = ContratoHistogramaLinha::query()
+            ->where('contrato', $data['contrato'])
+            ->orderBy('created_at')
+            ->value('created_at');
+
+        $kpiVagasPrevistas = (int) round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0));
+        $maturidadeTotalVagas = $kpiVagasPrevistas > 0 ? $kpiVagasPrevistas : $totalFunctions;
 
         return [
             'summary' => [
@@ -124,10 +134,12 @@ class PguDashboardApiController extends Controller
                 'total_pending' => $totalPending,
                 'total_functions' => $totalFunctions,
                 'completed_functions' => $completedFunctions,
+                'vagas_concluidas' => $vagasConcluidas,
                 'critical_functions' => $criticalFunctions,
                 'deadline_risk' => $deadlineRisk,
                 'deadline_risk_label' => $this->deadlineRiskLabel($deadlineRisk),
                 'deadline_date' => $deadline?->toDateString(),
+                'cycle_start_date' => $cycleStartAt ? Carbon::parse($cycleStartAt)->toDateString() : null,
                 'itens_atrasados_fase2' => $itensAtrasadosFase2,
                 'kpis_mao_de_obra_itens' => $kpisItens,
             ],
@@ -150,6 +162,8 @@ class PguDashboardApiController extends Controller
             'heatmap' => $heatmap,
             'treemap_pendencias' => $treemap,
             'funcoes_pgu_100' => $funcoesPgu100,
+            // Total de vagas do recortamento (KPI) ou, se vazio, soma PGU no histograma — base do funil de maturidade.
+            'maturidade_total_vagas' => $maturidadeTotalVagas,
             'mao_de_obra' => [
                 'mobilizacao' => round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0), 2),
                 'pre_pgu' => round((float) ($kpisItens['vagas_concluidas_no_pgu'] ?? 0), 2),

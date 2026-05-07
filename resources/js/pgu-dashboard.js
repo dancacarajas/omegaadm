@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import PptxGenJS from 'pptxgenjs';
+import { initAppLucideIcons } from './charts/icons.js';
 
 window.pguDashboard = function () {
     return {
@@ -15,12 +16,18 @@ window.pguDashboard = function () {
         clienteEvolucaoMenuOpen: false,
         clienteCoberturaMenuOpen: false,
         clienteMapaMenuOpen: false,
+        clienteDestaquesMenuOpen: false,
+        clientePlanoMenuOpen: false,
+        clienteCicloMenuOpen: false,
         setVisaoAba(tab) {
             this.visaoAba = tab;
             this.clienteMenuOpen = false;
             this.clienteEvolucaoMenuOpen = false;
             this.clienteCoberturaMenuOpen = false;
             this.clienteMapaMenuOpen = false;
+            this.clienteDestaquesMenuOpen = false;
+            this.clientePlanoMenuOpen = false;
+            this.clienteCicloMenuOpen = false;
             queueMicrotask(() => this.scheduleChartsResize());
             setTimeout(() => this.scheduleChartsResize(), 120);
         },
@@ -47,6 +54,12 @@ window.pguDashboard = function () {
         },
         closeClienteMapaMenu() {
             this.clienteMapaMenuOpen = false;
+        },
+        toggleClienteCicloMenu() {
+            this.clienteCicloMenuOpen = !this.clienteCicloMenuOpen;
+        },
+        closeClienteCicloMenu() {
+            this.clienteCicloMenuOpen = false;
         },
         clienteInfo() {
             window.alert('Panorama Executivo do PGU (Visão Cliente): mostra a distribuição das vagas por fase do recrutamento e o percentual consolidado da fase final sobre o total de vagas monitoradas.');
@@ -75,6 +88,44 @@ window.pguDashboard = function () {
         exportClienteMapa() {
             this.exportChartPng('chartClienteMapaDonut');
             this.closeClienteMapaMenu();
+        },
+        toggleClienteDestaquesMenu() {
+            this.clienteDestaquesMenuOpen = !this.clienteDestaquesMenuOpen;
+        },
+        closeClienteDestaquesMenu() {
+            this.clienteDestaquesMenuOpen = false;
+        },
+        clienteDestaquesInfo() {
+            window.alert(
+                'Destaques operacionais do ciclo: resume avanços recentes (comparando o último mês da série), movimentação consolidada/pendências, '
+                + 'funções com menor índice e gráficos de progresso e de participação das etapas de maturidade.',
+            );
+        },
+        exportClienteDestaques() {
+            this.exportChartPng('chartClienteDestaquesLinha');
+            this.closeClienteDestaquesMenu();
+        },
+        toggleClientePlanoMenu() {
+            this.clientePlanoMenuOpen = !this.clientePlanoMenuOpen;
+        },
+        closeClientePlanoMenu() {
+            this.clientePlanoMenuOpen = false;
+        },
+        clientePlanoInfo() {
+            window.alert(
+                'Plano de acompanhamento até a data limite: consolida roteiro das etapas de maturidade, plano de ações sugerido e projeção de conclusão com base no progresso consolidado do ciclo.',
+            );
+        },
+        exportClientePlano() {
+            this.exportChartPng('chartClientePlanoSemiDonut');
+            this.closeClientePlanoMenu();
+        },
+        clienteCicloInfo() {
+            window.alert('Avanço do Ciclo até a Data Limite: mostra o progresso consolidado do ciclo de mobilização, marco de data limite e situação atual das vagas do contrato.');
+        },
+        exportClienteCiclo() {
+            this.exportElementPng('cardClienteCiclo');
+            this.closeClienteCicloMenu();
         },
         /** Slides da apresentação PGU (abas superiores). */
         abaApresentacao: 'capa',
@@ -109,7 +160,11 @@ window.pguDashboard = function () {
         clientePanorama() {
             const summary = this.data?.summary || {};
             const mapeadas = Number(summary.total_functions || 0);
-            const consolidadas = Number(summary.completed_functions || 0);
+            // `completed_functions` na API = somente vagas em linhas com progresso 100% (subconjunto).
+            // `vagas_concluidas` = soma de todas as vagas consolidadas — alinha com o mapa por função e KPIs de ciclo.
+            const consolidadas = Number(
+                summary.vagas_concluidas ?? summary.completed_functions ?? 0,
+            );
             const emEvolucao = Math.max(0, mapeadas - consolidadas);
             const pctConsolidada = mapeadas > 0 ? (consolidadas / mapeadas) * 100 : 0;
             const pctEvolucao = Math.max(0, 100 - pctConsolidada);
@@ -209,23 +264,59 @@ window.pguDashboard = function () {
                 frentesAcompanhadas,
             };
         },
+        /** Agrega `ranking` (API) por função/código — base real para mapa de consolidação e cobertura. */
+        clienteRankingPorFuncaoAgg() {
+            const ranking = Array.isArray(this.data?.ranking) ? this.data.ranking : [];
+            const map = new Map();
+            ranking.forEach((r) => {
+                const funcaoRaw = String(r?.funcao || r?.function || 'Função').trim() || 'Função';
+                const codigoRaw = r?.codigo != null && String(r.codigo).trim() !== '' ? String(r.codigo).trim() : '';
+                const key = codigoRaw ? `${codigoRaw}\u0000${funcaoRaw}` : funcaoRaw;
+                const total = Math.max(0, Math.round(Number(r?.pgu ?? r?.qty ?? 0)));
+                const consolidadas = Math.max(0, Math.round(Number(r?.completed ?? 0)));
+                if (total <= 0) {
+                    return;
+                }
+                const cur = map.get(key);
+                if (cur) {
+                    cur.total += total;
+                    cur.consolidadas += consolidadas;
+                } else {
+                    map.set(key, {
+                        codigo: codigoRaw || null,
+                        funcao: funcaoRaw,
+                        total,
+                        consolidadas,
+                    });
+                }
+            });
+            return [...map.values()]
+                .map((row) => ({
+                    ...row,
+                    consolidadas: Math.min(row.consolidadas, row.total),
+                }))
+                .filter((row) => row.total > 0)
+                .sort((a, b) => b.total - a.total);
+        },
+        clienteLabelFuncaoAgg(row) {
+            if (row.codigo) {
+                return `${row.codigo} - ${row.funcao}`;
+            }
+            return row.funcao;
+        },
         clienteCoberturaGrupos() {
-            const ranking = Array.isArray(this.data?.ranking_executivo) ? this.data.ranking_executivo : [];
-            const baseRows = ranking
-                .map((r) => {
-                    const mapeadas = Math.max(0, Math.round(Number(r?.qty || 0)));
-                    const monitoradas = mapeadas > 0 ? mapeadas : 0;
-                    const cobertura = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
-                    return {
-                        grupo: String(r?.funcao || 'Função'),
-                        mapeadas,
-                        monitoradas,
-                        cobertura: Math.max(0, Math.min(100, Math.round(cobertura * 10) / 10)),
-                        status: monitoradas >= mapeadas ? 'Monitorado' : 'Parcial',
-                    };
-                })
-                .filter((r) => r.mapeadas > 0)
-                .sort((a, b) => b.mapeadas - a.mapeadas);
+            const baseRows = this.clienteRankingPorFuncaoAgg().map((row) => {
+                const mapeadas = row.total;
+                const monitoradas = row.consolidadas;
+                const cobertura = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
+                return {
+                    grupo: this.clienteLabelFuncaoAgg(row),
+                    mapeadas,
+                    monitoradas,
+                    cobertura: Math.max(0, Math.min(100, Math.round(cobertura * 10) / 10)),
+                    status: monitoradas >= mapeadas ? 'Monitorado' : 'Parcial',
+                };
+            });
 
             if (baseRows.length <= 6) {
                 return baseRows;
@@ -245,23 +336,19 @@ window.pguDashboard = function () {
             return top;
         },
         clienteConsolidacaoRows() {
-            const ranking = Array.isArray(this.data?.ranking_executivo) ? this.data.ranking_executivo : [];
-            return ranking
-                .map((r) => {
-                    const total = Math.max(0, Number(r?.qty || 0));
-                    const consolidadas = Math.max(0, Number(r?.completed || 0));
-                    const emEvolucao = Math.max(0, total - consolidadas);
-                    const indice = total > 0 ? (consolidadas / total) * 100 : 0;
-                    return {
-                        funcao: String(r?.funcao || 'Função'),
-                        total: Math.round(total),
-                        consolidadas: Math.round(consolidadas),
-                        emEvolucao: Math.round(emEvolucao),
-                        indice: Math.round(indice * 10) / 10,
-                    };
-                })
-                .filter((r) => r.total > 0)
-                .sort((a, b) => b.total - a.total);
+            return this.clienteRankingPorFuncaoAgg().map((row) => {
+                const total = row.total;
+                const consolidadas = row.consolidadas;
+                const emEvolucao = Math.max(0, total - consolidadas);
+                const indice = total > 0 ? (consolidadas / total) * 100 : 0;
+                return {
+                    funcao: this.clienteLabelFuncaoAgg(row),
+                    total,
+                    consolidadas,
+                    emEvolucao,
+                    indice: Math.round(indice * 10) / 10,
+                };
+            });
         },
         clienteConsolidacaoResumo() {
             const rows = this.clienteConsolidacaoRows();
@@ -270,6 +357,8 @@ window.pguDashboard = function () {
             const emEvolucao = rows.reduce((acc, r) => acc + r.emEvolucao, 0);
             const indice = mapeadas > 0 ? (consolidadas / mapeadas) * 100 : 0;
             const delta = Number(this.data?.summary?.progress_delta || 0);
+            const funcoesMonitoradas = rows.length;
+            const funcoes100 = rows.filter((r) => r.total > 0 && r.consolidadas >= r.total).length;
             return {
                 mapeadas: Math.round(mapeadas),
                 consolidadas: Math.round(consolidadas),
@@ -277,7 +366,530 @@ window.pguDashboard = function () {
                 coberturaMonitorada: mapeadas > 0 ? 100 : 0,
                 indice: Math.round(indice * 10) / 10,
                 delta: Math.round(delta * 10) / 10,
+                funcoesMonitoradas,
+                funcoes100,
             };
+        },
+        /** Faixas do donut (exceção de cor: paleta semântica verde → vermelho). */
+        clienteConsolidacaoFaixasDonutMeta() {
+            return [
+                { key: '100', label: '100% concluídas', color: '#14532D' },
+                { key: '75', label: '75% a 99%', color: '#4ADE80' },
+                { key: '50', label: '50% a 74%', color: '#EAB308' },
+                { key: '25', label: '25% a 49%', color: '#FB923C' },
+                { key: 'low', label: '0% a 24%', color: '#EF4444' },
+            ];
+        },
+        clienteConsolidacaoFaixaIndiceRow(r) {
+            if (r.total <= 0) return null;
+            if (r.consolidadas >= r.total) return '100';
+            const i = Number(r.indice);
+            if (i >= 75) return '75';
+            if (i >= 50) return '50';
+            if (i >= 25) return '25';
+            return 'low';
+        },
+        clienteConsolidacaoFaixasDonut() {
+            const rows = this.clienteConsolidacaoRows();
+            const meta = this.clienteConsolidacaoFaixasDonutMeta();
+            const counts = { 100: 0, 75: 0, 50: 0, 25: 0, low: 0 };
+            rows.forEach((r) => {
+                const k = this.clienteConsolidacaoFaixaIndiceRow(r);
+                if (k != null) counts[k] += 1;
+            });
+            const totalFuncs = rows.length;
+            return meta.map((m) => {
+                const v = counts[m.key];
+                const pct = totalFuncs > 0 ? (v / totalFuncs) * 100 : 0;
+                return {
+                    ...m,
+                    value: v,
+                    pctOfFuncs: pct,
+                };
+            });
+        },
+        clienteConsolidacaoTop10PorIndice() {
+            return [...this.clienteConsolidacaoRows()]
+                .sort((a, b) => b.indice - a.indice)
+                .slice(0, 10);
+        },
+        clienteConsolidacaoStatusFuncao(row) {
+            if (row.total > 0 && row.consolidadas >= row.total) return 'Concluída';
+            return 'Em evolução';
+        },
+        /**
+         * Progresso consolidado do ciclo (vagas): vagas concluídas ÷ vagas mapeadas (summary).
+         * Usa `vagas_concluidas`; não usar `completed_functions` (subconjunto legado).
+         */
+        clienteProgressoConsolidadoCicloPct() {
+            const summary = this.data?.summary || {};
+            const mapeadas = Math.max(0, Number(summary.total_functions || 0));
+            const consolidadas = Math.max(
+                0,
+                Number(summary.vagas_concluidas ?? summary.completed_functions ?? 0),
+            );
+            return mapeadas > 0 ? Math.round((consolidadas / mapeadas) * 1000) / 10 : 0;
+        },
+        /** % de funções (agregadas) com 100% das vagas da função consolidadas. */
+        clientePctFuncoes100Concluidas() {
+            const rows = this.clienteConsolidacaoRows();
+            const n = rows.length;
+            if (n === 0) return 0;
+            const n100 = rows.filter((r) => r.total > 0 && r.consolidadas >= r.total).length;
+            return Math.round((n100 / n) * 1000) / 10;
+        },
+        /** % de funções com índice de consolidação > 50%. */
+        clientePctFuncoesMaisDe50Consolidacao() {
+            const rows = this.clienteConsolidacaoRows();
+            const n = rows.length;
+            if (n === 0) return 0;
+            const n50 = rows.filter((r) => r.indice > 50).length;
+            return Math.round((n50 / n) * 1000) / 10;
+        },
+        /** Duas linhas do rodapé do widget donut (layout igual ao mock). */
+        clienteConsolidacaoDonutResumoLinhas() {
+            if (this.clienteConsolidacaoRows().length === 0) {
+                return { linha1: '', linha2: '' };
+            }
+            return {
+                linha1: `${this.formatPctPtBr(this.clientePctFuncoes100Concluidas())}% das funções já estão 100% concluídas.`,
+                linha2: `${this.formatPctPtBr(this.clientePctFuncoesMaisDe50Consolidacao())}% das funções têm mais de 50% de consolidação.`,
+            };
+        },
+        clienteCicloResumo() {
+            const p = this.clientePanorama();
+            const mapeadas = Math.max(0, Number(p.mapeadas || 0));
+            const consolidadas = Math.max(0, Number(p.consolidadas || 0));
+            const progressoAtual = this.clienteProgressoConsolidadoCicloPct();
+            const hoje = new Date();
+            const hojeTxt = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+            const dataLimiteTxt = this.formatDateShort(this.dataLimite) || '--/--';
+            const inicioTxt = this.inicioCicloLabel();
+            const posHoje = this.todayPositionPercent();
+            const diasRestantes = this.daysUntilDeadline();
+            const pendentes = Math.max(0, mapeadas - consolidadas);
+            const necessarioDia = diasRestantes > 0 ? pendentes / diasRestantes : 0;
+            const previstoDia = this.currentDailyProgress();
+            const esperado = this.expectedProgressToday();
+            const situacaoNoPrazo = progressoAtual + 0.01 >= Math.max(0, esperado - 5);
+            return {
+                contrato: this.contrato || '—',
+                competencia: this.competenciaLabelVisaoCliente(),
+                mapeadas,
+                consolidadas,
+                emEvolucao: p.emEvolucao,
+                progressoAtual: Math.round(progressoAtual * 10) / 10,
+                progressoTexto: `${Math.round(consolidadas)}/${Math.round(mapeadas)}`,
+                hoje: hojeTxt,
+                dataLimite: dataLimiteTxt,
+                inicioCiclo: inicioTxt,
+                hojePos: posHoje,
+                diasRestantes,
+                pendentes,
+                necessarioDia: Math.round(necessarioDia * 10) / 10,
+                previstoDia: Math.round(previstoDia * 10) / 10,
+                esperadoHoje: Math.round(esperado * 10) / 10,
+                situacaoNoPrazo,
+            };
+        },
+        /** Status visual da etapa (legenda: concluído / andamento / a iniciar). */
+        clienteMaturidadeEtapaStatus(etapa) {
+            const v = Number(etapa?.value || 0);
+            const t = Number(etapa?.total || 0);
+            const p = Number(etapa?.pct || 0);
+            if (t > 0 && v >= t) return 'concluido';
+            if (p >= 99.5) return 'concluido';
+            if (v <= 0 && p <= 0) return 'iniciar';
+            return 'andamento';
+        },
+        clienteMaturidadeTotalVagas() {
+            const explicit = Math.round(Number(this.data?.maturidade_total_vagas ?? 0));
+            if (explicit > 0) {
+                return explicit;
+            }
+            const kpis = this.data?.summary?.kpis_mao_de_obra_itens || {};
+            let t = Math.round(Number(kpis.vagas_pgu_previstas || 0));
+            if (!t) {
+                t = Math.round(Number(this.data?.mao_de_obra?.mobilizacao || 0));
+            }
+            if (!t) {
+                t = Math.round(Number(this.data?.summary?.total_functions || 0));
+            }
+            return Math.max(0, t);
+        },
+        clienteMaturidadeEtapas() {
+            const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
+            const getFaseValor = (nome) => {
+                const found = fases.find((f) => String(f?.fase || '') === nome);
+                return Math.max(0, Number(found?.valor || 0));
+            };
+            const aprovados = getFaseValor('Recrutamento');
+            const treinamentos = getFaseValor('Exame Médico');
+            const assinatura = getFaseValor('Trein. + Assinatura');
+            const sgc = getFaseValor('Postagem SGC');
+            const liberacao = getFaseValor('Liberação');
+            const totalVagas = this.clienteMaturidadeTotalVagas();
+            const maxReal = Math.max(aprovados, treinamentos, assinatura, sgc, liberacao, 1);
+            const base = totalVagas > 0 ? totalVagas : maxReal;
+            const toPct = (v) => (base > 0 ? Math.round(((v / base) * 100) * 10) / 10 : 0);
+            return [
+                { key: 'aprovados', label: 'Recrutamento', value: Math.round(aprovados), total: base, pct: toPct(aprovados), color: '#6F1731' },
+                { key: 'treinamentos', label: 'Treinamentos', value: Math.round(treinamentos), total: base, pct: toPct(treinamentos), color: '#8B2C4A' },
+                { key: 'assinatura', label: 'Assinatura', value: Math.round(assinatura), total: base, pct: toPct(assinatura), color: '#A9445F' },
+                { key: 'sgc', label: 'SGC', value: Math.round(sgc), total: base, pct: toPct(sgc), color: '#C3627A' },
+                { key: 'liberacao', label: 'Liberação', value: Math.round(liberacao), total: base, pct: toPct(liberacao), color: '#D9879A' },
+            ];
+        },
+        clienteMaturidadeResumo() {
+            const etapas = this.clienteMaturidadeEtapas();
+            const totalVagas = etapas[0]?.total ?? this.clienteMaturidadeTotalVagas();
+            const aprovados = etapas[0]?.value || 0;
+            const treinamentos = etapas[1]?.value || 0;
+            const assinatura = etapas[2]?.value || 0;
+            const sgc = etapas[3]?.value || 0;
+            const liberacao = etapas[4]?.value || 0;
+            const denom = totalVagas > 0 ? totalVagas : Math.max(1, aprovados);
+            const maturidade = denom > 0 ? (liberacao / denom) * 100 : 0;
+            return {
+                totalVagas: totalVagas > 0 ? totalVagas : denom,
+                aprovados,
+                treinamentos,
+                assinatura,
+                sgc,
+                liberacao,
+                maturidade: Math.round(maturidade * 10) / 10,
+            };
+        },
+        /** Comparativo último mês × penúltimo da série (`trend` / `fase_trend`). */
+        clienteDestaquesDeltaUltimoPeriodo() {
+            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
+            const z = { dCons: 0, dPend: 0, dProg: 0, dTreinPipe: 0, dSgc: 0, dLib: 0 };
+            if (trend.length < 2) {
+                return z;
+            }
+            const a = trend[trend.length - 1];
+            const b = trend[trend.length - 2];
+            z.dCons = Math.round(Number(a.completed || 0) - Number(b.completed || 0));
+            z.dPend = Math.round(Number(a.pending || 0) - Number(b.pending || 0));
+            z.dProg = Math.round((Number(a.progress || 0) - Number(b.progress || 0)) * 10) / 10;
+            if (ft.length >= 2) {
+                const fa = ft[ft.length - 1];
+                const fb = ft[ft.length - 2];
+                z.dTreinPipe = Math.round(
+                    (Number(fa.exame_medico || 0) + Number(fa.treinamentos_assinatura || 0))
+                    - (Number(fb.exame_medico || 0) + Number(fb.treinamentos_assinatura || 0)),
+                );
+                z.dSgc = Math.round(Number(fa.sgc || 0) - Number(fb.sgc || 0));
+                z.dLib = Math.round(Number(fa.liberacao || 0) - Number(fb.liberacao || 0));
+            }
+            return z;
+        },
+        clienteDestaquesTreinamentosCount() {
+            const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
+            const get = (nome) => {
+                const x = fases.find((f) => String(f?.fase || '') === nome);
+                return Math.max(0, Number(x?.valor || 0));
+            };
+            return Math.round(get('Exame Médico') + get('Trein. + Assinatura'));
+        },
+        clienteDestaquesPrincipaisAvancos() {
+            const d = this.clienteDestaquesDeltaUltimoPeriodo();
+            const out = [];
+            out.push({
+                titulo: `Aumento de ${this.formatQtyPtBr(Math.max(0, d.dCons))} vagas consolidadas.`,
+                desc: 'Comparado ao último ponto da série mensal do contrato.',
+            });
+            const evoTxt = d.dPend >= 0 ? `Aumento de ${this.formatQtyPtBr(d.dPend)} vagas em carência operacional (pendências PGU − Pré no período).` : `Redução de ${this.formatQtyPtBr(Math.abs(d.dPend))} vagas na fila de pendências.`;
+            out.push({
+                titulo: evoTxt,
+                desc: 'Comparativo entre os dois últimos meses da série de recrutamento.',
+            });
+            out.push({
+                titulo: `Variação de ${this.formatPctPtBr(d.dProg)} p.p. no progresso médio do ranking.`,
+                desc: 'Média de avanço (Pré/PGU) nas funções monitoradas.',
+            });
+            out.push({
+                titulo: `Liberações: ${d.dLib >= 0 ? '+' : '−'}${this.formatQtyPtBr(Math.abs(d.dLib))} candidatos na etapa de liberação.`,
+                desc: 'Variação mês a mês nas contagens de maturidade do PGU.',
+            });
+            return out;
+        },
+        clienteDestaquesMovimentacoesRows() {
+            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            if (trend.length === 0) {
+                return [];
+            }
+            const start = Math.max(0, trend.length - 6);
+            const rows = [];
+            for (let i = start; i < trend.length; i++) {
+                const cur = trend[i];
+                const prev = trend[i - 1];
+                const dC = prev ? Math.round(Number(cur.completed || 0) - Number(prev.completed || 0)) : Math.round(Number(cur.completed || 0));
+                const dProg = prev
+                    ? Math.round((Number(cur.progress || 0) - Number(prev.progress || 0)) * 10) / 10
+                    : Math.round(Number(cur.progress || 0) * 10) / 10;
+                let mov = 'Atualização de consolidação';
+                if (!prev) {
+                    mov = 'Posição no período';
+                } else if (dC < 0) {
+                    mov = 'Ajuste no saldo consolidado';
+                }
+                rows.push({
+                    data: String(cur.date || '—'),
+                    mov,
+                    qtd: this.formatQtyPtBr(Math.abs(dC)),
+                    impactoPos: dProg >= 0,
+                    impacto: `${dProg >= 0 ? '+' : ''}${this.formatPctPtBr(dProg)} p.p.`,
+                });
+            }
+            return rows;
+        },
+        clienteDestaquesPontosAtencao() {
+            const items = [];
+            const rows = [...this.clienteConsolidacaoRows()]
+                .filter((r) => r.total > 0 && r.indice < 100)
+                .sort((a, b) => a.indice - b.indice)
+                .slice(0, 2);
+            if (rows.length > 0) {
+                const f = rows.map((r) => `${r.funcao.split(' - ').pop() || r.funcao} (${this.formatPctPtBr(r.indice)}%)`).join(' e ');
+                items.push({
+                    titulo: 'Funções com menor índice de consolidação.',
+                    texto: f,
+                });
+            }
+            const crit = Math.max(0, Number(this.data?.summary?.critical_functions || 0));
+            if (crit > 0) {
+                items.push({
+                    titulo: 'Funções em situação crítica de avanço.',
+                    texto: `${this.formatQtyPtBr(crit)} função(ões) com pendência ou avanço aquém do esperado no ranking.`,
+                });
+            }
+            const atr = Math.max(0, Number(this.data?.summary?.itens_atrasados_fase2 || 0));
+            if (atr > 0) {
+                items.push({
+                    titulo: 'Itens com evolução pendente.',
+                    texto: `${this.formatQtyPtBr(atr)} função(ões) ainda sem 100% de avanço na fase PGU.`,
+                });
+            }
+            const risk = String(this.data?.summary?.deadline_risk_label || '');
+            const bad = ['Alto', 'Elevado', 'Atrasado'].includes(risk);
+            if (bad && risk) {
+                items.push({
+                    titulo: 'Prazo contratual.',
+                    texto: `Risco classificado como ${risk} em relação à data limite e ao progresso atual.`,
+                });
+            }
+            if (items.length === 0) {
+                items.push({
+                    titulo: 'Situação estável.',
+                    texto: 'Não há alertas automáticos adicionais; mantenha o ritmo até a data limite.',
+                });
+            }
+            return items.slice(0, 4);
+        },
+        clienteDestaquesContribuicaoEtapas() {
+            const e = this.clienteMaturidadeEtapas();
+            const prog = this.clienteProgressoConsolidadoCicloPct();
+            const parts = [
+                { label: 'Exame médico', value: Math.max(0, Number(e[1]?.value || 0)), color: '#14532D' },
+                { label: 'Trein. + Assinatura', value: Math.max(0, Number(e[2]?.value || 0)), color: '#4ADE80' },
+                { label: 'SGC', value: Math.max(0, Number(e[3]?.value || 0)), color: '#F59E0B' },
+                { label: 'Liberação', value: Math.max(0, Number(e[4]?.value || 0)), color: '#9333EA' },
+            ];
+            const sum = parts.reduce((a, p) => a + p.value, 0);
+            return parts.map((p) => ({
+                ...p,
+                pp: sum > 0 ? Math.round(((p.value / sum) * prog) * 10) / 10 : 0,
+                pctShare: sum > 0 ? Math.round(((p.value / sum) * 100) * 10) / 10 : 0,
+            }));
+        },
+        clienteDestaquesResumoOperacionalTexto() {
+            return this.clienteCicloResumo().situacaoNoPrazo
+                ? 'O ciclo está avançando conforme o planejado.'
+                : 'Atenção: ritmo abaixo do esperado para a posição atual no calendário do contrato.';
+        },
+        clientePlanoDataLimiteCompleta() {
+            const v = String(this.dataLimite || '').trim();
+            const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return this.clienteCicloResumo().dataLimite;
+            return `${m[3]}/${m[2]}/${m[1]}`;
+        },
+        clientePlanoFasesConcluidasContagem() {
+            const e = this.clienteMaturidadeEtapas();
+            const n = e.filter((et) => this.clienteMaturidadeEtapaStatus(et) === 'concluido').length;
+            return { concluidas: n, total: e.length || 5 };
+        },
+        clientePlanoMilestonePrazo(idx) {
+            const start = this.parseDateAny(this.data?.summary?.cycle_start_date)
+                || this.parseDateAny(this.competencia ? `${this.competencia}-01` : null);
+            const end = this.parseDateAny(this.dataLimite);
+            if (!start || !end) return '—';
+            const r = (idx + 1) / 6;
+            const t = start.getTime() + (end.getTime() - start.getTime()) * r;
+            const d = new Date(t);
+            return `Até ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        },
+        clientePlanoRoteiroEtapas() {
+            const etapas = this.clienteMaturidadeEtapas();
+            const map = [
+                { step: 1, titulo: 'Aprovação', keyIdx: 0 },
+                { step: 2, titulo: 'Treinamentos', keyIdx: 1 },
+                { step: 3, titulo: 'Assinatura de contrato', keyIdx: 2 },
+                { step: 4, titulo: 'SGC', keyIdx: 3 },
+                { step: 5, titulo: 'Liberação', keyIdx: 4 },
+            ];
+            return map.map((L, i) => {
+                const e = etapas[L.keyIdx] || { pct: 0 };
+                const st = this.clienteMaturidadeEtapaStatus(e);
+                const statusTxt = st === 'concluido' ? 'Concluída' : st === 'iniciar' ? 'A iniciar' : 'Em andamento';
+                return {
+                    ...L,
+                    pct: Number(e.pct || 0),
+                    statusKey: st,
+                    statusTxt,
+                    prazoAte: this.clientePlanoMilestonePrazo(i),
+                };
+            });
+        },
+        clientePlanoSituacaoCicloLabel() {
+            return this.clienteCicloResumo().situacaoNoPrazo ? 'NO PRAZO' : 'ATENÇÃO AO PRAZO';
+        },
+        clientePlanoAcoesRows() {
+            const e = this.clienteMaturidadeEtapas();
+            const st = (i) => this.clienteMaturidadeEtapaStatus(e[i]);
+            const pill = (i) => {
+                const s = st(i);
+                if (s === 'concluido') return { text: 'Concluída', class: 'bg-emerald-100 text-emerald-800 ring-emerald-200/80' };
+                if (s === 'iniciar') return { text: 'A iniciar', class: 'bg-sky-100 text-sky-800 ring-sky-200/80' };
+                return { text: 'Em andamento', class: 'bg-amber-100 text-amber-900 ring-amber-200/80' };
+            };
+            const impacto = (i) => (i >= 3 && st(i) === 'iniciar' ? 'Crítico' : 'Alto');
+            const dl = this.clientePlanoDataLimiteCompleta();
+            return [
+                {
+                    acao: 'Treinamentos e exames',
+                    desc: 'Concluir etapas de capacitação e exame médico para todos os candidatos aprovados, mantendo registro atualizado no PGU.',
+                    resp: 'Equipe de Treinamentos',
+                    prazo: st(1) === 'concluido' ? `Até ${dl}` : 'Contínuo',
+                    pill: pill(1),
+                    impacto: impacto(1),
+                },
+                {
+                    acao: 'Assinatura de contrato',
+                    desc: 'Formalizar contratos e documentação até a etapa de pós-contratação, alinhado ao volume de vagas consolidadas.',
+                    resp: 'Gestão PGU / RH',
+                    prazo: this.clientePlanoMilestonePrazo(2),
+                    pill: pill(2),
+                    impacto: impacto(2),
+                },
+                {
+                    acao: 'Postagem e acompanhamento SGC',
+                    desc: 'Garantir envio e validação no SGC para liberação final das vagas em conformidade com o contrato.',
+                    resp: 'Equipe de Mobilização',
+                    prazo: this.clientePlanoMilestonePrazo(3),
+                    pill: pill(3),
+                    impacto: impacto(3),
+                },
+                {
+                    acao: 'Liberação de candidatos',
+                    desc: 'Concluir liberações pendentes e comunicar as áreas operacionais até a data limite do ciclo.',
+                    resp: 'Gestão PGU',
+                    prazo: dl,
+                    pill: pill(4),
+                    impacto: impacto(4),
+                },
+                {
+                    acao: 'Monitoramento executivo',
+                    desc: 'Revisão periódica do mapa de consolidação, pendências críticas e ritmo versus curva esperada até a data limite.',
+                    resp: 'Liderança do contrato',
+                    prazo: 'Contínuo',
+                    pill: { text: 'Em andamento', class: 'bg-amber-100 text-amber-900 ring-amber-200/80' },
+                    impacto: 'Alto',
+                },
+            ];
+        },
+        clientePlanoFocosLista() {
+            const dl = this.clientePlanoDataLimiteCompleta();
+            return [
+                { texto: `Priorizar funções com maior volume de vagas em evolução até ${dl}.` },
+                { texto: 'Manter cadência de treinamentos e assinaturas alinhada ao calendário do ciclo.' },
+                { texto: 'Tratar primeiro funções críticas ou com pendência elevada no ranking PGU.' },
+                { texto: 'Garantir comunicação clara com as áreas demandantes sobre marcos de liberação.' },
+                { texto: 'Confirmar 100% das liberações antes da data limite contratual.' },
+            ];
+        },
+        daysUntilDeadline() {
+            const m = String(this.dataLimite || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return 0;
+            const hoje = new Date();
+            const limit = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            const diff = Math.ceil((limit.getTime() - new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime()) / 86400000);
+            return Math.max(0, diff);
+        },
+        currentDailyProgress() {
+            const r = this.clienteCicloResumoBase();
+            const elapsed = Math.max(1, r.elapsedDays);
+            return r.consolidadas / elapsed;
+        },
+        expectedProgressToday() {
+            const r = this.clienteCicloResumoBase();
+            if (r.totalDays <= 0) return 0;
+            return Math.max(0, Math.min(100, (r.elapsedDays / r.totalDays) * 100));
+        },
+        clienteCicloResumoBase() {
+            const p = this.clientePanorama();
+            const mapeadas = Math.max(0, Number(p.mapeadas || 0));
+            const consolidadas = Math.max(0, Number(p.consolidadas || 0));
+            const start = this.parseDateAny(this.data?.summary?.cycle_start_date) || this.parseDateAny(this.competencia ? `${this.competencia}-01` : null);
+            const end = this.parseDateAny(this.dataLimite);
+            const now = new Date();
+            const startDay = start ? new Date(start.getFullYear(), start.getMonth(), start.getDate()) : now;
+            const endDay = end ? new Date(end.getFullYear(), end.getMonth(), end.getDate()) : now;
+            const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const totalDays = Math.max(1, Math.ceil((endDay.getTime() - startDay.getTime()) / 86400000));
+            const elapsedDays = Math.max(1, Math.ceil((Math.min(nowDay.getTime(), endDay.getTime()) - startDay.getTime()) / 86400000));
+            return { mapeadas, consolidadas, totalDays, elapsedDays };
+        },
+        parseDateAny(v) {
+            const s = String(v || '');
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return null;
+            return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        },
+        cicloPeriodoLabel() {
+            const c = String(this.competencia || '');
+            const m = c.match(/^(\d{4})-(\d{2})$/);
+            if (!m) return this.competenciaLabelVisaoCliente();
+            return `${m[2]}/${m[1]}`;
+        },
+        inicioCicloLabel() {
+            const fromApi = String(this.data?.summary?.cycle_start_date || '').trim();
+            const iso = fromApi.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+            const c = String(this.competencia || '');
+            const mt = c.match(/^(\d{4})-(\d{2})$/);
+            if (mt) return `01/${mt[2]}/${mt[1]}`;
+            return '--/--/----';
+        },
+        formatDateShort(raw) {
+            const v = String(raw || '').trim();
+            const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return '';
+            return `${m[3]}/${m[2]}`;
+        },
+        todayPositionPercent() {
+            const hoje = new Date();
+            const c = String(this.competencia || '');
+            const cm = c.match(/^(\d{4})-(\d{2})$/);
+            const dl = String(this.dataLimite || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!cm || !dl) return 72;
+            const inicio = new Date(Number(cm[1]), Number(cm[2]) - 1, 1).getTime();
+            const limite = new Date(Number(dl[1]), Number(dl[2]) - 1, Number(dl[3])).getTime();
+            const atual = hoje.getTime();
+            if (!(limite > inicio)) return 72;
+            const pct = ((atual - inicio) / (limite - inicio)) * 100;
+            return Math.max(8, Math.min(92, Math.round(pct)));
         },
         wrapLabelText(text, maxChars = 14) {
             const parts = String(text || '').split(' ');
@@ -330,6 +942,7 @@ window.pguDashboard = function () {
                 this.error = e.message || 'Falha ao carregar dashboard.';
             } finally {
                 this.loading = false;
+                queueMicrotask(() => initAppLucideIcons());
             }
         },
         async refresh() {
@@ -396,6 +1009,35 @@ window.pguDashboard = function () {
                 window.alert('Não foi possível exportar o gráfico.');
             }
         },
+        async exportElementPng(elementId) {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                window.alert('Elemento indisponível para exportação.');
+                return;
+            }
+            try {
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: false,
+                    logging: false,
+                });
+                const url = canvas.toDataURL('image/png');
+                const safeContrato = this.sanitizeFilePart(this.contrato);
+                const safeComp = this.sanitizeFilePart(this.competencia || 'competencia');
+                const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                const name = `pgu_${elementId}_${safeContrato}_${safeComp}_${stamp}.png`;
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch {
+                window.alert('Não foi possível exportar este card.');
+            }
+        },
         baseChart(id) {
             const element = document.getElementById(id);
             if (!element || !window.echarts) return null;
@@ -429,6 +1071,13 @@ window.pguDashboard = function () {
             const rounded = Math.round(v * 100) / 100;
             if (Number.isInteger(rounded)) return String(rounded);
             return rounded.toFixed(2).replace('.', ',');
+        },
+        /** Contagem de funções com plural correto em pt-BR (1 função / N funções). */
+        formatFuncoesCountLabel(n) {
+            let k = Math.round(Number(n));
+            if (Number.isNaN(k) || k < 0) k = 0;
+            if (k === 1) return '1 função';
+            return `${this.formatQtyPtBr(k)} funções`;
         },
         /** 0 = tranquilo, 100 = crítico — usado só para cor (Avanço inverte: baixo % = alto stress). */
         heatmapStress(axisName, raw) {
@@ -472,8 +1121,127 @@ window.pguDashboard = function () {
             run('chartTreemap', () => this.renderTreemap());
             run('chartClientePanorama', () => this.renderClientePanorama());
             run('chartClienteEvolucao', () => this.renderClienteEvolucao());
-            run('chartClienteCoberturaDonut', () => this.renderClienteCoberturaDonut());
             run('chartClienteMapaDonut', () => this.renderClienteMapaDonut());
+            run('chartClienteDestaquesLinha', () => this.renderClienteDestaquesLinha());
+            run('chartClienteDestaquesDonut', () => this.renderClienteDestaquesDonut());
+            run('chartClientePlanoSemiDonut', () => this.renderClientePlanoSemiDonut());
+            run('chartClienteCicloEvolucao', () => this.renderClienteCicloEvolucao());
+            run('chartClienteMaturidadeEtapas', () => this.renderClienteMaturidadeEtapas());
+            run('chartClienteMaturidadeComparativo', () => this.renderClienteMaturidadeComparativo());
+        },
+        renderClienteMaturidadeEtapas() {
+            const chart = this.baseChart('chartClienteMaturidadeEtapas');
+            if (!chart) return;
+            const etapas = this.clienteMaturidadeEtapas();
+            const fmt = this;
+            chart.setOption({
+                backgroundColor: 'transparent',
+                grid: { left: 34, right: 12, top: 20, bottom: 48 },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#fff',
+                    borderColor: '#E5E7EB',
+                    textStyle: { color: '#0f172a', fontSize: 12 },
+                    formatter(params) {
+                        const p0 = Array.isArray(params) ? params[0] : params;
+                        const idx = p0?.dataIndex;
+                        const e = etapas[idx];
+                        if (!e) return '';
+                        return `<div style="font-weight:700;margin-bottom:6px">${e.label}</div>`
+                            + `<div>% sobre o total de vagas: <strong>${fmt.formatPctPtBr(e.pct)}%</strong></div>`
+                            + `<div style="margin-top:4px;color:#64748b">Realizado / total: ${fmt.formatQtyPtBr(e.value)} / ${fmt.formatQtyPtBr(e.total)}</div>`;
+                    },
+                },
+                xAxis: {
+                    type: 'category',
+                    data: etapas.map((e) => e.label),
+                    axisLabel: { color: '#64748B', fontSize: 10, interval: 0, rotate: 28 },
+                },
+                yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#64748B', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#EEF2F7' } } },
+                series: [{
+                    name: '% do total de vagas',
+                    type: 'bar',
+                    barWidth: '52%',
+                    data: etapas.map((e) => e.pct),
+                    itemStyle: {
+                        color: (p) => etapas[p.dataIndex]?.color || '#6F1731',
+                        borderRadius: [6, 6, 0, 0],
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: (p) => `${this.formatPctPtBr(p.value)}%`,
+                        color: '#6F1731',
+                        fontWeight: 700,
+                    },
+                }],
+            });
+        },
+        renderClienteMaturidadeComparativo() {
+            const chart = this.baseChart('chartClienteMaturidadeComparativo');
+            if (!chart) return;
+            const etapas = this.clienteMaturidadeEtapas();
+            const labels = etapas.map((e) => e.label);
+            const realizado = etapas.map((e) => e.pct);
+            const targetFinal = Math.max(realizado[realizado.length - 1] || 0, this.clienteCicloResumo().esperadoHoje || 0);
+            const step = (100 - targetFinal) / Math.max(1, labels.length - 1);
+            const projecao = labels.map((_, idx) => Math.round((100 - (step * idx)) * 10) / 10);
+            const nomeProj = `Projeção ${this.clienteCicloResumo().dataLimite}`;
+            const fmt = this;
+            chart.setOption({
+                backgroundColor: 'transparent',
+                grid: { left: 34, right: 16, top: 26, bottom: 44 },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#fff',
+                    borderColor: '#E5E7EB',
+                    textStyle: { color: '#0f172a', fontSize: 12 },
+                    formatter(params) {
+                        const rows = Array.isArray(params) ? params : [params];
+                        const idx = rows[0]?.dataIndex ?? 0;
+                        const e = etapas[idx];
+                        let html = e ? `<div style="font-weight:700;margin-bottom:6px">${e.label}</div>` : '';
+                        rows.forEach((item) => {
+                            const v = Number(item.value ?? item.data ?? 0);
+                            const isProj = String(item.seriesName || '').startsWith('Projeção');
+                            if (!isProj && e) {
+                                html += `${item.marker} <strong>${item.seriesName}</strong>: ${fmt.formatPctPtBr(v)}% do total de vagas<br/>`;
+                                html += `<span style="color:#64748b;margin-left:1.2em">${fmt.formatQtyPtBr(e.value)} / ${fmt.formatQtyPtBr(e.total)} vagas</span><br/>`;
+                            } else {
+                                html += `${item.marker} <strong>${item.seriesName}</strong>: ${fmt.formatPctPtBr(v)}% (curva de referência no prazo)<br/>`;
+                            }
+                        });
+                        return html;
+                    },
+                },
+                legend: { bottom: 0, textStyle: { color: '#64748B', fontSize: 11 } },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: { color: '#64748B', fontSize: 10, interval: 0, rotate: 28 },
+                },
+                yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#64748B', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#EEF2F7' } } },
+                series: [
+                    {
+                        name: 'Realizado',
+                        type: 'line',
+                        data: realizado,
+                        smooth: true,
+                        symbolSize: 6,
+                        lineStyle: { color: '#6F1731', width: 2.5 },
+                        itemStyle: { color: '#6F1731' },
+                    },
+                    {
+                        name: nomeProj,
+                        type: 'line',
+                        data: projecao,
+                        smooth: true,
+                        symbolSize: 5,
+                        lineStyle: { color: '#D4A3B3', width: 2, type: 'dashed' },
+                        itemStyle: { color: '#D4A3B3' },
+                    },
+                ],
+            });
         },
         renderClientePanorama() {
             const chart = this.baseChart('chartClientePanorama');
@@ -523,15 +1291,7 @@ window.pguDashboard = function () {
                         },
                     },
                 ],
-                legend: {
-                    show: true,
-                    bottom: 6,
-                    left: 'center',
-                    itemWidth: 10,
-                    itemHeight: 10,
-                    textStyle: { color: '#475569', fontSize: 11 },
-                    data: donutData.map((d) => d.labelText),
-                },
+                legend: { show: false },
                 series: [
                     {
                         name: 'Panorama',
@@ -815,116 +1575,324 @@ window.pguDashboard = function () {
                 ],
             });
         },
-        renderClienteCoberturaDonut() {
-            const chart = this.baseChart('chartClienteCoberturaDonut');
-            if (!chart) return;
-            const resumo = this.clienteCoberturaResumo();
-            const monitoradas = Math.max(0, Number(resumo.monitoradas || 0));
-            const mapeadas = Math.max(0, Number(resumo.mapeadas || 0));
-            const pendentes = Math.max(0, mapeadas - monitoradas);
-            const cobertura = mapeadas > 0 ? (monitoradas / mapeadas) * 100 : 0;
-
-            if (mapeadas === 0) {
-                chart.setOption({
-                    title: {
-                        text: 'Sem base mapeada',
-                        left: 'center',
-                        top: 'middle',
-                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
-                    },
-                });
-                return;
-            }
-
-            chart.setOption({
-                backgroundColor: 'transparent',
-                color: ['#166534', '#D1D5DB'],
-                tooltip: {
-                    trigger: 'item',
-                    backgroundColor: '#0F172A',
-                    borderWidth: 0,
-                    textStyle: { color: '#FFFFFF', fontSize: 13 },
-                    formatter: (p) => `${p.name}: ${this.formatQtyPtBr(p.value)}`,
-                },
-                title: {
-                    text: `${this.formatPctPtBr(cobertura)}%`,
-                    subtext: 'Funções\nMonitoradas',
-                    left: 'center',
-                    top: '42%',
-                    textAlign: 'center',
-                    textVerticalAlign: 'middle',
-                    textStyle: { color: '#166534', fontSize: 44, fontWeight: 900 },
-                    subtextStyle: { color: '#334155', fontSize: 24, fontWeight: 600, lineHeight: 30 },
-                },
-                legend: { show: false },
-                series: [
-                    {
-                        name: 'Cobertura',
-                        type: 'pie',
-                        radius: ['62%', '82%'],
-                        center: ['50%', '48%'],
-                        label: { show: false },
-                        itemStyle: { borderColor: '#FFFFFF', borderWidth: 4 },
-                        data: [
-                            { name: 'Monitoradas', value: monitoradas },
-                            { name: 'Pendentes', value: pendentes },
-                        ],
-                    },
-                ],
-            });
-        },
         renderClienteMapaDonut() {
             const chart = this.baseChart('chartClienteMapaDonut');
             if (!chart) return;
-            const r = this.clienteConsolidacaoResumo();
-            if (r.mapeadas === 0) {
+            const rows = this.clienteConsolidacaoRows();
+            const nMonitoradas = rows.length;
+            const faixas = this.clienteConsolidacaoFaixasDonut();
+            if (nMonitoradas === 0) {
                 chart.setOption({
-                    title: {
-                        text: 'Sem dados de consolidação',
-                        left: 'center',
-                        top: 'middle',
-                        textStyle: { color: '#64748B', fontSize: 16, fontWeight: 600 },
-                    },
+                    backgroundColor: 'transparent',
+                    title: { show: false },
+                    legend: { show: false },
+                    series: [],
                 });
                 return;
             }
+            const fmt = this;
+            // Só fatias com valor > 0: no ECharts, zeros na série distorcem proporções e cores do anel.
+            const data = faixas
+                .map((f) => ({
+                    name: f.label,
+                    value: f.value,
+                    itemStyle: {
+                        color: f.color,
+                    },
+                }))
+                .filter((d) => d.value > 0);
             chart.setOption({
                 backgroundColor: 'transparent',
-                color: ['#166534', '#EAB308'],
                 tooltip: {
                     trigger: 'item',
                     backgroundColor: '#0F172A',
                     borderWidth: 0,
                     textStyle: { color: '#FFFFFF', fontSize: 12 },
-                    formatter: (p) => `${p.name}: ${this.formatQtyPtBr(p.value)} (${this.formatPctPtBr(p.percent)}%)`,
+                    formatter: (p) => {
+                        const slice = faixas.find((f) => f.label === p.name);
+                        if (!slice) return '';
+                        const pct = nMonitoradas > 0 ? (slice.value / nMonitoradas) * 100 : 0;
+                        return `<div style="font-weight:700;margin-bottom:4px">${slice.label}</div>`
+                            + `${fmt.formatFuncoesCountLabel(slice.value)} (${fmt.formatPctPtBr(pct)}% do total monitorado)`;
+                    },
                 },
-                title: {
-                    text: `${this.formatPctPtBr(r.indice)}%`,
-                    subtext: 'Consolidada',
-                    left: 'center',
-                    top: '40%',
-                    textAlign: 'center',
-                    textStyle: { color: '#1F2937', fontSize: 30, fontWeight: 900 },
-                    subtextStyle: { color: '#475569', fontSize: 14, fontWeight: 600 },
+                title: { show: false },
+                legend: { show: false },
+                series: [{
+                    name: 'Faixas',
+                    type: 'pie',
+                    radius: ['66%', '82%'],
+                    center: ['50%', '50%'],
+                    clockwise: true,
+                    startAngle: 90,
+                    padAngle: 0.6,
+                    label: { show: false },
+                    itemStyle: {
+                        borderColor: '#ffffff',
+                        borderWidth: 1.5,
+                    },
+                    emphasis: {
+                        scale: false,
+                        itemStyle: {
+                            shadowBlur: 6,
+                            shadowColor: 'rgba(15, 23, 42, 0.18)',
+                        },
+                    },
+                    data,
+                }],
+            });
+        },
+        renderClienteDestaquesLinha() {
+            const chart = this.baseChart('chartClienteDestaquesLinha');
+            if (!chart) return;
+            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            if (trend.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem série mensal',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 14, fontWeight: 600 },
+                    },
+                    series: [],
+                });
+                return;
+            }
+            const labels = trend.map((p) => String(p.date || ''));
+            const vals = trend.map((p) => Math.max(0, Math.min(100, Number(p.progress || 0))));
+            const ec = window.echarts;
+            const grad = ec?.graphic?.LinearGradient
+                ? new ec.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(22, 101, 52, 0.35)' },
+                    { offset: 1, color: 'rgba(22, 101, 52, 0.02)' },
+                ])
+                : 'rgba(22, 101, 52, 0.2)';
+            const vmax = Math.min(100, Math.max(60, Math.ceil(((Math.max(...vals) || 0)) / 10) * 10));
+            chart.setOption({
+                backgroundColor: 'transparent',
+                grid: { left: 44, right: 16, top: 28, bottom: 40 },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 12 },
+                    formatter: (params) => {
+                        const p0 = Array.isArray(params) ? params[0] : params;
+                        return `<strong>${p0.axisValue}</strong><br/>Progresso médio: ${this.formatPctPtBr(p0.value)}%`;
+                    },
                 },
-                legend: {
-                    orient: 'vertical',
-                    bottom: 0,
-                    left: 'left',
-                    textStyle: { color: '#475569', fontSize: 11 },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: { color: '#64748B', fontSize: 10, rotate: 28 },
+                    axisTick: { show: false },
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 0,
+                    max: vmax,
+                    axisLabel: { color: '#64748B', formatter: '{value}%' },
+                    splitLine: { lineStyle: { color: '#EEF2F7' } },
                 },
                 series: [{
-                    name: 'Distribuição',
+                    name: 'Progresso médio',
+                    type: 'line',
+                    smooth: true,
+                    symbolSize: 6,
+                    data: vals,
+                    lineStyle: { color: '#166534', width: 2.5 },
+                    itemStyle: { color: '#166534' },
+                    areaStyle: { color: grad },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#166534',
+                        fontWeight: 700,
+                        formatter: (p) => `${this.formatPctPtBr(p.value)}%`,
+                    },
+                }],
+            });
+        },
+        renderClienteDestaquesDonut() {
+            const chart = this.baseChart('chartClienteDestaquesDonut');
+            if (!chart) return;
+            const slices = this.clienteDestaquesContribuicaoEtapas().filter((s) => s.value > 0);
+            if (slices.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: 'Sem etapas com volume',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#64748B', fontSize: 14, fontWeight: 600 },
+                    },
+                    series: [],
+                });
+                return;
+            }
+            const data = slices.map((s) => ({
+                name: s.label,
+                value: s.value,
+                itemStyle: { color: s.color },
+            }));
+            chart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#0F172A',
+                    borderWidth: 0,
+                    textStyle: { color: '#FFFFFF', fontSize: 12 },
+                    formatter: (p) => {
+                        const sl = slices.find((x) => x.label === p.name);
+                        if (!sl) return '';
+                        return `${sl.label}<br/>+${this.formatPctPtBr(sl.pp)} p.p. · ${this.formatPctPtBr(sl.pctShare)}% do avanço atribuído`;
+                    },
+                },
+                title: { show: false },
+                legend: { show: false },
+                series: [{
                     type: 'pie',
-                    radius: ['56%', '74%'],
-                    center: ['52%', '40%'],
+                    radius: ['58%', '78%'],
+                    center: ['50%', '50%'],
                     label: { show: false },
-                    itemStyle: { borderColor: '#fff', borderWidth: 3 },
+                    itemStyle: { borderColor: '#fff', borderWidth: 2 },
+                    data,
+                }],
+            });
+        },
+        renderClientePlanoSemiDonut() {
+            const chart = this.baseChart('chartClientePlanoSemiDonut');
+            if (!chart) return;
+            const p = Math.max(0, Math.min(100, Number(this.clienteProgressoConsolidadoCicloPct())));
+            const rest = Math.max(0, 100 - p);
+            const track = rest < 0.05 ? 0.05 : rest;
+            chart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { show: false },
+                series: [{
+                    name: 'Progresso',
+                    type: 'pie',
+                    radius: ['58%', '82%'],
+                    center: ['50%', '70%'],
+                    startAngle: 180,
+                    clockwise: true,
+                    label: { show: false },
+                    itemStyle: { borderColor: '#fff', borderWidth: 0 },
                     data: [
-                        { name: `Consolidadas: ${r.consolidadas}`, value: r.consolidadas },
-                        { name: `Em Evolução: ${r.emEvolucao}`, value: r.emEvolucao },
+                        { value: p, itemStyle: { color: '#166534' } },
+                        { value: track, itemStyle: { color: '#E5E7EB' } },
                     ],
                 }],
+            });
+        },
+        renderClienteCicloEvolucao() {
+            const chart = this.baseChart('chartClienteCicloEvolucao');
+            if (!chart) return;
+            const resumo = this.clienteCicloResumo();
+            const start = this.parseDateAny(this.data?.summary?.cycle_start_date) || this.parseDateAny(this.competencia ? `${this.competencia}-01` : null) || new Date();
+            const end = this.parseDateAny(this.dataLimite) || new Date(start.getFullYear(), start.getMonth(), start.getDate() + 30);
+            const today = new Date();
+            const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            const ticks = [];
+            const totalMs = Math.max(1, endDay.getTime() - startDay.getTime());
+            const steps = 8;
+            for (let i = 0; i <= steps; i++) {
+                const d = new Date(startDay.getTime() + (totalMs * i) / steps);
+                ticks.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+            }
+            ticks.push(todayDay);
+            const uniqTicks = Array.from(new Map(ticks.map((d) => [`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, d])).values())
+                .sort((a, b) => a.getTime() - b.getTime());
+
+            const labels = uniqTicks.map((d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`);
+            const realSeries = labels.map(() => null);
+            const projSeries = labels.map(() => null);
+
+            const idxByKey = new Map(uniqTicks.map((d, i) => [`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, i]));
+            const keyOf = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            const idxStart = idxByKey.get(keyOf(startDay)) ?? 0;
+            const idxToday = idxByKey.get(keyOf(todayDay)) ?? Math.floor(labels.length / 2);
+            const idxEnd = idxByKey.get(keyOf(endDay)) ?? (labels.length - 1);
+
+            // Ponto real de partida do ciclo.
+            realSeries[idxStart] = 0;
+
+            // Pontos reais históricos do sistema (série mensal real).
+            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            trend.forEach((p) => {
+                const ds = String(p?.date || '');
+                const m = ds.match(/^(\d{2})\/(\d{4})$/);
+                if (!m) return;
+                const d = new Date(Number(m[2]), Number(m[1]) - 1, 1);
+                const key = keyOf(d);
+                const idx = idxByKey.get(key);
+                if (idx == null) return;
+                realSeries[idx] = Math.max(0, Math.min(100, Number(p?.progress || 0)));
+            });
+
+            // Ponto real atual (sempre ancorado no valor real do card).
+            const progressoAtual = Math.max(0, Math.min(100, Number(resumo.progressoAtual || 0)));
+            realSeries[idxToday] = progressoAtual;
+
+            // Projeção apenas do hoje até a data limite.
+            projSeries[idxToday] = progressoAtual;
+            projSeries[idxEnd] = 100;
+
+            chart.setOption({
+                backgroundColor: 'transparent',
+                grid: { left: 36, right: 16, top: 24, bottom: 54 },
+                tooltip: { trigger: 'axis' },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: { color: '#64748B', fontSize: 10, interval: 0, hideOverlap: true },
+                    axisTick: { show: false },
+                },
+                yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#64748B', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#EEF2F7' } } },
+                legend: { bottom: 0, textStyle: { color: '#64748B', fontSize: 11 }, itemWidth: 20 },
+                series: [
+                    {
+                        name: 'Progresso real',
+                        type: 'line',
+                        connectNulls: true,
+                        data: realSeries,
+                        smooth: false,
+                        symbolSize: 6,
+                        lineStyle: { color: '#166534', width: 2.5 },
+                        itemStyle: { color: '#166534' },
+                        label: {
+                            show: true,
+                            formatter: (p) => (p.dataIndex === idxToday ? `${this.formatPctPtBr(p.value)}%` : ''),
+                            color: '#166534',
+                            fontWeight: 700,
+                            backgroundColor: '#E9F9EE',
+                            borderRadius: 4,
+                            padding: [2, 6],
+                        },
+                    },
+                    {
+                        name: 'Projeção',
+                        type: 'line',
+                        connectNulls: true,
+                        data: projSeries,
+                        smooth: false,
+                        symbolSize: 4,
+                        lineStyle: { color: '#86EFAC', width: 2, type: 'dashed' },
+                        itemStyle: { color: '#86EFAC' },
+                        areaStyle: { color: 'rgba(134, 239, 172, 0.10)' },
+                        label: {
+                            show: true,
+                            formatter: (p) => (p.dataIndex === idxEnd ? '100%' : ''),
+                            color: '#166534',
+                            fontWeight: 700,
+                            backgroundColor: '#DCFCE7',
+                            borderRadius: 4,
+                            padding: [2, 6],
+                        },
+                    },
+                ],
             });
         },
         renderDonut() {

@@ -24,7 +24,7 @@ export function runSlide1CountUps(root, summary) {
     if (!root || !summary) return;
 
     const t = Number(summary.total_functions ?? 0);
-    const c = Number(summary.completed_functions ?? 0);
+    const c = Number(summary.vagas_concluidas ?? summary.completed_functions ?? 0);
     const pend = Math.max(0, t - c);
     const overall = Number(summary.overall_progress ?? 0);
     const pctDone = t > 0 ? (c / t) * 100 : 0;
