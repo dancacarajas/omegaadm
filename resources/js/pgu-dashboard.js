@@ -1602,20 +1602,44 @@ window.pguDashboard = function () {
             const totalFases = Math.max(1, Number(this.data?.summary?.total_functions || 0));
             const faseFinal = fases[fases.length - 1] || { name: 'Liberação', value: 0 };
             const pctFinal = (Number(faseFinal.value || 0) / totalFases) * 100;
-            const totalPendente = Math.max(0, totalFases - Math.max(0, Number(faseFinal.value || 0)));
-            const donutData = fases.map((f) => {
-                const v = Math.max(0, Number(f.value || 0));
-                const pct = (v / totalFases) * 100;
-                const temConcluidos = v > 0;
+            const valoresCumulativos = fases.map((f) => Math.max(0, Number(f.value || 0)));
+            if (valoresCumulativos.length < 6) {
+                while (valoresCumulativos.length < 6) valoresCumulativos.push(0);
+            }
+            const [recrutamento, exameMedico, treinamentos, assinatura, sgc, liberacao] = valoresCumulativos;
+
+            // Normaliza a cascata acumulada (não crescente), para evitar sobreposição acima de 100%.
+            const cRecr = Math.min(totalFases, recrutamento);
+            const cExam = Math.min(cRecr, exameMedico);
+            const cTrein = Math.min(cExam, treinamentos);
+            const cAssin = Math.min(cTrein, assinatura);
+            const cSgc = Math.min(cAssin, sgc);
+            const cLib = Math.min(cSgc, liberacao);
+
+            // Fatias exclusivas por etapa + pendente => soma sempre fecha em 100%.
+            const valoresExclusivos = [
+                Math.max(0, cRecr - cExam),   // Recrutamento
+                Math.max(0, cExam - cTrein),  // Exame Médico
+                Math.max(0, cTrein - cAssin), // Treinamentos
+                Math.max(0, cAssin - cSgc),   // Assinatura documental
+                Math.max(0, cSgc - cLib),     // SGC
+                Math.max(0, cLib),            // Liberação
+            ];
+            const totalPendente = Math.max(0, totalFases - cRecr);
+
+            const donutData = fases.map((f, idx) => {
+                const v = Math.max(0, Number(valoresExclusivos[idx] || 0));
+                const pct = totalFases > 0 ? (v / totalFases) * 100 : 0;
+                const temFatia = v > 0;
                 return {
                     value: v,
                     name: f.name,
                     labelText: `${f.name}: ${this.formatPctPtBr(pct)}%`,
-                    label: { show: temConcluidos },
-                    labelLine: { show: temConcluidos },
+                    label: { show: temFatia },
+                    labelLine: { show: temFatia },
                     emphasis: {
-                        label: { show: temConcluidos },
-                        labelLine: { show: temConcluidos },
+                        label: { show: temFatia },
+                        labelLine: { show: temFatia },
                     },
                 };
             });
