@@ -179,7 +179,7 @@ window.pguDashboard = function () {
         },
         clienteFases() {
             const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
-            const colors = ['#6F1731', '#8B2C4A', '#A9445F', '#C3627A', '#D9879A'];
+            const colors = ['#6F1731', '#73203D', '#8B2C4A', '#A9445F', '#C3627A', '#D9879A'];
             return fases.map((f, idx) => ({
                 name: f?.fase || `Fase ${idx + 1}`,
                 value: Math.max(0, Number(f?.valor || 0)),
@@ -492,6 +492,28 @@ window.pguDashboard = function () {
                 situacaoNoPrazo,
             };
         },
+        /**
+         * Referência de SLA de mobilização (valores acordados para leitura executiva;
+         * não substitui regras contratuais específicas).
+         */
+        clienteCicloSlaReferencia() {
+            const diasAceiteAteSgc = 15;
+            const diasSgcAteLiberacaoMin = 5;
+            const diasSgcAteLiberacaoMax = 10;
+            return {
+                diasAceiteAteSgc,
+                diasSgcAteLiberacaoMin,
+                diasSgcAteLiberacaoMax,
+                janelaTotalMin: diasAceiteAteSgc + diasSgcAteLiberacaoMin,
+                janelaTotalMax: diasAceiteAteSgc + diasSgcAteLiberacaoMax,
+            };
+        },
+        /** Data limite em DD/MM/AAAA (para textos longos no card do ciclo). */
+        clienteCicloDataLimiteLonga() {
+            const m = String(this.dataLimite || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return this.clienteCicloResumo().dataLimite;
+            return `${m[3]}/${m[2]}/${m[1]}`;
+        },
         /** Status visual da etapa (legenda: concluído / andamento / a iniciar). */
         clienteMaturidadeEtapaStatus(etapa) {
             const v = Number(etapa?.value || 0);
@@ -524,18 +546,20 @@ window.pguDashboard = function () {
                 return Math.max(0, Number(found?.valor || 0));
             };
             const aprovados = getFaseValor('Recrutamento');
-            const treinamentos = getFaseValor('Exame Médico');
-            const assinatura = getFaseValor('Trein. + Assinatura');
+            const exameMedico = getFaseValor('Exame Médico');
+            const treinamentos = getFaseValor('Treinamentos');
+            const assinatura = getFaseValor('Assinatura documental');
             const sgc = getFaseValor('Postagem SGC');
             const liberacao = getFaseValor('Liberação');
             const totalVagas = this.clienteMaturidadeTotalVagas();
-            const maxReal = Math.max(aprovados, treinamentos, assinatura, sgc, liberacao, 1);
+            const maxReal = Math.max(aprovados, exameMedico, treinamentos, assinatura, sgc, liberacao, 1);
             const base = totalVagas > 0 ? totalVagas : maxReal;
             const toPct = (v) => (base > 0 ? Math.round(((v / base) * 100) * 10) / 10 : 0);
             return [
                 { key: 'aprovados', label: 'Recrutamento', value: Math.round(aprovados), total: base, pct: toPct(aprovados), color: '#6F1731' },
+                { key: 'exame_medico', label: 'Exame Médico', value: Math.round(exameMedico), total: base, pct: toPct(exameMedico), color: '#73203D' },
                 { key: 'treinamentos', label: 'Treinamentos', value: Math.round(treinamentos), total: base, pct: toPct(treinamentos), color: '#8B2C4A' },
-                { key: 'assinatura', label: 'Assinatura', value: Math.round(assinatura), total: base, pct: toPct(assinatura), color: '#A9445F' },
+                { key: 'assinatura', label: 'Assinatura documental', value: Math.round(assinatura), total: base, pct: toPct(assinatura), color: '#A9445F' },
                 { key: 'sgc', label: 'SGC', value: Math.round(sgc), total: base, pct: toPct(sgc), color: '#C3627A' },
                 { key: 'liberacao', label: 'Liberação', value: Math.round(liberacao), total: base, pct: toPct(liberacao), color: '#D9879A' },
             ];
@@ -544,15 +568,17 @@ window.pguDashboard = function () {
             const etapas = this.clienteMaturidadeEtapas();
             const totalVagas = etapas[0]?.total ?? this.clienteMaturidadeTotalVagas();
             const aprovados = etapas[0]?.value || 0;
-            const treinamentos = etapas[1]?.value || 0;
-            const assinatura = etapas[2]?.value || 0;
-            const sgc = etapas[3]?.value || 0;
-            const liberacao = etapas[4]?.value || 0;
+            const exameMedico = etapas[1]?.value || 0;
+            const treinamentos = etapas[2]?.value || 0;
+            const assinatura = etapas[3]?.value || 0;
+            const sgc = etapas[4]?.value || 0;
+            const liberacao = etapas[5]?.value || 0;
             const denom = totalVagas > 0 ? totalVagas : Math.max(1, aprovados);
             const maturidade = denom > 0 ? (liberacao / denom) * 100 : 0;
             return {
                 totalVagas: totalVagas > 0 ? totalVagas : denom,
                 aprovados,
+                exameMedico,
                 treinamentos,
                 assinatura,
                 sgc,
@@ -564,7 +590,17 @@ window.pguDashboard = function () {
         clienteDestaquesDeltaUltimoPeriodo() {
             const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
             const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
-            const z = { dCons: 0, dPend: 0, dProg: 0, dTreinPipe: 0, dSgc: 0, dLib: 0 };
+            const z = {
+                dCons: 0,
+                dPend: 0,
+                dProg: 0,
+                dExameMedico: 0,
+                dTreinamentos: 0,
+                dAssinaturaDocumental: 0,
+                dTreinPipe: 0,
+                dSgc: 0,
+                dLib: 0,
+            };
             if (trend.length < 2) {
                 return z;
             }
@@ -576,10 +612,12 @@ window.pguDashboard = function () {
             if (ft.length >= 2) {
                 const fa = ft[ft.length - 1];
                 const fb = ft[ft.length - 2];
-                z.dTreinPipe = Math.round(
-                    (Number(fa.exame_medico || 0) + Number(fa.treinamentos_assinatura || 0))
-                    - (Number(fb.exame_medico || 0) + Number(fb.treinamentos_assinatura || 0)),
+                z.dExameMedico = Math.round(Number(fa.exame_medico || 0) - Number(fb.exame_medico || 0));
+                z.dTreinamentos = Math.round(Number(fa.treinamentos || 0) - Number(fb.treinamentos || 0));
+                z.dAssinaturaDocumental = Math.round(
+                    Number(fa.assinatura_documental || 0) - Number(fb.assinatura_documental || 0),
                 );
+                z.dTreinPipe = z.dTreinamentos;
                 z.dSgc = Math.round(Number(fa.sgc || 0) - Number(fb.sgc || 0));
                 z.dLib = Math.round(Number(fa.liberacao || 0) - Number(fb.liberacao || 0));
             }
@@ -591,7 +629,7 @@ window.pguDashboard = function () {
                 const x = fases.find((f) => String(f?.fase || '') === nome);
                 return Math.max(0, Number(x?.valor || 0));
             };
-            return Math.round(get('Exame Médico') + get('Trein. + Assinatura'));
+            return Math.round(get('Treinamentos'));
         },
         clienteDestaquesPrincipaisAvancos() {
             const d = this.clienteDestaquesDeltaUltimoPeriodo();
@@ -693,9 +731,10 @@ window.pguDashboard = function () {
             const prog = this.clienteProgressoConsolidadoCicloPct();
             const parts = [
                 { label: 'Exame médico', value: Math.max(0, Number(e[1]?.value || 0)), color: '#14532D' },
-                { label: 'Trein. + Assinatura', value: Math.max(0, Number(e[2]?.value || 0)), color: '#4ADE80' },
-                { label: 'SGC', value: Math.max(0, Number(e[3]?.value || 0)), color: '#F59E0B' },
-                { label: 'Liberação', value: Math.max(0, Number(e[4]?.value || 0)), color: '#9333EA' },
+                { label: 'Treinamentos', value: Math.max(0, Number(e[2]?.value || 0)), color: '#22C55E' },
+                { label: 'Assinatura documental', value: Math.max(0, Number(e[3]?.value || 0)), color: '#4ADE80' },
+                { label: 'SGC', value: Math.max(0, Number(e[4]?.value || 0)), color: '#F59E0B' },
+                { label: 'Liberação', value: Math.max(0, Number(e[5]?.value || 0)), color: '#9333EA' },
             ];
             const sum = parts.reduce((a, p) => a + p.value, 0);
             return parts.map((p) => ({
@@ -718,7 +757,7 @@ window.pguDashboard = function () {
         clientePlanoFasesConcluidasContagem() {
             const e = this.clienteMaturidadeEtapas();
             const n = e.filter((et) => this.clienteMaturidadeEtapaStatus(et) === 'concluido').length;
-            return { concluidas: n, total: e.length || 5 };
+            return { concluidas: n, total: e.length || 6 };
         },
         clientePlanoMilestonePrazo(idx) {
             const start = this.parseDateAny(this.data?.summary?.cycle_start_date)
@@ -733,11 +772,12 @@ window.pguDashboard = function () {
         clientePlanoRoteiroEtapas() {
             const etapas = this.clienteMaturidadeEtapas();
             const map = [
-                { step: 1, titulo: 'Aprovação', keyIdx: 0 },
-                { step: 2, titulo: 'Treinamentos', keyIdx: 1 },
-                { step: 3, titulo: 'Assinatura de contrato', keyIdx: 2 },
-                { step: 4, titulo: 'SGC', keyIdx: 3 },
-                { step: 5, titulo: 'Liberação', keyIdx: 4 },
+                { step: 1, titulo: 'Recrutamento', keyIdx: 0 },
+                { step: 2, titulo: 'Exame médico', keyIdx: 1 },
+                { step: 3, titulo: 'Treinamentos', keyIdx: 2 },
+                { step: 4, titulo: 'Assinatura documental', keyIdx: 3 },
+                { step: 5, titulo: 'Postagem SGC', keyIdx: 4 },
+                { step: 6, titulo: 'Liberação', keyIdx: 5 },
             ];
             return map.map((L, i) => {
                 const e = etapas[L.keyIdx] || { pct: 0 };
@@ -764,40 +804,48 @@ window.pguDashboard = function () {
                 if (s === 'iniciar') return { text: 'A iniciar', class: 'bg-sky-100 text-sky-800 ring-sky-200/80' };
                 return { text: 'Em andamento', class: 'bg-amber-100 text-amber-900 ring-amber-200/80' };
             };
-            const impacto = (i) => (i >= 3 && st(i) === 'iniciar' ? 'Crítico' : 'Alto');
+            const impacto = (i) => (i >= 4 && st(i) === 'iniciar' ? 'Crítico' : 'Alto');
             const dl = this.clientePlanoDataLimiteCompleta();
             return [
                 {
-                    acao: 'Treinamentos e exames',
-                    desc: 'Concluir etapas de capacitação e exame médico para todos os candidatos aprovados, mantendo registro atualizado no PGU.',
-                    resp: 'Equipe de Treinamentos',
+                    acao: 'Exame médico',
+                    desc: 'Concluir agendamento e confirmação do exame para candidatos aprovados, com datas registradas no PGU.',
+                    resp: 'Equipe de Saúde Ocupacional / RH',
                     prazo: st(1) === 'concluido' ? `Até ${dl}` : 'Contínuo',
                     pill: pill(1),
                     impacto: impacto(1),
                 },
                 {
-                    acao: 'Assinatura de contrato',
-                    desc: 'Formalizar contratos e documentação até a etapa de pós-contratação, alinhado ao volume de vagas consolidadas.',
-                    resp: 'Gestão PGU / RH',
+                    acao: 'Treinamentos',
+                    desc: 'Concluir capacitações obrigatórias e confirmações de treinamento alinhadas ao calendário do ciclo.',
+                    resp: 'Equipe de Treinamentos',
                     prazo: this.clientePlanoMilestonePrazo(2),
                     pill: pill(2),
                     impacto: impacto(2),
                 },
                 {
-                    acao: 'Postagem e acompanhamento SGC',
-                    desc: 'Garantir envio e validação no SGC para liberação final das vagas em conformidade com o contrato.',
-                    resp: 'Equipe de Mobilização',
+                    acao: 'Assinatura documental',
+                    desc: 'Formalizar contratos e documentação até a etapa de pós-contratação, alinhado ao volume de vagas consolidadas.',
+                    resp: 'Gestão PGU / RH',
                     prazo: this.clientePlanoMilestonePrazo(3),
                     pill: pill(3),
                     impacto: impacto(3),
+                },
+                {
+                    acao: 'Postagem e acompanhamento SGC',
+                    desc: 'Garantir envio e validação no SGC para liberação final das vagas em conformidade com o contrato.',
+                    resp: 'Equipe de Mobilização',
+                    prazo: this.clientePlanoMilestonePrazo(4),
+                    pill: pill(4),
+                    impacto: impacto(4),
                 },
                 {
                     acao: 'Liberação de candidatos',
                     desc: 'Concluir liberações pendentes e comunicar as áreas operacionais até a data limite do ciclo.',
                     resp: 'Gestão PGU',
                     prazo: dl,
-                    pill: pill(4),
-                    impacto: impacto(4),
+                    pill: pill(5),
+                    impacto: impacto(5),
                 },
                 {
                     acao: 'Monitoramento executivo',
@@ -890,6 +938,163 @@ window.pguDashboard = function () {
             if (!(limite > inicio)) return 72;
             const pct = ((atual - inicio) / (limite - inicio)) * 100;
             return Math.max(8, Math.min(92, Math.round(pct)));
+        },
+        parseDateOnly(value) {
+            if (!value) return null;
+
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+            }
+
+            const raw = String(value).trim();
+            const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+            if (!match) return null;
+
+            return new Date(
+                Number(match[1]),
+                Number(match[2]) - 1,
+                Number(match[3]),
+            );
+        },
+
+        formatDateBR(value, withYear = true) {
+            const date = this.parseDateOnly(value);
+
+            if (!date) return '—';
+
+            return new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: withYear ? 'numeric' : undefined,
+            }).format(date);
+        },
+
+        competenciaInicioDate() {
+            const raw = String(this.competencia || '').trim();
+            const match = raw.match(/^(\d{4})-(\d{2})$/);
+
+            if (!match) {
+                const today = new Date();
+                return new Date(today.getFullYear(), today.getMonth(), 1);
+            }
+
+            return new Date(Number(match[1]), Number(match[2]) - 1, 1);
+        },
+
+        deadlineDateValue() {
+            return this.data?.summary?.deadline_date || this.dataLimite || null;
+        },
+
+        daysBetweenDates(start, end) {
+            if (!start || !end) return null;
+
+            const msPerDay = 24 * 60 * 60 * 1000;
+            const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+            return Math.ceil((endDate - startDate) / msPerDay);
+        },
+
+        clienteCicloSlaResumo() {
+            const panorama = this.clientePanorama();
+            const ref = this.clienteCicloSlaReferencia();
+            const hoje = new Date();
+            const hojeDate = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+            const inicioCiclo = this.competenciaInicioDate();
+            const dataLimiteRaw = this.deadlineDateValue();
+            const dataLimite = this.parseDateOnly(dataLimiteRaw);
+
+            const diasRestantes = dataLimite ? this.daysBetweenDates(hojeDate, dataLimite) : null;
+            const totalDiasCiclo = dataLimite ? Math.max(1, this.daysBetweenDates(inicioCiclo, dataLimite) ?? 1) : 1;
+            const diasDecorridosRaw = this.daysBetweenDates(inicioCiclo, hojeDate);
+            const diasDecorridos = Math.max(0, diasDecorridosRaw ?? 0);
+
+            const posicaoHoje = dataLimite
+                ? Math.max(0, Math.min(100, (diasDecorridos / totalDiasCiclo) * 100))
+                : 0;
+
+            const progresso = Math.max(0, Math.min(100, Number(panorama.pctConsolidada || 0)));
+            const aceiteSgcApi = Number(this.data?.summary?.aceite_to_sgc_progress_pct);
+            const progressoAceiteSgc = Number.isFinite(aceiteSgcApi)
+                ? Math.max(0, Math.min(100, aceiteSgcApi))
+                : progresso;
+
+            let statusLabel = 'Em acompanhamento';
+            let statusText = 'O ciclo está sendo acompanhado conforme o SLA operacional e a data limite contratual.';
+            let statusTone = 'neutral';
+
+            if (progresso >= 100) {
+                statusLabel = 'Concluído';
+                statusText = 'Todas as fases do ciclo foram concluídas dentro do acompanhamento previsto.';
+                statusTone = 'success';
+            } else if (diasRestantes !== null && diasRestantes < 0) {
+                statusLabel = 'Prazo encerrado';
+                statusText = 'O ciclo ultrapassou a data limite e requer leitura executiva do status atual.';
+                statusTone = 'danger';
+            } else if (diasRestantes !== null && diasRestantes <= 7) {
+                statusLabel = 'Reta final';
+                statusText = 'O ciclo está na reta final de acompanhamento até a data limite contratual.';
+                statusTone = 'warning';
+            } else if (diasRestantes !== null && diasRestantes >= 0) {
+                statusLabel = 'No prazo';
+                statusText = 'O ciclo está sendo acompanhado com base no SLA operacional e na data limite contratual.';
+                statusTone = 'success';
+            }
+
+            const slaAceiteSgc = `${ref.diasAceiteAteSgc} dias`;
+            const slaSgcLiberacao = `${ref.diasSgcAteLiberacaoMin} a ${ref.diasSgcAteLiberacaoMax} dias`;
+            const janelaTotalSla = `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
+
+            return {
+                contrato: this.contrato || '—',
+                competencia: this.competenciaLabelVisaoCliente(),
+
+                inicioCicloLabel: this.formatDateBR(inicioCiclo),
+                hojeLabel: this.formatDateBR(hojeDate),
+                dataLimiteLabel: this.formatDateBR(dataLimiteRaw),
+
+                diasRestantes,
+                diasRestantesLabel: diasRestantes === null
+                    ? '—'
+                    : diasRestantes < 0
+                        ? `${Math.abs(diasRestantes)} dia(s) após o prazo`
+                        : `${diasRestantes} dia(s)`,
+
+                diasRestantesKpi: diasRestantes === null
+                    ? '—'
+                    : diasRestantes < 0
+                        ? String(Math.abs(diasRestantes))
+                        : String(diasRestantes),
+                diasRestantesKpiNote: diasRestantes === null
+                    ? 'Sem data limite definida'
+                    : diasRestantes < 0
+                        ? 'dias após o prazo'
+                        : 'até a data limite',
+
+                progresso,
+                progressoLabel: `${this.formatPctPtBr(progresso)}%`,
+                progressoStyle: `width: ${progresso}%`,
+                /** Trecho Aceite → Postagem SGC: fluxo RH (5 pesos), média ponderada por quantidade de vaga. */
+                progressoAceiteSgc,
+                progressoAceiteSgcLabel: `${this.formatPctPtBr(progressoAceiteSgc)}%`,
+                progressoAceiteSgcStyle: `width: ${progressoAceiteSgc}%`,
+                hojeStyle: `left: ${posicaoHoje}%`,
+
+                vagasMapeadas: Math.round(panorama.mapeadas || 0),
+                vagasConsolidadas: Math.round(panorama.consolidadas || 0),
+                vagasEmEvolucao: Math.round(panorama.emEvolucao || 0),
+                vagasMonitoradasPct: panorama.monitoradas || 0,
+
+                slaAceiteSgc,
+                slaSgcLiberacao,
+                janelaTotalSla,
+
+                statusLabel,
+                statusText,
+                statusTone,
+            };
         },
         wrapLabelText(text, maxChars = 14) {
             const parts = String(text || '').split(' ');
@@ -1125,7 +1330,6 @@ window.pguDashboard = function () {
             run('chartClienteDestaquesLinha', () => this.renderClienteDestaquesLinha());
             run('chartClienteDestaquesDonut', () => this.renderClienteDestaquesDonut());
             run('chartClientePlanoSemiDonut', () => this.renderClientePlanoSemiDonut());
-            run('chartClienteCicloEvolucao', () => this.renderClienteCicloEvolucao());
             run('chartClienteMaturidadeEtapas', () => this.renderClienteMaturidadeEtapas());
             run('chartClienteMaturidadeComparativo', () => this.renderClienteMaturidadeComparativo());
         },
@@ -1303,11 +1507,8 @@ window.pguDashboard = function () {
                         label: {
                             show: true,
                             position: 'outside',
-                            alignTo: 'edge',
-                            edgeDistance: 8,
-                            bleedMargin: 0,
-                            width: 180,
-                            overflow: 'break',
+                            distance: 10,
+                            distanceToLabelLine: 4,
                             color: '#334155',
                             fontSize: 11,
                             fontWeight: 700,
@@ -1315,26 +1516,30 @@ window.pguDashboard = function () {
                                 const row = donutData[p.dataIndex];
                                 if (!row) return `${p.name}`;
                                 const pct = this.formatPctPtBr((Number(row.value || 0) / totalFases) * 100);
-                                return `${row.name}\n${pct}%`;
+                                return `${row.name} (${pct}%)`;
                             },
                         },
                         labelLayout: {
                             hideOverlap: false,
-                            moveOverlap: 'shiftY',
+                            moveOverlap: 'none',
                         },
                         labelLine: {
                             show: true,
-                            length: 16,
-                            length2: 12,
+                            length: 22,
+                            length2: 18,
                             smooth: false,
                             lineStyle: { color: '#94A3B8', width: 1 },
+                        },
+                        emphasis: {
+                            scale: false,
+                            label: { show: true },
+                            labelLine: { show: true, lineStyle: { width: 1, color: '#64748B' } },
                         },
                         itemStyle: {
                             borderColor: '#fff',
                             borderWidth: 5,
                             borderRadius: 12,
                         },
-                        emphasis: { scale: false },
                         data: donutData,
                     },
                 ],
@@ -2566,17 +2771,32 @@ window.pguDashboard = function () {
                         data: items.map((item) => item.exame_medico ?? 0),
                     },
                     {
-                        name: 'Trein. + Assinatura',
+                        name: 'Treinamentos',
                         type: 'line',
                         yAxisIndex: 0,
                         smooth: true,
                         showSymbol: true,
-                        symbolSize: 10,
+                        symbolSize: 9,
                         triggerLineEvent: true,
-                        lineStyle: { width: 3, color: '#10B981' },
+                        lineStyle: { width: 2.5, color: '#10B981' },
                         itemStyle: { color: '#10B981' },
+                        areaStyle: { color: 'rgba(16, 185, 129, 0.10)' },
                         emphasis: { focus: 'series' },
-                        data: items.map((item) => item.treinamentos_assinatura ?? 0),
+                        data: items.map((item) => item.treinamentos ?? 0),
+                    },
+                    {
+                        name: 'Assinatura documental',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        smooth: true,
+                        showSymbol: true,
+                        symbolSize: 9,
+                        triggerLineEvent: true,
+                        lineStyle: { width: 2.5, color: '#059669' },
+                        itemStyle: { color: '#059669' },
+                        areaStyle: { color: 'rgba(5, 150, 105, 0.10)' },
+                        emphasis: { focus: 'series' },
+                        data: items.map((item) => item.assinatura_documental ?? 0),
                     },
                     {
                         name: 'Postagem SGC',

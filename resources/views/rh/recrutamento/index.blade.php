@@ -28,7 +28,8 @@
         ];
 
         $candidateSteps = [
-            'treinamentos' => ['matriz', 'realizados', 'certificados'],
+            'exame_medico' => [],
+            'treinamentos' => [],
             'assinatura' => ['pendencias', 'contrato', 'kit'],
             'sgc' => ['postagem', 'aguardando', 'pendencias', 'cracha'],
             'liberacao' => ['orientado', 'epi', 'rota'],
@@ -49,10 +50,11 @@
         $candidateStepDone = function ($vaga, int $position, string $step) use ($candidateSteps): bool {
             $state = $vaga->form_state ?? [];
 
-            if ($step === 'treinamentos') {
+            if ($step === 'exame_medico') {
                 $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
                 $trainingEnd = $state["candidato_{$position}_treinamentos_data_fim"] ?? null;
                 $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+                $scheduledAt = $state["candidato_{$position}_treinamentos_data_agendamento"] ?? null;
 
                 if (blank($trainingEnd) && filled($trainingStart)) {
                     try {
@@ -61,6 +63,17 @@
                         $trainingEnd = null;
                     }
                 }
+
+                return filled($trainingStart) && filled($trainingConfirmedAt)
+                    && (filled($scheduledAt) || filled($trainingEnd));
+            }
+
+            if ($step === 'treinamentos') {
+                if (! empty($state["candidato_{$position}_treinamentos_capacitacao"])) {
+                    return true;
+                }
+                $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+                $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
 
                 return filled($trainingStart) && filled($trainingConfirmedAt);
             }
@@ -453,8 +466,14 @@
                                                                 'done' => str_contains($recruitmentStatus['class'], 'emerald-'),
                                                             ],
                                                             [
-                                                                'key' => 'treinamentos',
+                                                                'key' => 'exame_medico',
                                                                 'title' => 'Exame Médico',
+                                                                'status' => $trainingFollowUp($vaga, $candidate['position']),
+                                                                'done' => $candidateStepDone($vaga, $candidate['position'], 'exame_medico'),
+                                                            ],
+                                                            [
+                                                                'key' => 'treinamentos',
+                                                                'title' => 'Treinamentos',
                                                                 'status' => $trainingFollowUp($vaga, $candidate['position']),
                                                                 'done' => $candidateStepDone($vaga, $candidate['position'], 'treinamentos'),
                                                             ],
@@ -501,7 +520,7 @@
                                                     </div>
 
                                                     <div style="overflow-x:auto;padding:10px 0 4px;">
-                                                        <div style="position:relative;display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));min-width:920px;padding:8px 28px 0;align-items:start;">
+                                                        <div style="position:relative;display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));min-width:1100px;padding:8px 28px 0;align-items:start;">
                                                             @foreach ($timelineItems as $index => $item)
                                                                 <div style="position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:center;text-align:center;padding:0 8px;">
                                                                     @if ($index < $timelineItems->count() - 1)

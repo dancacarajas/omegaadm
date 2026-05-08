@@ -317,16 +317,16 @@
                         <div class="flex justify-center">
                             <div id="chartClientePanorama" class="h-[460px] w-[540px] max-w-full"></div>
                         </div>
-                        <div class="mt-3 grid gap-3 border-t border-pgu-border pt-4 sm:grid-cols-3 lg:grid-cols-5">
+                        <div class="mt-3 overflow-x-auto border-t border-pgu-border pt-4">
+                            <div class="grid min-w-[34rem] grid-cols-6 gap-x-1 gap-y-2 sm:min-w-0 sm:w-full sm:gap-x-2 md:gap-x-3">
                             <template x-for="fase in clienteFasesComPercentual()" :key="fase.name">
-                                <div class="text-center">
-                                    <p class="inline-flex items-center gap-2 text-sm font-semibold text-pgu-ink">
-                                        <span class="inline-block h-3 w-3 rounded-sm" :style="`background:${fase.color}`"></span>
-                                        <span x-text="fase.name"></span>
-                                    </p>
-                                    <p class="mt-1 text-3xl font-black text-pgu-ink" x-text="`${formatPctPtBr(fase.percent)}%`"></p>
+                                <div class="flex min-w-0 flex-col items-center text-center">
+                                    <span class="mb-1 inline-block h-3 w-3 shrink-0 rounded-sm" :style="`background:${fase.color}`"></span>
+                                    <p class="text-[10px] font-semibold leading-snug text-pgu-ink sm:text-xs" x-text="fase.name"></p>
+                                    <p class="mt-1 text-lg font-black text-pgu-ink tabular-nums sm:text-2xl" x-text="`${formatPctPtBr(fase.percent)}%`"></p>
                                 </div>
                             </template>
+                            </div>
                         </div>
                     </div>
                     <div class="p-6">
@@ -425,209 +425,7 @@
                 </div>
             </section>
 
-
-
-            <section id="cardClienteCiclo" class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm overflow-hidden">
-                <div class="flex flex-wrap items-start justify-between gap-4 border-b border-pgu-border px-6 py-5">
-                    <div class="flex items-start gap-4">
-                        <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm">
-                            <i data-lucide="line-chart" class="h-8 w-8"></i>
-                        </span>
-                        <div>
-                            <h2 class="text-[44px] font-black leading-none text-brand-burgundy">2. AVANÇO DO CICLO ATÉ A DATA LIMITE</h2>
-                            <p class="mt-2 text-lg text-pgu-muted">Acompanhamento do avanço da mobilização do contrato em relação ao prazo final acordado.</p>
-                            <p class="text-lg text-pgu-muted">Visão clara do progresso atual e do tempo restante até a conclusão de todas as fases.</p>
-                        </div>
-                    </div>
-                    <div class="rounded-2xl border border-pgu-border bg-white px-4 py-3">
-                        <div class="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                            <div class="flex items-center gap-2 border-b border-pgu-border pb-2 sm:border-b-0 sm:border-r sm:pr-6">
-                                <i data-lucide="clipboard-list" class="h-4 w-4 text-brand-burgundy"></i>
-                                <p class="text-sm text-pgu-muted">Contrato: <strong class="text-pgu-ink" x-text="clienteCicloResumo().contrato"></strong></p>
-                            </div>
-                            <div class="flex items-center gap-2 border-b border-pgu-border pb-2 sm:border-b-0">
-                                <i data-lucide="calendar-days" class="h-4 w-4 text-brand-burgundy"></i>
-                                <p class="text-sm text-pgu-muted">Competência: <strong class="text-pgu-ink" x-text="cicloPeriodoLabel()"></strong></p>
-                            </div>
-                            <div class="sm:col-span-2 flex items-center gap-2 pt-1">
-                                <i data-lucide="calendar-check-2" class="h-4 w-4 text-brand-burgundy"></i>
-                                <p class="text-sm text-pgu-muted">Data limite para conclusão: <strong class="text-brand-burgundy" x-text="clienteCicloResumo().dataLimite"></strong></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-6 py-5 border-b border-pgu-border">
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                        <div class="rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="target" class="h-6 w-6"></i></span>
-                                <div><p class="text-xs font-black uppercase text-pgu-muted">% Consolidado atual</p><p class="text-5xl font-black text-brand-burgundy" x-text="`${formatPctPtBr(clienteCicloResumo().progressoAtual)}%`"></p></div>
-                            </div>
-                        </div>
-                        <div class="rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="check" class="h-6 w-6"></i></span>
-                                <div><p class="text-xs font-black uppercase text-pgu-muted">Vagas consolidadas</p><p class="text-5xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></p></div>
-                            </div>
-                        </div>
-                        <div class="rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i data-lucide="refresh-cw" class="h-6 w-6"></i></span>
-                                <div><p class="text-xs font-black uppercase text-pgu-muted">Vagas em evolução</p><p class="text-5xl font-black text-amber-600" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></p></div>
-                            </div>
-                        </div>
-                        <div class="rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-700"><i data-lucide="users-round" class="h-6 w-6"></i></span>
-                                <div><p class="text-xs font-black uppercase text-pgu-muted">Vagas mapeadas</p><p class="text-5xl font-black text-blue-700" x-text="formatQtyPtBr(clienteCicloResumo().mapeadas)"></p></div>
-                            </div>
-                        </div>
-                        <div class="rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="calendar-clock" class="h-6 w-6"></i></span>
-                                <div><p class="text-xs font-black uppercase text-pgu-muted">Dias restantes</p><p class="text-5xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().diasRestantes)"></p></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-6 py-5 border-b border-pgu-border">
-                    <div class="rounded-xl border border-pgu-border bg-white p-4">
-                        <div class="mb-2 flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                                <p class="text-xl font-black text-brand-burgundy">LINHA DO TEMPO DO CICLO DE MOBILIZAÇÃO</p>
-                                <p class="text-sm text-pgu-muted">Período do ciclo: <strong x-text="cicloPeriodoLabel()"></strong> · Data limite para conclusão: <strong x-text="clienteCicloResumo().dataLimite"></strong></p>
-                            </div>
-                            <div class="flex items-center gap-6 text-sm text-pgu-muted">
-                                <span class="inline-flex items-center gap-2"><span class="h-0.5 w-9 bg-brand-burgundy"></span>Período do ciclo</span>
-                                <span class="inline-flex items-center gap-2"><span class="h-0.5 w-9 border-t-2 border-dashed border-emerald-300"></span>Projeção</span>
-                                <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>Hoje</span>
-                            </div>
-                        </div>
-                        <div class="mt-5 text-sm">
-                            <div class="relative h-[108px]">
-                                <div class="absolute left-0 right-0 top-8 h-5 rounded-full bg-zinc-200">
-                                    <div class="relative h-full rounded-full bg-brand-burgundy" :style="`width:${clienteCicloResumo().progressoAtual}%`">
-                                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-white" x-text="`${formatPctPtBr(clienteCicloResumo().progressoAtual)}%`"></span>
-                                    </div>
-                                </div>
-                                <span class="absolute top-[48px] h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-brand-burgundy" style="left:0;"></span>
-                                <span class="absolute top-[48px] h-6 w-6 -translate-y-1/2 rounded-full border-2 border-white bg-brand-burgundy shadow" :style="`left: calc(${clienteCicloResumo().progressoAtual}% - 12px)`"></span>
-                                <span class="absolute top-[48px] h-8 w-0.5 -translate-y-1/2 bg-red-500" :style="`left:${clienteCicloResumo().hojePos}%`"></span>
-                                <span class="absolute top-[48px] h-0.5 -translate-y-1/2 border-t-2 border-dashed border-emerald-300" :style="`left:${clienteCicloResumo().hojePos}%; right:30px;`"></span>
-                                <span class="absolute right-0 top-[48px] grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border-2 border-brand-burgundy text-brand-burgundy"><i data-lucide="flag" class="h-4 w-4"></i></span>
-
-                                <div class="absolute left-0 top-[68px] text-pgu-ink">
-                                    <p class="text-sm font-semibold">Início do ciclo</p>
-                                    <p class="text-sm text-pgu-muted" x-text="clienteCicloResumo().inicioCiclo"></p>
-                                </div>
-                                <div class="absolute -translate-x-1/2 text-center" :style="`left:${clienteCicloResumo().hojePos}%; top:0;`">
-                                    <p class="text-[15px] font-black text-red-600">Hoje</p>
-                                    <p class="text-sm text-pgu-ink" x-text="clienteCicloResumo().hoje"></p>
-                                </div>
-                                <div class="absolute right-0 top-[62px] text-right text-pgu-ink">
-                                    <p class="text-sm font-semibold">Data limite</p>
-                                    <p class="text-sm text-pgu-muted" x-text="clienteCicloResumo().dataLimite"></p>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex items-center justify-center">
-                                <div class="inline-flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-5 py-2.5 text-[26px] text-emerald-900">
-                                    <i data-lucide="line-chart" class="h-5 w-5 text-emerald-700"></i>
-                                    <p class="text-base">
-                                        O ciclo está avançando conforme o planejado. Manter o ritmo de
-                                        <strong>consolidação</strong> para atingir <strong>100%</strong> até a data limite.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid gap-3 bg-zinc-50/60 px-6 py-4 lg:grid-cols-3">
-                    <div class="rounded-xl border border-pgu-border bg-white p-4">
-                        <p class="text-lg font-black text-brand-burgundy">PROJEÇÃO DE CONCLUSÃO</p>
-                        <div class="mt-3 grid grid-cols-[58%_42%] gap-3">
-                            <div class="flex items-center justify-center rounded-lg bg-zinc-50/60 p-2">
-                                <div class="w-full max-w-[220px]">
-                                    <svg viewBox="0 0 220 130" class="h-[130px] w-full">
-                                        <path d="M20 110 A90 90 0 0 1 200 110" fill="none" stroke="#E9EDF2" stroke-width="18" stroke-linecap="round"></path>
-                                        <path
-                                            d="M20 110 A90 90 0 0 1 200 110"
-                                            fill="none"
-                                            stroke="#0B7A43"
-                                            stroke-width="18"
-                                            stroke-linecap="round"
-                                            stroke-dasharray="282.74"
-                                            :stroke-dashoffset="`${282.74 - (Math.max(0, Math.min(100, clienteCicloResumo().progressoAtual)) / 100) * 282.74}`"
-                                        ></path>
-                                    </svg>
-                                    <div class="-mt-2 text-center">
-                                        <p class="text-[46px] font-black leading-none text-brand-burgundy" x-text="`${formatPctPtBr(clienteCicloResumo().progressoAtual)}%`"></p>
-                                        <p class="text-[32px] font-semibold leading-tight text-pgu-ink">Consolidado</p>
-                                        <p class="text-[32px] font-semibold leading-tight text-pgu-ink">atualmente</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="border-l border-pgu-border pl-3">
-                                <p class="text-[13px] text-pgu-ink">Projeção para a data limite</p>
-                                <p class="mt-1 text-6xl font-black leading-none text-brand-burgundy">100%</p>
-                                <p class="mt-1 text-[13px] text-pgu-ink">Meta do ciclo</p>
-                                <div class="mt-4 border-t border-pgu-border pt-3">
-                                    <p class="inline-flex items-center gap-2 text-[13px] text-pgu-ink">
-                                        <i data-lucide="arrow-up" class="h-4 w-4 text-brand-burgundy"></i>
-                                        Necessário avançar
-                                    </p>
-                                    <p class="mt-1 text-5xl font-black leading-none text-brand-burgundy" x-text="`${formatPctPtBr(clienteCicloResumo().necessarioDia)}%`"></p>
-                                    <p class="mt-1 text-[13px] text-pgu-ink">por dia útil</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="rounded-xl border border-pgu-border bg-white p-4">
-                        <p class="text-lg font-black text-brand-burgundy">EVOLUÇÃO DO CICLO</p>
-                        <div id="chartClienteCicloEvolucao" class="mt-2 h-[200px] w-full"></div>
-                    </div>
-                    <div class="rounded-xl border border-pgu-border bg-white p-4">
-                        <p class="text-lg font-black text-brand-burgundy">SITUAÇÃO DO CICLO</p>
-                        <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/70">
-                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-700 text-white">
-                                        <i data-lucide="shield-check" class="h-5 w-5"></i>
-                                    </span>
-                                </span>
-                                <div>
-                                    <p class="text-[30px] font-black leading-none text-emerald-800" x-text="clienteCicloResumo().situacaoNoPrazo ? 'NO PRAZO' : 'ATENÇÃO'"></p>
-                                    <p class="mt-1 text-[13px] leading-tight text-pgu-ink">Ciclo dentro do prazo</p>
-                                    <p class="text-[13px] leading-tight text-pgu-ink">para conclusão das fases.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3 rounded-xl border border-pgu-border bg-white px-4 py-3">
-                            <p class="text-[15px] font-black text-pgu-ink">Principais pontos de atenção</p>
-                            <div class="mt-2 space-y-1.5 text-[13px] text-pgu-ink">
-                                <p class="flex items-start gap-2"><span class="mt-1.5 h-2 w-2 rounded-full bg-emerald-700"></span><span>Manter o ritmo de consolidação das vagas em evolução</span></p>
-                                <p class="flex items-start gap-2"><span class="mt-1.5 h-2 w-2 rounded-full bg-emerald-700"></span><span>Acompanhar pendências nas etapas finais</span></p>
-                                <p class="flex items-start gap-2"><span class="mt-1.5 h-2 w-2 rounded-full bg-emerald-700"></span><span>Garantir liberação das vagas até <span x-text="clienteCicloResumo().dataLimite"></span></span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="border-t border-pgu-border bg-white px-4 py-3">
-                    <div class="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-2.5">
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-800 text-white">
-                            <i data-lucide="target" class="h-6 w-6"></i>
-                        </span>
-                        <p class="text-[30px] leading-tight text-pgu-ink">
-                            Nosso compromisso é concluir 100% das vagas do ciclo até
-                            <strong class="text-emerald-800" x-text="clienteCicloResumo().dataLimite"></strong>,
-                            com mobilização segura, qualificada e alinhada
-                            <strong class="text-emerald-800">aos padrões de excelência da vale.</strong>
-                        </p>
-                    </div>
-                </div>
-            </section>
+            @include('dashboard.partials.pgu-cliente-avanco-ciclo')
 
             <section id="cardClienteMaturidade" class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm">
                 <div class="flex flex-col gap-4 border-b border-pgu-border px-6 py-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
@@ -675,7 +473,7 @@
                 </div>
 
                 <div class="px-6 py-4 border-b border-pgu-border">
-                    <div class="grid gap-3 lg:grid-cols-6">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-2">
                                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="users-round" class="h-5 w-5"></i></span>
@@ -688,23 +486,33 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-2">
+                                <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="stethoscope" class="h-5 w-5"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Exame médico</p>
+                                    <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().exameMedico)"></p>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().exameMedico)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[1]?.pct || 0)}% do total`"></p>
+                        </div>
+                        <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
+                            <div class="flex min-h-[64px] items-start gap-2">
                                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="graduation-cap" class="h-5 w-5"></i></span>
                                 <div class="min-w-0 flex-1">
                                     <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Treinamentos concluídos</p>
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().treinamentos)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().treinamentos)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[1]?.pct || 0)}% do total`"></p>
+                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().treinamentos)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[2]?.pct || 0)}% do total`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-2">
                                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="file-signature" class="h-5 w-5"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Assinatura de contrato</p>
+                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Assinatura documental</p>
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().assinatura)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().assinatura)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[2]?.pct || 0)}% do total`"></p>
+                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().assinatura)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[3]?.pct || 0)}% do total`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-2">
@@ -714,7 +522,7 @@
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().sgc)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().sgc)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[3]?.pct || 0)}% do total`"></p>
+                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().sgc)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[4]?.pct || 0)}% do total`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-2">
@@ -724,7 +532,7 @@
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().liberacao)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().liberacao)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[4]?.pct || 0)}% do total`"></p>
+                            <p class="mt-2 text-[13px] leading-snug text-pgu-muted" x-text="`${formatQtyPtBr(clienteMaturidadeResumo().liberacao)} / ${formatQtyPtBr(clienteMaturidadeResumo().totalVagas)} vagas · ${formatPctPtBr(clienteMaturidadeEtapas()[5]?.pct || 0)}% do total`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white px-3 py-3">
                             <div class="flex min-h-[64px] items-start gap-3">
@@ -1579,7 +1387,7 @@
                 </div>
 
                 <div class="space-y-6 px-4 py-5 sm:px-6">
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
                                 <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
@@ -1606,6 +1414,18 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-800">
+                                    <i data-lucide="stethoscope" class="h-5 w-5"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Exame médico</p>
+                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[1]?.value ?? 0)"></p>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-[12px] font-semibold text-violet-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dExameMedico >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dExameMedico))} desde o último reporte`"></p>
+                        </div>
+                        <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
+                            <div class="flex items-start gap-2">
                                 <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-800">
                                     <i data-lucide="badge-check" class="h-5 w-5"></i>
                                 </span>
@@ -1614,7 +1434,19 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteDestaquesTreinamentosCount())"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-purple-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinPipe >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinPipe))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-purple-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinamentos >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinamentos))} desde o último reporte`"></p>
+                        </div>
+                        <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
+                            <div class="flex items-start gap-2">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-800">
+                                    <i data-lucide="file-signature" class="h-5 w-5"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Assinatura documental</p>
+                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[3]?.value ?? 0)"></p>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-[12px] font-semibold text-rose-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1623,7 +1455,7 @@
                                 </span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">SGC concluído</p>
-                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[3]?.value ?? 0)"></p>
+                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[4]?.value ?? 0)"></p>
                                 </div>
                             </div>
                             <p class="mt-2 text-[12px] font-semibold text-teal-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dSgc >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dSgc))} desde o último reporte`"></p>
@@ -1635,7 +1467,7 @@
                                 </span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas liberadas</p>
-                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[4]?.value ?? 0)"></p>
+                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[5]?.value ?? 0)"></p>
                                 </div>
                             </div>
                             <p class="mt-2 text-[12px] font-semibold text-emerald-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dLib >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dLib))} desde o último reporte`"></p>

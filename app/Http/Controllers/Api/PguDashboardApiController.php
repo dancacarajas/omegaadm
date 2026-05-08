@@ -126,6 +126,7 @@ class PguDashboardApiController extends Controller
 
         $kpiVagasPrevistas = (int) round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0));
         $maturidadeTotalVagas = $kpiVagasPrevistas > 0 ? $kpiVagasPrevistas : $totalFunctions;
+        $aceiteToSgcProgressPct = $this->buildAceiteToSgcProgressPercent($vagas);
 
         return [
             'summary' => [
@@ -142,6 +143,8 @@ class PguDashboardApiController extends Controller
                 'cycle_start_date' => $cycleStartAt ? Carbon::parse($cycleStartAt)->toDateString() : null,
                 'itens_atrasados_fase2' => $itensAtrasadosFase2,
                 'kpis_mao_de_obra_itens' => $kpisItens,
+                /** Avanço médio (ponderado por vagas) do fluxo RH até Postagem SGC — mesma fórmula do passo a passo, sem Liberação (5 pesos). */
+                'aceite_to_sgc_progress_pct' => $aceiteToSgcProgressPct,
             ],
             'donut_avanco' => [
                 'overall' => $overallProgress,
@@ -269,6 +272,63 @@ class PguDashboardApiController extends Controller
         return $out;
     }
 
+    /**
+     * Passo 01 do fluxo RH: três primeiros checkboxes persistidos em `rh-check-*` (alinhado à listagem de recrutamento).
+     */
+    private function recrutamentoStepOneDone(array $state): bool
+    {
+        $checks = collect($state)
+            ->filter(fn ($value, $key) => str_starts_with((string) $key, 'rh-check-'))
+            ->values();
+        $chunk = $checks->slice(0, 3);
+
+        return $chunk->count() > 0 && $chunk->every(fn ($value) => (bool) $value);
+    }
+
+    /**
+     * Percentual 0–100: mesma regra do "Progresso do fluxo RH" no formulário (1/5 passo recrutamento + 4/5 média dos aprovados por etapa),
+     * porém só até Postagem SGC — Liberação não entra. Vagas sem aprovados só pontuam o passo 01; demais etapas somam 0 até haver aprovado.
+     * Média ponderada pela quantidade de vagas de cada ficha.
+     *
+     * @param  Collection<int, RecrutamentoVaga>  $vagas
+     */
+    private function buildAceiteToSgcProgressPercent(Collection $vagas): float
+    {
+        if ($vagas->isEmpty()) {
+            return 0.0;
+        }
+
+        $pesoTotal = 0.0;
+        $acumulado = 0.0;
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            $qty = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+            $approved = $this->approvedCandidates($vaga);
+            $approvedCount = $approved->count();
+
+            $done = $this->recrutamentoStepOneDone($state) ? 1.0 : 0.0;
+            if ($approvedCount > 0) {
+                foreach (['exame_medico', 'treinamentos', 'assinatura', 'sgc'] as $step) {
+                    $doneInStep = $approved
+                        ->filter(fn ($c) => $this->candidateStepDone($state, (int) $c['position'], $step))
+                        ->count();
+                    $done += $doneInStep / $approvedCount;
+                }
+            }
+
+            $pct = min(100.0, round(($done / 5.0) * 100, 1));
+            $acumulado += $pct * $qty;
+            $pesoTotal += $qty;
+        }
+
+        if ($pesoTotal <= 0) {
+            return 0.0;
+        }
+
+        return round($acumulado / $pesoTotal, 1);
+    }
+
     private function approvedCandidates(RecrutamentoVaga $vaga): Collection
     {
         $state = $vaga->form_state ?? [];
@@ -286,9 +346,32 @@ class PguDashboardApiController extends Controller
 
     private function candidateStepDone(array $state, int $position, string $step): bool
     {
+        if ($step === 'exame_medico') {
+            $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+            $trainingEnd = $state["candidato_{$position}_treinamentos_data_fim"] ?? null;
+            $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+            $scheduledAt = $state["candidato_{$position}_treinamentos_data_agendamento"] ?? null;
+
+            if (blank($trainingEnd) && filled($trainingStart)) {
+                try {
+                    $trainingEnd = Carbon::parse($trainingStart)->addDays(5)->toDateString();
+                } catch (\Throwable) {
+                    $trainingEnd = null;
+                }
+            }
+
+            return filled($trainingStart) && filled($trainingConfirmedAt)
+                && (filled($scheduledAt) || filled($trainingEnd));
+        }
+
         if ($step === 'treinamentos') {
-            return filled($state["candidato_{$position}_treinamentos_data_inicio"] ?? null)
-                && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null);
+            if (! empty($state["candidato_{$position}_treinamentos_capacitacao"])) {
+                return true;
+            }
+            $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+            $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+
+            return filled($trainingStart) && filled($trainingConfirmedAt);
         }
 
         if ($step === 'assinatura') {
@@ -706,7 +789,8 @@ class PguDashboardApiController extends Controller
         $counts = [
             'recrutamento' => 0,
             'exame_medico' => 0,
-            'treinamentos_assinatura' => 0,
+            'treinamentos' => 0,
+            'assinatura_documental' => 0,
             'sgc' => 0,
             'liberacao' => 0,
         ];
@@ -718,11 +802,14 @@ class PguDashboardApiController extends Controller
             foreach ($approved as $candidate) {
                 $position = (int) $candidate['position'];
                 $counts['recrutamento']++;
-                if ($this->candidateStepDone($state, $position, 'treinamentos')) {
+                if ($this->candidateStepDone($state, $position, 'exame_medico')) {
                     $counts['exame_medico']++;
                 }
+                if ($this->candidateStepDone($state, $position, 'treinamentos')) {
+                    $counts['treinamentos']++;
+                }
                 if ($this->candidateStepDone($state, $position, 'assinatura')) {
-                    $counts['treinamentos_assinatura']++;
+                    $counts['assinatura_documental']++;
                 }
                 if ($this->candidateStepDone($state, $position, 'sgc')) {
                     $counts['sgc']++;
@@ -736,7 +823,8 @@ class PguDashboardApiController extends Controller
         return [
             ['fase' => 'Recrutamento', 'valor' => $counts['recrutamento']],
             ['fase' => 'Exame Médico', 'valor' => $counts['exame_medico']],
-            ['fase' => 'Trein. + Assinatura', 'valor' => $counts['treinamentos_assinatura']],
+            ['fase' => 'Treinamentos', 'valor' => $counts['treinamentos']],
+            ['fase' => 'Assinatura documental', 'valor' => $counts['assinatura_documental']],
             ['fase' => 'Postagem SGC', 'valor' => $counts['sgc']],
             ['fase' => 'Liberação', 'valor' => $counts['liberacao']],
         ];
@@ -773,8 +861,10 @@ class PguDashboardApiController extends Controller
                     $row['recrutamento'] = $valor;
                 } elseif ($fase === 'Exame Médico') {
                     $row['exame_medico'] = $valor;
-                } elseif ($fase === 'Trein. + Assinatura') {
-                    $row['treinamentos_assinatura'] = $valor;
+                } elseif ($fase === 'Treinamentos') {
+                    $row['treinamentos'] = $valor;
+                } elseif ($fase === 'Assinatura documental') {
+                    $row['assinatura_documental'] = $valor;
                 } elseif ($fase === 'Postagem SGC') {
                     $row['sgc'] = $valor;
                 } elseif ($fase === 'Liberação') {
@@ -785,7 +875,8 @@ class PguDashboardApiController extends Controller
             $row += [
                 'recrutamento' => 0,
                 'exame_medico' => 0,
-                'treinamentos_assinatura' => 0,
+                'treinamentos' => 0,
+                'assinatura_documental' => 0,
                 'sgc' => 0,
                 'liberacao' => 0,
             ];
