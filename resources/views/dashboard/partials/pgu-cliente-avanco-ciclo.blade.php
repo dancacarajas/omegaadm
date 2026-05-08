@@ -1025,7 +1025,7 @@
             <div class="pgu-client-cycle-sla-row">
                 <div class="pgu-client-cycle-sla-row-label">
                     <i data-lucide="file-check-2" class="h-5 w-5 text-brand-burgundy"></i>
-                    <span>Aceite → SGC</span>
+                    <span>Processo Omega Finalizado</span>
                 </div>
                 <div class="pgu-client-cycle-sla-row-value" x-text="clienteCicloSlaResumo().slaAceiteSgc"></div>
             </div>

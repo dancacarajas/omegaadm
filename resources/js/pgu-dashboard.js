@@ -181,7 +181,9 @@ window.pguDashboard = function () {
             const fases = Array.isArray(this.data?.fase_atual) ? this.data.fase_atual : [];
             const colors = ['#6F1731', '#73203D', '#8B2C4A', '#A9445F', '#C3627A', '#D9879A'];
             return fases.map((f, idx) => ({
-                name: f?.fase || `Fase ${idx + 1}`,
+                name: String(f?.fase || '') === 'Recrutamento'
+                    ? 'Vagas Preenchidas'
+                    : (f?.fase || `Fase ${idx + 1}`),
                 value: Math.max(0, Number(f?.valor || 0)),
                 color: colors[idx] || colors[colors.length - 1],
             }));
@@ -557,7 +559,7 @@ window.pguDashboard = function () {
             const base = totalVagas > 0 ? totalVagas : maxReal;
             const toPct = (v) => (base > 0 ? Math.round(((v / base) * 100) * 10) / 10 : 0);
             return [
-                { key: 'aprovados', label: 'Recrutamento', value: Math.round(aprovados), total: base, pct: toPct(aprovados), color: '#6F1731' },
+                { key: 'aprovados', label: 'Vagas Preenchidas', value: Math.round(aprovados), total: base, pct: toPct(aprovados), color: '#6F1731' },
                 { key: 'exame_medico', label: 'Exame Médico', value: Math.round(exameMedico), total: base, pct: toPct(exameMedico), color: '#73203D' },
                 { key: 'treinamentos', label: 'Treinamentos', value: Math.round(treinamentos), total: base, pct: toPct(treinamentos), color: '#8B2C4A' },
                 { key: 'assinatura', label: 'Assinatura documental', value: Math.round(assinatura), total: base, pct: toPct(assinatura), color: '#A9445F' },
@@ -873,7 +875,7 @@ window.pguDashboard = function () {
         clientePlanoRoteiroEtapas() {
             const etapas = this.clienteMaturidadeEtapas();
             const map = [
-                { step: 1, titulo: 'Recrutamento', keyIdx: 0 },
+                { step: 1, titulo: 'Vagas Preenchidas', keyIdx: 0 },
                 { step: 2, titulo: 'Exame médico', keyIdx: 1 },
                 { step: 3, titulo: 'Treinamentos', keyIdx: 2 },
                 { step: 4, titulo: 'Assinatura documental', keyIdx: 3 },
@@ -881,7 +883,8 @@ window.pguDashboard = function () {
                 { step: 6, titulo: 'Liberação', keyIdx: 5 },
             ];
             const tituloRoteiroMap = {
-                Recrutamento: 'Recrutamento',
+                Recrutamento: 'Vagas Preenchidas',
+                'Vagas Preenchidas': 'Vagas Preenchidas',
                 'Exame médico': 'Exame médico',
                 Treinamentos: 'Treinamentos',
                 'Assinatura documental': 'Assinatura de contrato',
@@ -1602,33 +1605,15 @@ window.pguDashboard = function () {
             const totalFases = Math.max(1, Number(this.data?.summary?.total_functions || 0));
             const faseFinal = fases[fases.length - 1] || { name: 'Liberação', value: 0 };
             const pctFinal = (Number(faseFinal.value || 0) / totalFases) * 100;
-            const valoresCumulativos = fases.map((f) => Math.max(0, Number(f.value || 0)));
-            if (valoresCumulativos.length < 6) {
-                while (valoresCumulativos.length < 6) valoresCumulativos.push(0);
-            }
-            const [recrutamento, exameMedico, treinamentos, assinatura, sgc, liberacao] = valoresCumulativos;
-
-            // Normaliza a cascata acumulada (não crescente), para evitar sobreposição acima de 100%.
-            const cRecr = Math.min(totalFases, recrutamento);
-            const cExam = Math.min(cRecr, exameMedico);
-            const cTrein = Math.min(cExam, treinamentos);
-            const cAssin = Math.min(cTrein, assinatura);
-            const cSgc = Math.min(cAssin, sgc);
-            const cLib = Math.min(cSgc, liberacao);
-
-            // Fatias exclusivas por etapa + pendente => soma sempre fecha em 100%.
-            const valoresExclusivos = [
-                Math.max(0, cRecr - cExam),   // Recrutamento
-                Math.max(0, cExam - cTrein),  // Exame Médico
-                Math.max(0, cTrein - cAssin), // Treinamentos
-                Math.max(0, cAssin - cSgc),   // Assinatura documental
-                Math.max(0, cSgc - cLib),     // SGC
-                Math.max(0, cLib),            // Liberação
-            ];
-            const totalPendente = Math.max(0, totalFases - cRecr);
+            const valoresFases = fases.map((f) => Math.max(0, Math.min(totalFases, Number(f.value || 0))));
+            const somaFases = valoresFases.reduce((acc, v) => acc + v, 0);
+            const fatorReducao = somaFases > totalFases ? (totalFases / somaFases) : 1;
+            const valoresDonut = valoresFases.map((v) => v * fatorReducao);
+            const somaDonut = valoresDonut.reduce((acc, v) => acc + v, 0);
+            const totalPendente = Math.max(0, totalFases - somaDonut);
 
             const donutData = fases.map((f, idx) => {
-                const v = Math.max(0, Number(valoresExclusivos[idx] || 0));
+                const v = Math.max(0, Number(valoresDonut[idx] || 0));
                 const pct = totalFases > 0 ? (v / totalFases) * 100 : 0;
                 const temFatia = v > 0;
                 return {
@@ -2951,7 +2936,7 @@ window.pguDashboard = function () {
                 ],
                 series: [
                     {
-                        name: 'Recrutamento',
+                        name: 'Vagas Preenchidas',
                         type: 'line',
                         yAxisIndex: 0,
                         smooth: true,
