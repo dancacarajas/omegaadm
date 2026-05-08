@@ -67,6 +67,8 @@ class ContratoHistogramaController extends Controller
 
         }
 
+        $inicioMonitoramento = $recorte?->inicio_monitoramento?->format('Y-m-d')
+            ?? Carbon::createFromFormat('Y-m', $competenciaMes)->startOfMonth()->toDateString();
         $dataLimiteEtapa2 = $recorte?->data_limite_etapa_2?->format('Y-m-d');
         $hoje = Carbon::today();
         $limiteCarbon = $recorte?->data_limite_etapa_2?->copy()->startOfDay();
@@ -99,6 +101,7 @@ class ContratoHistogramaController extends Controller
             'competenciaMes' => $competenciaMes,
             'linhas' => $linhas,
             'totais' => $totais,
+            'inicioMonitoramento' => $inicioMonitoramento,
             'dataLimiteEtapa2' => $dataLimiteEtapa2,
             'histogramaHoje' => $hoje->toDateString(),
             'contagemAtrasadas' => $contagemAtrasadas,
@@ -114,6 +117,7 @@ class ContratoHistogramaController extends Controller
         $data = $request->validate([
             'contrato' => ['required', 'string', 'max:255'],
             'competencia' => ['required', 'date_format:Y-m'],
+            'inicio_monitoramento' => ['nullable', 'date'],
             'data_limite_etapa_2' => ['nullable', 'date'],
             'linhas' => ['nullable', 'array'],
             'linhas.*.tipo_linha' => ['nullable', 'in:grupo,item'],
@@ -163,6 +167,9 @@ class ContratoHistogramaController extends Controller
                     'competencia' => $competencia,
                 ],
                 [
+                    'inicio_monitoramento' => ! empty($data['inicio_monitoramento'])
+                        ? Carbon::parse($data['inicio_monitoramento'])->toDateString()
+                        : Carbon::createFromFormat('Y-m', $data['competencia'])->startOfMonth()->toDateString(),
                     'data_limite_etapa_2' => ! empty($data['data_limite_etapa_2'])
                         ? Carbon::parse($data['data_limite_etapa_2'])->toDateString()
                         : null,

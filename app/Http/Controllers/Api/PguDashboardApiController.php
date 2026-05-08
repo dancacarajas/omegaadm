@@ -40,14 +40,14 @@ class PguDashboardApiController extends Controller
         }
 
         $competenciaMes = Carbon::createFromFormat('Y-m', $data['competencia'])->startOfMonth();
+        $recorte = ContratoHistogramaRecorte::query()
+            ->where('contrato', $data['contrato'])
+            ->whereDate('competencia', $competenciaMes->toDateString())
+            ->first();
         $deadline = isset($data['data_limite_etapa_2']) && $data['data_limite_etapa_2']
             ? Carbon::parse($data['data_limite_etapa_2'])->startOfDay()
             : null;
         if ($deadline === null) {
-            $recorte = ContratoHistogramaRecorte::query()
-                ->where('contrato', $data['contrato'])
-                ->whereDate('competencia', $competenciaMes->toDateString())
-                ->first();
             if ($recorte?->data_limite_etapa_2) {
                 $deadline = $recorte->data_limite_etapa_2->copy()->startOfDay();
             }
@@ -119,10 +119,9 @@ class PguDashboardApiController extends Controller
         $deadlineRisk = $this->deadlineRisk($deadline, $overallProgress);
         $progressDelta = $this->progressDeltaFromTrend($trend);
         $itensAtrasadosFase2 = (int) collect($ranking)->filter(fn ($row) => ((float) ($row['progress'] ?? 0)) < 100)->count();
-        $cycleStartAt = ContratoHistogramaLinha::query()
-            ->where('contrato', $data['contrato'])
-            ->orderBy('created_at')
-            ->value('created_at');
+        $cycleStartAt = $recorte?->inicio_monitoramento
+            ? $recorte->inicio_monitoramento->toDateString()
+            : $competenciaMes->copy()->startOfMonth()->toDateString();
 
         $kpiVagasPrevistas = (int) round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0));
         $maturidadeTotalVagas = $kpiVagasPrevistas > 0 ? $kpiVagasPrevistas : $totalFunctions;
@@ -140,7 +139,7 @@ class PguDashboardApiController extends Controller
                 'deadline_risk' => $deadlineRisk,
                 'deadline_risk_label' => $this->deadlineRiskLabel($deadlineRisk),
                 'deadline_date' => $deadline?->toDateString(),
-                'cycle_start_date' => $cycleStartAt ? Carbon::parse($cycleStartAt)->toDateString() : null,
+                'cycle_start_date' => $cycleStartAt,
                 'itens_atrasados_fase2' => $itensAtrasadosFase2,
                 'kpis_mao_de_obra_itens' => $kpisItens,
                 /** Avanço médio (ponderado por vagas) do fluxo RH até Postagem SGC — mesma fórmula do passo a passo, sem Liberação (5 pesos). */

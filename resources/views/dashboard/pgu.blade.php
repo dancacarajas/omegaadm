@@ -1392,7 +1392,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dCons >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dCons))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dCons >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dCons))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1404,7 +1404,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dPend >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dPend))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dPend >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dPend))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1416,7 +1416,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[1]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dExameMedico >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dExameMedico))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dExameMedico >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dExameMedico))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1428,7 +1428,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteDestaquesTreinamentosCount())"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinamentos >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinamentos))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinamentos >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinamentos))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1440,7 +1440,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[3]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
@@ -1452,7 +1452,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[4]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dSgc >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dSgc))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dSgc >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dSgc))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3 sm:col-span-2 lg:col-span-1">
                             <div class="flex items-start gap-2">
@@ -1464,7 +1464,7 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[5]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dLib >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dLib))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dLib >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dLib))} desde o início do ciclo`"></p>
                         </div>
                     </div>
 
@@ -1556,8 +1556,8 @@
 
                     <div class="grid gap-5 lg:grid-cols-3">
                         <div class="rounded-xl border border-pgu-border bg-white p-4">
-                            <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Evolução mensal da consolidação</p>
-                            <p class="mt-1 text-xs text-pgu-muted">Progresso médio (Pré/PGU) por competência na série do contrato.</p>
+                            <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Evolução do período de consolidação</p>
+                            <p class="mt-1 text-xs text-pgu-muted">Progresso médio (Pré/PGU) no intervalo do ciclo: início, posição atual e meta na data limite.</p>
                             <div id="chartClienteDestaquesLinha" class="mt-2 h-[240px] w-full min-h-[200px]"></div>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white p-4">

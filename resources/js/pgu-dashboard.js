@@ -97,7 +97,7 @@ window.pguDashboard = function () {
         },
         clienteDestaquesInfo() {
             window.alert(
-                'Destaques operacionais do ciclo: resume avanços recentes (comparando o último mês da série), movimentação consolidada/pendências, '
+                'Destaques operacionais do ciclo: resume avanços do período (do início do ciclo até a data atual), movimentação consolidada/pendências, '
                 + 'funções com menor índice e gráficos de progresso e de participação das etapas de maturidade.',
             );
         },
@@ -589,10 +589,28 @@ window.pguDashboard = function () {
                 maturidade: Math.round(maturidade * 10) / 10,
             };
         },
-        /** Comparativo último mês × penúltimo da série (`trend` / `fase_trend`). */
-        clienteDestaquesDeltaUltimoPeriodo() {
+        /** Base inicial do ciclo para comparativos por período (início -> agora). */
+        clienteDestaquesBaselineInicioCiclo() {
             const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
             const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
+            const t0 = trend[0] || {};
+            const f0 = ft[0] || {};
+            return {
+                consolidadas: Math.max(0, Math.round(Number(t0.completed || 0))),
+                emEvolucao: Math.max(0, Math.round(Number(t0.pending || 0))),
+                progresso: Math.max(0, Math.min(100, Number(t0.progress || 0))),
+                exameMedico: Math.max(0, Math.round(Number(f0.exame_medico || 0))),
+                treinamentos: Math.max(0, Math.round(Number(f0.treinamentos || 0))),
+                assinatura: Math.max(0, Math.round(Number(f0.assinatura_documental || 0))),
+                sgc: Math.max(0, Math.round(Number(f0.sgc || 0))),
+                liberacao: Math.max(0, Math.round(Number(f0.liberacao || 0))),
+            };
+        },
+        /** Comparativo do período do ciclo (início do ciclo -> posição atual). */
+        clienteDestaquesDeltaUltimoPeriodo() {
+            const baseline = this.clienteDestaquesBaselineInicioCiclo();
+            const resumo = this.clienteCicloResumo();
+            const etapas = this.clienteMaturidadeEtapas();
             const z = {
                 dCons: 0,
                 dPend: 0,
@@ -604,26 +622,15 @@ window.pguDashboard = function () {
                 dSgc: 0,
                 dLib: 0,
             };
-            if (trend.length < 2) {
-                return z;
-            }
-            const a = trend[trend.length - 1];
-            const b = trend[trend.length - 2];
-            z.dCons = Math.round(Number(a.completed || 0) - Number(b.completed || 0));
-            z.dPend = Math.round(Number(a.pending || 0) - Number(b.pending || 0));
-            z.dProg = Math.round((Number(a.progress || 0) - Number(b.progress || 0)) * 10) / 10;
-            if (ft.length >= 2) {
-                const fa = ft[ft.length - 1];
-                const fb = ft[ft.length - 2];
-                z.dExameMedico = Math.round(Number(fa.exame_medico || 0) - Number(fb.exame_medico || 0));
-                z.dTreinamentos = Math.round(Number(fa.treinamentos || 0) - Number(fb.treinamentos || 0));
-                z.dAssinaturaDocumental = Math.round(
-                    Number(fa.assinatura_documental || 0) - Number(fb.assinatura_documental || 0),
-                );
-                z.dTreinPipe = z.dTreinamentos;
-                z.dSgc = Math.round(Number(fa.sgc || 0) - Number(fb.sgc || 0));
-                z.dLib = Math.round(Number(fa.liberacao || 0) - Number(fb.liberacao || 0));
-            }
+            z.dCons = Math.round(Number(resumo.consolidadas || 0) - baseline.consolidadas);
+            z.dPend = Math.round(Number(resumo.emEvolucao || 0) - baseline.emEvolucao);
+            z.dProg = Math.round((Number(resumo.progressoAtual || 0) - baseline.progresso) * 10) / 10;
+            z.dExameMedico = Math.round(Number(etapas[1]?.value || 0) - baseline.exameMedico);
+            z.dTreinamentos = Math.round(Number(etapas[2]?.value || 0) - baseline.treinamentos);
+            z.dAssinaturaDocumental = Math.round(Number(etapas[3]?.value || 0) - baseline.assinatura);
+            z.dTreinPipe = z.dTreinamentos;
+            z.dSgc = Math.round(Number(etapas[4]?.value || 0) - baseline.sgc);
+            z.dLib = Math.round(Number(etapas[5]?.value || 0) - baseline.liberacao);
             return z;
         },
         clienteDestaquesTreinamentosCount() {
@@ -639,20 +646,20 @@ window.pguDashboard = function () {
             const out = [];
             out.push({
                 titulo: `Aumento de ${this.formatQtyPtBr(Math.max(0, d.dCons))} vagas consolidadas.`,
-                desc: 'Comparado ao último ponto da série mensal do contrato.',
+                desc: 'Comparativo entre o início do ciclo e a posição atual.',
             });
             const evoTxt = d.dPend >= 0 ? `Aumento de ${this.formatQtyPtBr(d.dPend)} vagas em carência operacional (pendências PGU − Pré no período).` : `Redução de ${this.formatQtyPtBr(Math.abs(d.dPend))} vagas na fila de pendências.`;
             out.push({
                 titulo: evoTxt,
-                desc: 'Comparativo entre os dois últimos meses da série de recrutamento.',
+                desc: 'Leitura do período completo do ciclo contratual.',
             });
             out.push({
                 titulo: `Variação de ${this.formatPctPtBr(d.dProg)} p.p. no progresso médio do ranking.`,
-                desc: 'Média de avanço (Pré/PGU) nas funções monitoradas.',
+                desc: 'Variação acumulada no período do ciclo (início -> atual).',
             });
             out.push({
                 titulo: `Liberações: ${d.dLib >= 0 ? '+' : '−'}${this.formatQtyPtBr(Math.abs(d.dLib))} candidatos na etapa de liberação.`,
-                desc: 'Variação mês a mês nas contagens de maturidade do PGU.',
+                desc: 'Variação acumulada das contagens de maturidade no período.',
             });
             return out;
         },
@@ -668,60 +675,48 @@ window.pguDashboard = function () {
         clienteDestaquesMovimentacoesFooter() {
             const n = this.clienteDestaquesMovimentacoesRows().length;
             if (n === 0) {
-                return 'Sem movimentações na série do ciclo para este recorte.';
+                return 'Sem movimentações registradas para o período do ciclo neste recorte.';
             }
-            return `Mostrando as ${n} última${n === 1 ? '' : 's'} movimentações do ciclo.`;
+            return `Mostrando ${n} marcos do período do ciclo (início, posição atual e meta).`;
         },
         clienteDestaquesMovimentacoesRows() {
-            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
-            const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
-            if (trend.length === 0) {
-                return [];
-            }
-            const start = Math.max(0, trend.length - 6);
-            const rows = [];
-            const faseLabels = [
-                ['exame_medico', 'Exame médico'],
-                ['treinamentos', 'Treinamentos concluídos'],
-                ['assinatura_documental', 'Assinaturas de contrato'],
-                ['sgc', 'SGC concluído'],
-                ['liberacao', 'Liberações'],
+            const baseline = this.clienteDestaquesBaselineInicioCiclo();
+            const resumo = this.clienteCicloResumo();
+            const inicio = this.parseDateAny(this.competencia ? `${this.competencia}-01` : null)
+                || this.parseDateAny(this.data?.summary?.cycle_start_date);
+            const dataLimite = this.parseDateAny(this.dataLimite);
+            const inicioLabel = this.formatDateBR(inicio);
+            const hojeLabel = this.formatDateBR(new Date());
+            const limiteLabel = this.formatDateBR(dataLimite);
+
+            const deltaCons = Math.round(Number(resumo.consolidadas || 0) - baseline.consolidadas);
+            const deltaProg = Math.round((Number(resumo.progressoAtual || 0) - baseline.progresso) * 10) / 10;
+            const faltaCons = Math.max(0, Math.round(Number(resumo.mapeadas || 0) - Number(resumo.consolidadas || 0)));
+            const faltaProg = Math.max(0, Math.round((100 - Number(resumo.progressoAtual || 0)) * 10) / 10);
+
+            return [
+                {
+                    data: inicioLabel,
+                    mov: 'Início do período',
+                    qtd: `+${this.formatQtyPtBr(baseline.consolidadas)}`,
+                    impactoPos: baseline.progresso >= 0,
+                    impacto: `+${this.formatPctPtBr(baseline.progresso)} p.p.`,
+                },
+                {
+                    data: hojeLabel,
+                    mov: 'Posição atual do ciclo',
+                    qtd: `${deltaCons >= 0 ? '+' : '−'}${this.formatQtyPtBr(Math.abs(deltaCons))}`,
+                    impactoPos: deltaProg >= 0,
+                    impacto: `${deltaProg >= 0 ? '+' : ''}${this.formatPctPtBr(deltaProg)} p.p.`,
+                },
+                {
+                    data: limiteLabel,
+                    mov: 'Meta até a data limite',
+                    qtd: `+${this.formatQtyPtBr(faltaCons)}`,
+                    impactoPos: true,
+                    impacto: `+${this.formatPctPtBr(faltaProg)} p.p.`,
+                },
             ];
-            for (let i = start; i < trend.length; i++) {
-                const cur = trend[i];
-                const prev = trend[i - 1];
-                const dC = prev ? Math.round(Number(cur.completed || 0) - Number(prev.completed || 0)) : Math.round(Number(cur.completed || 0));
-                const dProg = prev
-                    ? Math.round((Number(cur.progress || 0) - Number(prev.progress || 0)) * 10) / 10
-                    : Math.round(Number(cur.progress || 0) * 10) / 10;
-                let mov = 'Vagas consolidadas';
-                if (!prev) {
-                    mov = 'Posição no período';
-                } else if (dC < 0) {
-                    mov = 'Ajuste no saldo consolidado';
-                } else if (ft[i] && ft[i - 1]) {
-                    let best = -1;
-                    let label = '';
-                    for (const [key, name] of faseLabels) {
-                        const d = Math.round(Number(ft[i][key] || 0) - Number(ft[i - 1][key] || 0));
-                        if (d > best) {
-                            best = d;
-                            label = name;
-                        }
-                    }
-                    if (best > 0 && label) {
-                        mov = label;
-                    }
-                }
-                rows.push({
-                    data: this.clienteDestaquesMovimentacaoDataLabel(cur.date),
-                    mov,
-                    qtd: `${dC >= 0 ? '+' : '−'}${this.formatQtyPtBr(Math.abs(dC))}`,
-                    impactoPos: dProg >= 0,
-                    impacto: `${dProg >= 0 ? '+' : ''}${this.formatPctPtBr(dProg)} p.p.`,
-                });
-            }
-            return rows;
         },
         clienteDestaquesPontosAtencao() {
             const items = [];
@@ -1117,6 +1112,10 @@ window.pguDashboard = function () {
         },
 
         competenciaInicioDate() {
+            const fromSummary = this.parseDateOnly(this.data?.summary?.cycle_start_date || null);
+            if (fromSummary) {
+                return fromSummary;
+            }
             const raw = String(this.competencia || '').trim();
             const match = raw.match(/^(\d{4})-(\d{2})$/);
 
@@ -2043,21 +2042,21 @@ window.pguDashboard = function () {
         renderClienteDestaquesLinha() {
             const chart = this.baseChart('chartClienteDestaquesLinha');
             if (!chart) return;
-            const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
-            if (trend.length === 0) {
-                chart.setOption({
-                    title: {
-                        text: 'Sem série mensal',
-                        left: 'center',
-                        top: 'middle',
-                        textStyle: { color: '#64748B', fontSize: 14, fontWeight: 600 },
-                    },
-                    series: [],
-                });
-                return;
-            }
-            const labels = trend.map((p) => String(p.date || ''));
-            const vals = trend.map((p) => Math.max(0, Math.min(100, Number(p.progress || 0))));
+            const baseline = this.clienteDestaquesBaselineInicioCiclo();
+            const resumo = this.clienteCicloResumo();
+            const inicio = this.parseDateAny(this.competencia ? `${this.competencia}-01` : null)
+                || this.parseDateAny(this.data?.summary?.cycle_start_date);
+            const dataLimite = this.parseDateAny(this.dataLimite);
+            const labels = [
+                this.formatDateBR(inicio),
+                this.formatDateBR(new Date()),
+                this.formatDateBR(dataLimite),
+            ];
+            const vals = [
+                Math.max(0, Math.min(100, Number(baseline.progresso || 0))),
+                Math.max(0, Math.min(100, Number(resumo.progressoAtual || 0))),
+                100,
+            ];
             const ec = window.echarts;
             const grad = ec?.graphic?.LinearGradient
                 ? new ec.graphic.LinearGradient(0, 0, 0, 1, [
@@ -2076,7 +2075,7 @@ window.pguDashboard = function () {
                     textStyle: { color: '#FFFFFF', fontSize: 12 },
                     formatter: (params) => {
                         const p0 = Array.isArray(params) ? params[0] : params;
-                        return `<strong>${p0.axisValue}</strong><br/>Progresso médio: ${this.formatPctPtBr(p0.value)}%`;
+                        return `<strong>${p0.axisValue}</strong><br/>Progresso médio no período: ${this.formatPctPtBr(p0.value)}%`;
                     },
                 },
                 xAxis: {
@@ -2093,9 +2092,9 @@ window.pguDashboard = function () {
                     splitLine: { lineStyle: { color: '#EEF2F7' } },
                 },
                 series: [{
-                    name: 'Progresso médio',
+                    name: 'Progresso do período',
                     type: 'line',
-                    smooth: true,
+                    smooth: false,
                     symbolSize: 6,
                     data: vals,
                     lineStyle: { color: '#166534', width: 2.5 },

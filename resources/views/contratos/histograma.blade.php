@@ -47,6 +47,7 @@
             data-histograma-form
             data-hoje="{{ $histogramaHoje }}"
             data-limite="{{ $dataLimiteEtapa2 ?? '' }}"
+            data-inicio-monitoramento="{{ $inicioMonitoramento ?? '' }}"
         >
             @csrf
             <input type="hidden" name="contrato" value="{{ $contratoSelecionado }}">
@@ -65,6 +66,16 @@
                         </p>
                     @endif
                 </div>
+                <label class="w-full min-w-[220px] max-w-xs lg:w-auto">
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Início do monitoramento</span>
+                    <input
+                        type="date"
+                        name="inicio_monitoramento"
+                        value="{{ $inicioMonitoramento ?? '' }}"
+                        class="mt-2 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10"
+                    >
+                    <p class="mt-1.5 text-xs leading-snug text-brand-gray">Define a data inicial oficial do período para cálculo dos indicadores do ciclo (avanço, variações e marcos).</p>
+                </label>
                 <label class="w-full min-w-[220px] max-w-xs lg:w-auto">
                     <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data limite da transição Fase 1 → Fase 2</span>
                     <input
