@@ -50,6 +50,7 @@ class ContratoHistogramaController extends Controller
                         'pgu' => (float) $linha->pgu,
                         'pos_pgu' => (float) $linha->pos_pgu,
                         'desmobilizacao' => (float) $linha->desmobilizacao,
+                        'created_at' => $linha->created_at?->toDateString(),
                     ];
                 });
 
@@ -295,10 +296,17 @@ class ContratoHistogramaController extends Controller
             })
             ->groupBy('descricao')
             ->map(function ($rows, $descricao) {
+                $firstCreatedAt = collect($rows)
+                    ->pluck('created_at')
+                    ->filter()
+                    ->sort()
+                    ->first();
+
                 return [
                     'descricao' => (string) $descricao,
                     'pre_total' => (float) collect($rows)->sum('pre_pgu'),
                     'item_codigo' => (string) (collect($rows)->pluck('item_codigo')->filter()->first() ?? ''),
+                    'data_solicitacao_histograma' => $firstCreatedAt,
                 ];
             })
             ->values();
@@ -320,6 +328,10 @@ class ContratoHistogramaController extends Controller
 
             $descricao = (string) $funcao['descricao'];
             $itemCodigo = (string) $funcao['item_codigo'];
+            $dataSolicitacaoHistograma = trim((string) ($funcao['data_solicitacao_histograma'] ?? ''));
+            if ($dataSolicitacaoHistograma === '') {
+                $dataSolicitacaoHistograma = Carbon::today()->toDateString();
+            }
             $origemKey = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
             $tituloKey = mb_strtolower(trim($descricao));
 
@@ -330,6 +342,8 @@ class ContratoHistogramaController extends Controller
                 $state['vaga_quantidade'] = (string) $quantidadePlanejada;
                 $state['vaga_contrato'] = $contrato;
                 $state['origem_histograma_pre_total'] = (float) $funcao['pre_total'];
+                $state['vaga_data_solicitacao'] = $dataSolicitacaoHistograma;
+                $state['origem_histograma_data_solicitacao_auto'] = true;
 
                 $vagaExistente->update([
                     'titulo' => $descricao,
@@ -337,6 +351,7 @@ class ContratoHistogramaController extends Controller
                     'contrato' => $contrato,
                     'tipo' => $vagaExistente->tipo ?: 'Nova vaga',
                     'status' => $vagaExistente->status ?: 'Em abertura',
+                    'data_solicitacao' => $dataSolicitacaoHistograma,
                     'form_state' => $state,
                 ]);
                 $keepIds[] = $vagaExistente->id;
@@ -351,7 +366,7 @@ class ContratoHistogramaController extends Controller
                 'contrato' => $contrato,
                 'gestor' => null,
                 'local' => null,
-                'data_solicitacao' => now()->toDateString(),
+                'data_solicitacao' => $dataSolicitacaoHistograma,
                 'previsao_inicio' => null,
                 'salario' => null,
                 'status' => 'Em abertura',
@@ -363,7 +378,8 @@ class ContratoHistogramaController extends Controller
                     'vaga_tipo' => 'Nova vaga',
                     'vaga_status' => 'Em abertura',
                     'vaga_contrato' => $contrato,
-                    'vaga_data_solicitacao' => now()->toDateString(),
+                    'vaga_data_solicitacao' => $dataSolicitacaoHistograma,
+                    'origem_histograma_data_solicitacao_auto' => true,
                     'origem_histograma' => true,
                     'origem_histograma_key' => $origemKey,
                     'origem_histograma_competencia' => $competenciaYm,

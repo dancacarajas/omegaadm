@@ -347,10 +347,18 @@ class PguDashboardApiController extends Controller
     private function candidateStepDone(array $state, int $position, string $step): bool
     {
         if ($step === 'exame_medico') {
-            $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
-            $trainingEnd = $state["candidato_{$position}_treinamentos_data_fim"] ?? null;
-            $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
-            $scheduledAt = $state["candidato_{$position}_treinamentos_data_agendamento"] ?? null;
+            $trainingStart = $state["candidato_{$position}_exameMedico_data_inicio"]
+                ?? $state["candidato_{$position}_treinamentos_data_inicio"]
+                ?? null;
+            $trainingEnd = $state["candidato_{$position}_exameMedico_data_fim"]
+                ?? $state["candidato_{$position}_treinamentos_data_fim"]
+                ?? null;
+            $trainingConfirmedAt = $state["candidato_{$position}_exameMedico_data_confirmacao"]
+                ?? $state["candidato_{$position}_treinamentos_data_confirmacao"]
+                ?? null;
+            $scheduledAt = $state["candidato_{$position}_exameMedico_data_agendamento"]
+                ?? $state["candidato_{$position}_treinamentos_data_agendamento"]
+                ?? null;
 
             if (blank($trainingEnd) && filled($trainingStart)) {
                 try {

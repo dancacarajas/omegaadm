@@ -377,15 +377,16 @@
 
             const daysBetween = (start, end) => Math.max(0, Math.ceil((end - start) / 86400000));
 
-            const trainingFollowUp = (position) => {
+            const exameMedicoFollowUp = (position) => {
                 const state = loadState();
-                const scheduledAt = parseDate(state[`candidato_${position}_treinamentos_data_agendamento`] || '');
-                const plannedEnd = parseDate(state[`candidato_${position}_treinamentos_data_fim`] || '');
-                const confirmedAt = parseDate(state[`candidato_${position}_treinamentos_data_confirmacao`] || '');
+                const scheduledAt = parseDate(state[`candidato_${position}_exameMedico_data_agendamento`] || '');
+                const startedAt = parseDate(state[`candidato_${position}_exameMedico_data_inicio`] || '');
+                const plannedEnd = parseDate(state[`candidato_${position}_exameMedico_data_fim`] || '');
+                const confirmedAt = parseDate(state[`candidato_${position}_exameMedico_data_confirmacao`] || '');
 
                 if (!plannedEnd) {
                     return {
-                        label: scheduledAt
+                        label: scheduledAt || startedAt
                             ? 'Exame agendado. Informe a data fim programada para acompanhar o prazo.'
                             : 'Informe a data do agendamento e a data fim programada para acompanhar o prazo de 5 dias.',
                         className: 'border-zinc-200 bg-brand-gray-soft text-brand-gray',
@@ -421,6 +422,33 @@
                 return {
                     label: 'Exame médico dentro do prazo programado.',
                     className: 'border-amber-200 bg-amber-50 text-amber-700',
+                };
+            };
+
+            const treinamentoFollowUp = (position) => {
+                const state = loadState();
+                const startedAt = parseDate(state[`candidato_${position}_treinamentos_data_inicio`] || '');
+                const confirmedAt = parseDate(state[`candidato_${position}_treinamentos_data_confirmacao`] || '');
+
+                if (!startedAt) {
+                    return {
+                        label: 'Informe a data de início dos treinamentos para iniciar o acompanhamento.',
+                        className: 'border-zinc-200 bg-brand-gray-soft text-brand-gray',
+                    };
+                }
+
+                if (!confirmedAt) {
+                    return {
+                        label: 'Treinamentos iniciados. Aguardando confirmação de conclusão.',
+                        className: 'border-amber-200 bg-amber-50 text-amber-700',
+                    };
+                }
+
+                const duration = daysBetween(startedAt, confirmedAt);
+
+                return {
+                    label: `Treinamentos concluídos em ${duration} dia${duration > 1 ? 's' : ''}.`,
+                    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
                 };
             };
 
@@ -515,9 +543,11 @@
 
                 Array.from({ length: quantity }, (_, index) => index + 1).forEach((position) => {
                     const trainingDateFields = [
-                        `candidato_${position}_treinamentos_data_agendamento`,
+                        `candidato_${position}_exameMedico_data_agendamento`,
+                        `candidato_${position}_exameMedico_data_inicio`,
+                        `candidato_${position}_exameMedico_data_fim`,
+                        `candidato_${position}_exameMedico_data_confirmacao`,
                         `candidato_${position}_treinamentos_data_inicio`,
-                        `candidato_${position}_treinamentos_data_fim`,
                         `candidato_${position}_treinamentos_data_confirmacao`,
                         `candidato_${position}_assinatura_data_programada`,
                         `candidato_${position}_assinatura_data_confirmacao`,
@@ -534,25 +564,55 @@
                         }
                     });
 
-                    const trainingStart = state[`candidato_${position}_treinamentos_data_inicio`] || '';
-                    let trainingEnd = state[`candidato_${position}_treinamentos_data_fim`] || '';
-                    const trainingConfirmedAt = state[`candidato_${position}_treinamentos_data_confirmacao`] || '';
+                    // Migração silenciosa de estados antigos (quando Exame e Treinamentos compartilhavam as mesmas chaves).
+                    if (!String(state[`candidato_${position}_exameMedico_data_agendamento`] || '').trim()) {
+                        state[`candidato_${position}_exameMedico_data_agendamento`] = state[`candidato_${position}_treinamentos_data_agendamento`] || '';
+                    }
+                    if (!String(state[`candidato_${position}_exameMedico_data_inicio`] || '').trim()) {
+                        state[`candidato_${position}_exameMedico_data_inicio`] = state[`candidato_${position}_treinamentos_data_inicio`] || '';
+                    }
+                    if (!String(state[`candidato_${position}_exameMedico_data_fim`] || '').trim()) {
+                        state[`candidato_${position}_exameMedico_data_fim`] = state[`candidato_${position}_treinamentos_data_fim`] || '';
+                    }
+                    if (!String(state[`candidato_${position}_exameMedico_data_confirmacao`] || '').trim()) {
+                        state[`candidato_${position}_exameMedico_data_confirmacao`] = state[`candidato_${position}_treinamentos_data_confirmacao`] || '';
+                    }
 
-                    if (trainingStart.trim() !== '' && trainingEnd.trim() === '') {
-                        const startDate = parseDate(trainingStart);
+                    const exameStart = state[`candidato_${position}_exameMedico_data_inicio`] || '';
+                    let exameEnd = state[`candidato_${position}_exameMedico_data_fim`] || '';
+                    const exameConfirmedAt = state[`candidato_${position}_exameMedico_data_confirmacao`] || '';
+
+                    if (exameStart.trim() !== '' && exameEnd.trim() === '') {
+                        const startDate = parseDate(exameStart);
 
                         if (startDate) {
-                            trainingEnd = formatDateInput(addDays(startDate, 5));
-                            state[`candidato_${position}_treinamentos_data_fim`] = trainingEnd;
+                            exameEnd = formatDateInput(addDays(startDate, 5));
+                            state[`candidato_${position}_exameMedico_data_fim`] = exameEnd;
                         }
                     }
 
-                    const trainingConfirmed = parseDate(trainingConfirmedAt) !== null;
+                    const exameConfirmed = parseDate(exameConfirmedAt) !== null;
 
-                    state[`candidato_${position}_treinamentos_matriz`] = trainingStart.trim() !== '';
-                    state[`candidato_${position}_treinamentos_realizados`] = trainingConfirmed;
-                    state[`candidato_${position}_treinamentos_certificados`] = trainingConfirmed;
-                    state[`candidato_${position}_treinamentos_capacitacao`] = trainingStart.trim() !== '' && trainingConfirmed;
+                    const exameMatriz = exameStart.trim() !== '';
+                    const exameRealizados = exameConfirmed;
+                    const exameCertificados = exameConfirmed;
+
+                    /*
+                     * Compatibilidade:
+                     * - v2 usa etapa "exameMedico" (Passo 02) com chaves `exameMedico_*`
+                     * - dados legados/gráficos ainda podem ler `treinamentos_*`
+                     */
+                    state[`candidato_${position}_exameMedico_matriz`] = exameMatriz;
+                    state[`candidato_${position}_exameMedico_realizados`] = exameRealizados;
+                    state[`candidato_${position}_exameMedico_certificados`] = exameCertificados;
+                    state[`candidato_${position}_treinamentos_matriz`] = exameMatriz;
+                    state[`candidato_${position}_treinamentos_realizados`] = exameRealizados;
+                    state[`candidato_${position}_treinamentos_certificados`] = exameCertificados;
+
+                    const treinamentoStart = state[`candidato_${position}_treinamentos_data_inicio`] || '';
+                    const treinamentoConfirmedAt = state[`candidato_${position}_treinamentos_data_confirmacao`] || '';
+                    const treinamentoConfirmed = parseDate(treinamentoConfirmedAt) !== null;
+                    state[`candidato_${position}_treinamentos_capacitacao`] = treinamentoStart.trim() !== '' && treinamentoConfirmed;
 
                     const signatureConfirmed = parseDate(state[`candidato_${position}_assinatura_data_confirmacao`] || '') !== null;
                     state[`candidato_${position}_assinatura_pendencias`] = signatureConfirmed;
@@ -573,7 +633,42 @@
                     state[`candidato_${position}_liberacao_rota`] = (state[`candidato_${position}_liberacao_rota_endereco`] || '').trim() !== '';
                 });
 
+                const vagaStatus = (state.vaga_status || '').trim();
+                if (vagaStatus === 'Em seleção') {
+                    state['rh-check-1'] = true;
+                    state['rh-check-2'] = true;
+                    state['rh-check-3'] = true;
+                }
+
+                const requiredStep1Fields = [
+                    'vaga_titulo',
+                    'vaga_quantidade',
+                    'vaga_tipo',
+                    'vaga_contrato',
+                    'vaga_gestor',
+                    'vaga_local',
+                    'vaga_data_solicitacao',
+                ];
+                const step1BaseFilled = requiredStep1Fields.every((key) => String(state[key] || '').trim() !== '');
+                const allCandidatesReady = Array.from({ length: quantity }, (_, index) => index + 1).every((position) => {
+                    const nome = String(state[`candidato_${position}_nome_completo`] || '').trim();
+                    const celular = String(state[`candidato_${position}_celular`] || '').trim();
+                    const dataAceite = String(state[`candidato_${position}_data_aceite`] || '').trim();
+                    const candidatoStatus = String(state[`candidato_${position}_status`] || '').trim();
+
+                    return nome !== '' && celular !== '' && dataAceite !== '' && candidatoStatus === 'aprovado';
+                });
+
+                if (step1BaseFilled && allCandidatesReady) {
+                    state.vaga_status = 'Aprovada';
+                }
+
                 saveState(state);
+                checks.forEach((check) => {
+                    if (Object.prototype.hasOwnProperty.call(state, check.id)) {
+                        check.checked = Boolean(state[check.id]);
+                    }
+                });
             };
 
             const stepIds = ['step-recrutamento', 'step-exameMedico', 'step-treinamentos', 'step-assinatura', 'step-sgc', 'step-liberacao'];
@@ -611,7 +706,21 @@
                 const state = loadState();
                 const checks = candidateStepConfig[step]?.checks ?? [];
 
-                return checks.every(([key]) => Boolean(state[`candidato_${position}_${step}_${key}`]));
+                return checks.every(([key]) => {
+                    const keyAtual = `candidato_${position}_${step}_${key}`;
+                    if (Boolean(state[keyAtual])) {
+                        return true;
+                    }
+
+                    // Fallback para estados salvos antes da separação Exame Médico x Treinamentos.
+                    if (step === 'exameMedico') {
+                        const keyLegada = `candidato_${position}_treinamentos_${key}`;
+
+                        return Boolean(state[keyLegada]);
+                    }
+
+                    return false;
+                });
             };
 
             const goStep = (stepId) => {
@@ -815,7 +924,8 @@
 
                     container.innerHTML = approved.map((candidate) => {
                         const done = candidateStepDone(candidate.position, step);
-                        const trainingStatus = step === 'exameMedico' || step === 'treinamentos' ? trainingFollowUp(candidate.position) : null;
+                        const exameStatus = step === 'exameMedico' ? exameMedicoFollowUp(candidate.position) : null;
+                        const treinamentoStatus = step === 'treinamentos' ? treinamentoFollowUp(candidate.position) : null;
                         const signatureStatus = step === 'assinatura' ? signatureFollowUp(candidate.position) : null;
                         const sgcStatus = step === 'sgc' ? sgcFollowUp(candidate.position) : null;
                         const state = loadState();
@@ -838,22 +948,22 @@
                                     <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data do agendamento do exame médico</span>
-                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_agendamento" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_exameMedico_data_agendamento" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início do exame médico</span>
-                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_exameMedico_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim programada</span>
-                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_fim" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_exameMedico_data_fim" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
                                         <label class="space-y-2 sm:col-span-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de confirmação da finalização</span>
-                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_exameMedico_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
-                                        <div class="sm:col-span-2 rounded-xl border px-4 py-3 text-sm font-semibold ${trainingStatus.className}">
-                                            ${trainingStatus.label}
+                                        <div class="sm:col-span-2 rounded-xl border px-4 py-3 text-sm font-semibold ${exameStatus.className}">
+                                            ${exameStatus.label}
                                         </div>
                                     </div>
                                 ` : ''}
@@ -867,8 +977,8 @@
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de confirmação dos treinamentos</span>
                                             <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                                         </label>
-                                        <div class="sm:col-span-2 rounded-xl border px-4 py-3 text-sm font-semibold ${trainingStatus.className}">
-                                            ${trainingStatus.label}
+                                        <div class="sm:col-span-2 rounded-xl border px-4 py-3 text-sm font-semibold ${treinamentoStatus.className}">
+                                            ${treinamentoStatus.label}
                                         </div>
                                     </div>
                                 ` : ''}
