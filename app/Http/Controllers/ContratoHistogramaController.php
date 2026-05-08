@@ -315,8 +315,7 @@ class ContratoHistogramaController extends Controller
             ->where('contrato', $contrato)
             ->where('form_state->origem_histograma', true)
             ->where('form_state->origem_histograma_competencia', $competenciaYm)
-            ->get()
-            ->groupBy(fn (RecrutamentoVaga $vaga) => mb_strtolower(trim((string) $vaga->titulo)));
+            ->get();
 
         $keepIds = [];
 
@@ -335,7 +334,23 @@ class ContratoHistogramaController extends Controller
             $origemKey = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
             $tituloKey = mb_strtolower(trim($descricao));
 
-            $vagaExistente = optional($existentes->get($tituloKey))->first();
+            $vagaExistente = $existentes
+                ->first(function (RecrutamentoVaga $vaga) use ($origemKey) {
+                    $state = $vaga->form_state ?? [];
+
+                    return ($state['origem_histograma_key'] ?? null) === $origemKey;
+                });
+
+            if (! $vagaExistente) {
+                $vagaExistente = $existentes
+                    ->filter(fn (RecrutamentoVaga $vaga) => mb_strtolower(trim((string) $vaga->titulo)) === $tituloKey)
+                    ->sortByDesc(function (RecrutamentoVaga $vaga) {
+                        $state = $vaga->form_state ?? [];
+
+                        return $this->countCandidateStateSignals($state) * 1000000 + (int) $vaga->id;
+                    })
+                    ->first();
+            }
 
             if ($vagaExistente) {
                 $state = $vagaExistente->form_state ?? [];
@@ -344,6 +359,10 @@ class ContratoHistogramaController extends Controller
                 $state['origem_histograma_pre_total'] = (float) $funcao['pre_total'];
                 $state['vaga_data_solicitacao'] = $dataSolicitacaoHistograma;
                 $state['origem_histograma_data_solicitacao_auto'] = true;
+                $state['origem_histograma'] = true;
+                $state['origem_histograma_key'] = $origemKey;
+                $state['origem_histograma_competencia'] = $competenciaYm;
+                $state['origem_histograma_item_codigo'] = $itemCodigo;
 
                 $vagaExistente->update([
                     'titulo' => $descricao,
@@ -395,7 +414,33 @@ class ContratoHistogramaController extends Controller
             ->where('form_state->origem_histograma', true)
             ->where('form_state->origem_histograma_competencia', $competenciaYm)
             ->when(! empty($keepIds), fn ($query) => $query->whereNotIn('id', $keepIds))
+            ->get()
+            ->filter(function (RecrutamentoVaga $vaga) {
+                $state = $vaga->form_state ?? [];
+
+                return $this->countCandidateStateSignals($state) === 0;
+            })
+            ->each
             ->delete();
+    }
+
+    private function countCandidateStateSignals(array $state): int
+    {
+        $count = 0;
+        foreach ($state as $key => $value) {
+            if (! str_starts_with((string) $key, 'candidato_')) {
+                continue;
+            }
+            if (is_string($value) && trim($value) !== '') {
+                $count++;
+                continue;
+            }
+            if (is_bool($value) && $value === true) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**

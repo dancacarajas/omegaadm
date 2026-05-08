@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\Contrato;
+use App\Models\ContratoHistogramaLinha;
 use App\Models\RecrutamentoVaga;
 use App\Support\ContratoAccess;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
@@ -182,6 +184,7 @@ class RecrutamentoController extends Controller
     {
         $finish = $request->boolean('finish_rh_flow');
         $vaga = RecrutamentoVaga::create($this->vagaData($request));
+        $this->syncHistogramaFromRecrutamento($vaga);
         $this->syncCandidatosAssinadosComEfetivo($vaga);
 
         if ($finish) {
@@ -219,7 +222,9 @@ class RecrutamentoController extends Controller
         $this->authorizeContratoString($recrutamento->contrato);
 
         $finish = $request->boolean('finish_rh_flow');
+        $tituloAnterior = (string) $recrutamento->titulo;
         $recrutamento->update($this->vagaData($request));
+        $this->syncHistogramaFromRecrutamento($recrutamento, $tituloAnterior);
         $this->syncCandidatosAssinadosComEfetivo($recrutamento);
 
         if ($finish) {
@@ -360,6 +365,71 @@ class RecrutamentoController extends Controller
         $state['vaga_local'] = (string) ($contrato->local_execucao ?? '');
 
         return $state;
+    }
+
+    /**
+     * Se a vaga veio do histograma, renomear no recrutamento também renomeia a linha correspondente no histograma.
+     */
+    private function syncHistogramaFromRecrutamento(RecrutamentoVaga $vaga, ?string $tituloAnterior = null): void
+    {
+        $state = $vaga->form_state ?? [];
+        if (! ($state['origem_histograma'] ?? false)) {
+            return;
+        }
+
+        $novoTitulo = trim((string) ($state['vaga_titulo'] ?? $vaga->titulo ?? ''));
+        if ($novoTitulo === '') {
+            return;
+        }
+
+        $competenciaYm = trim((string) ($state['origem_histograma_competencia'] ?? ''));
+        if ($competenciaYm === '') {
+            return;
+        }
+
+        try {
+            $competenciaDate = Carbon::createFromFormat('Y-m', $competenciaYm)->startOfMonth()->toDateString();
+        } catch (\Throwable) {
+            return;
+        }
+
+        $itemCodigo = trim((string) ($state['origem_histograma_item_codigo'] ?? ''));
+        $query = ContratoHistogramaLinha::query()
+            ->where('contrato', $vaga->contrato)
+            ->whereDate('competencia', $competenciaDate)
+            ->where(function ($q) {
+                $q->whereNull('tipo_linha')
+                    ->orWhere('tipo_linha', '!=', 'grupo');
+            });
+
+        if ($itemCodigo !== '') {
+            $query->where('item_codigo', $itemCodigo);
+        } else {
+            $descricoes = collect([
+                trim((string) ($state['origem_histograma_descricao'] ?? '')),
+                trim((string) ($tituloAnterior ?? '')),
+                trim((string) ($vaga->titulo ?? '')),
+            ])->filter()->unique()->values();
+            if ($descricoes->isEmpty()) {
+                return;
+            }
+            $query->whereIn('descricao', $descricoes->all());
+        }
+
+        $linha = $query->orderBy('id')->first();
+        if (! $linha) {
+            return;
+        }
+
+        if (trim((string) $linha->descricao) !== $novoTitulo) {
+            $linha->update(['descricao' => $novoTitulo]);
+        }
+
+        $state['origem_histograma_descricao'] = $novoTitulo;
+        $state['origem_histograma_key'] = implode('|', ['histograma', $vaga->contrato, $competenciaYm, $novoTitulo]);
+        if (($vaga->form_state ?? []) !== $state) {
+            $vaga->forceFill(['form_state' => $state])->saveQuietly();
+        }
     }
 
     private function syncCandidatosAssinadosComEfetivo(RecrutamentoVaga $vaga): void
