@@ -52,6 +52,106 @@ class RecrutamentoController extends Controller
         return view('rh.recrutamento.index', compact('vagas', 'centrosDeCusto', 'contratoSelecionado', 'indicadores'));
     }
 
+    /**
+     * Painel consolidado: candidatos com ficha preenchida (nome/data) e posições ainda vagas.
+     */
+    public function painelPreenchimento()
+    {
+        $contratoSelecionado = trim((string) request('contrato'));
+
+        $centrosDeCusto = ContratoAccess::applyContratoModel(Contrato::query())
+            ->where('status', 'Ativo')
+            ->orderBy('centro_custo')
+            ->get(['centro_custo'])
+            ->pluck('centro_custo')
+            ->map(fn ($valor) => trim((string) $valor))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $preenchidos = [];
+        $vagasAbertas = [];
+        $vagasLista = collect();
+
+        if ($contratoSelecionado !== '') {
+            $vagasQuery = ContratoAccess::applyContratoString(RecrutamentoVaga::query())
+                ->where('contrato', $contratoSelecionado)
+                ->when(request('busca'), function ($query, string $busca) {
+                    $query->where(function ($query) use ($busca) {
+                        $query->where('titulo', 'like', "%{$busca}%")
+                            ->orWhere('gestor', 'like', "%{$busca}%")
+                            ->orWhere('local', 'like', "%{$busca}%")
+                            ->orWhere('status', 'like', "%{$busca}%");
+                    });
+                });
+
+            $vagasLista = $vagasQuery->latest()->get();
+
+            foreach ($vagasLista as $vaga) {
+                $state = $vaga->form_state ?? [];
+                $quantity = max(1, (int) ($state['vaga_quantidade'] ?? $vaga->quantidade ?? 1));
+
+                foreach (range(1, $quantity) as $position) {
+                    $nome = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
+                    $dataAceite = $state["candidato_{$position}_data_aceite"] ?? null;
+                    $telefone = trim((string) ($state["candidato_{$position}_celular"] ?? ''));
+                    $temDados = $nome !== '' || filled($dataAceite) || $telefone !== '';
+
+                    if ($temDados) {
+                        $preenchidos[] = [
+                            'vaga_id' => $vaga->id,
+                            'vaga_titulo' => $vaga->titulo,
+                            'contrato' => $vaga->contrato,
+                            'posicao' => $position,
+                            'nome' => $nome !== '' ? $nome : '—',
+                            'telefone' => $telefone !== '' ? $telefone : '—',
+                            'data_aceite_br' => $this->formatDateBr($dataAceite),
+                            'status_candidato' => (string) ($state["candidato_{$position}_status"] ?? 'pendente'),
+                            'fase' => $this->candidatoFaseAtualLabel($vaga, $position),
+                        ];
+                    } else {
+                        $vagasAbertas[] = [
+                            'vaga_id' => $vaga->id,
+                            'vaga_titulo' => $vaga->titulo,
+                            'contrato' => $vaga->contrato,
+                            'local' => $vaga->local,
+                            'posicao' => $position,
+                        ];
+                    }
+                }
+            }
+        }
+
+        usort($preenchidos, function (array $a, array $b): int {
+            return [$a['vaga_titulo'] ?? '', $a['posicao']]
+                <=> [$b['vaga_titulo'] ?? '', $b['posicao']];
+        });
+        usort($vagasAbertas, function (array $a, array $b): int {
+            return [$a['vaga_titulo'] ?? '', $a['posicao']]
+                <=> [$b['vaga_titulo'] ?? '', $b['posicao']];
+        });
+
+        $preenchidas = count($preenchidos);
+        $faltando = count($vagasAbertas);
+        $posicoes = $preenchidas + $faltando;
+
+        $totaisPainel = [
+            'fichas' => $vagasLista->count(),
+            'posicoes' => $posicoes,
+            'preenchidas' => $preenchidas,
+            'faltando' => $faltando,
+            'pct_preenchido' => $posicoes > 0 ? (int) round(($preenchidas / $posicoes) * 100) : 0,
+        ];
+
+        return view('rh.recrutamento.painel-preenchimento', compact(
+            'centrosDeCusto',
+            'contratoSelecionado',
+            'preenchidos',
+            'vagasAbertas',
+            'totaisPainel'
+        ));
+    }
+
     public function create()
     {
         $defaults = $this->loggedContratoDefaults();
@@ -337,5 +437,79 @@ class RecrutamentoController extends Controller
             'aprovados' => $aprovados,
             'liberados' => $liberados,
         ];
+    }
+
+    private function formatDateBr(mixed $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('d/m/Y');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function candidatoFaseAtualLabel(RecrutamentoVaga $vaga, int $position): string
+    {
+        $state = $vaga->form_state ?? [];
+
+        if (blank($state["candidato_{$position}_data_aceite"] ?? null)) {
+            $nome = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
+
+            return $nome !== ''
+                ? 'Cadastro — aguardando data de aceite'
+                : 'Cadastro iniciado';
+        }
+
+        if (! $this->candidatoEtapaTreinamentosConcluida($state, $position)) {
+            return 'Exame médico / treinamentos';
+        }
+        if (! $this->candidatoEtapaAssinaturaConcluida($state, $position)) {
+            return 'Assinatura';
+        }
+        if (! $this->candidatoEtapaSgcConcluida($state, $position)) {
+            return 'SGC / mobilização';
+        }
+        if (! $this->candidatoEtapaLiberacaoConcluida($state, $position)) {
+            return 'Liberação';
+        }
+
+        return 'Concluído';
+    }
+
+    private function candidatoEtapaTreinamentosConcluida(array $state, int $position): bool
+    {
+        $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+        $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+
+        return filled($trainingStart) && filled($trainingConfirmedAt);
+    }
+
+    private function candidatoEtapaAssinaturaConcluida(array $state, int $position): bool
+    {
+        return filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+    }
+
+    private function candidatoEtapaSgcConcluida(array $state, int $position): bool
+    {
+        $hasPendency = filled($state["candidato_{$position}_sgc_pendencia_descricao"] ?? null);
+        $pendencyDone = $hasPendency
+            ? filled($state["candidato_{$position}_sgc_data_nova_postagem"] ?? null)
+            : filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+
+        return filled($state["candidato_{$position}_sgc_data_postagem"] ?? null)
+            && filled($state["candidato_{$position}_sgc_numero_postagem"] ?? null)
+            && $pendencyDone
+            && filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
+    }
+
+    private function candidatoEtapaLiberacaoConcluida(array $state, int $position): bool
+    {
+        return filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
+            && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
+            && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
     }
 }

@@ -270,6 +270,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::resource('frequencia/horarios', HorarioEscalaController::class)
             ->except(['show'])
             ->parameters(['horarios' => 'horario_escala']);
+        Route::get('recrutamento/painel-preenchimento', [RecrutamentoController::class, 'painelPreenchimento'])
+            ->name('recrutamento.painel-preenchimento');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::resource('beneficios', BeneficioController::class);
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');

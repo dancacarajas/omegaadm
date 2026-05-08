@@ -5,10 +5,16 @@
 @section('page-title', 'Recrutamento')
 
 @section('actions')
-    <a href="{{ route('rh.recrutamento.create') }}" class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-        <i data-lucide="plus" class="h-4 w-4"></i>
-        Nova vaga
-    </a>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ route('rh.recrutamento.painel-preenchimento', request()->only(['contrato', 'busca'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+            <i data-lucide="layout-list" class="h-4 w-4"></i>
+            Painel de vagas e candidatos
+        </a>
+        <a href="{{ route('rh.recrutamento.create') }}" class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+            <i data-lucide="plus" class="h-4 w-4"></i>
+            Nova vaga
+        </a>
+    </div>
 @endsection
 
 @section('content')
