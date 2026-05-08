@@ -131,6 +131,15 @@ class RecrutamentoController extends Controller
                 <=> [$b['vaga_titulo'] ?? '', $b['posicao']];
         });
 
+        $ordemNome = (string) request('ordem_nome', 'padrao');
+        if (! in_array($ordemNome, ['padrao', 'az', 'za'], true)) {
+            $ordemNome = 'padrao';
+        }
+
+        if ($ordemNome !== 'padrao') {
+            $this->sortPreenchidosPorNome($preenchidos, $ordemNome === 'za');
+        }
+
         $preenchidas = count($preenchidos);
         $faltando = count($vagasAbertas);
         $posicoes = $preenchidas + $faltando;
@@ -148,7 +157,8 @@ class RecrutamentoController extends Controller
             'contratoSelecionado',
             'preenchidos',
             'vagasAbertas',
-            'totaisPainel'
+            'totaisPainel',
+            'ordemNome'
         ));
     }
 
@@ -180,7 +190,7 @@ class RecrutamentoController extends Controller
                 ->with('success', 'Fluxo de recrutamento concluído e salvo.');
         }
 
-        $step = $vaga->form_state['currentStep'] ?? 'step-recrutamento';
+        $step = $this->migrateRhFlowStepForRedirect($vaga->form_state ?? []);
 
         return redirect()
             ->route('rh.recrutamento.edit', ['recrutamento' => $vaga, 'step' => $step])
@@ -218,7 +228,7 @@ class RecrutamentoController extends Controller
                 ->with('success', 'Fluxo de recrutamento concluído e salvo.');
         }
 
-        $step = $recrutamento->form_state['currentStep'] ?? 'step-recrutamento';
+        $step = $this->migrateRhFlowStepForRedirect($recrutamento->form_state ?? []);
 
         return redirect()
             ->route('rh.recrutamento.edit', ['recrutamento' => $recrutamento, 'step' => $step])
@@ -243,6 +253,20 @@ class RecrutamentoController extends Controller
         }
 
         abort_unless($contrato && in_array($contrato, ContratoAccess::contratoValores(), true), 404);
+    }
+
+    /**
+     * Antes do fluxo v2, `step-treinamentos` era o exame médico. URL de redirect alinhada ao JS (RH_FLOW_SCHEMA).
+     */
+    private function migrateRhFlowStepForRedirect(array $state): string
+    {
+        $step = $state['currentStep'] ?? 'step-recrutamento';
+        $ver = (int) ($state['rhFlowSchemaVersion'] ?? 0);
+        if ($step === 'step-treinamentos' && $ver < 2) {
+            return 'step-exameMedico';
+        }
+
+        return $step;
     }
 
     private function vagaData(Request $request): array
@@ -511,5 +535,38 @@ class RecrutamentoController extends Controller
         return filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
             && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
             && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $preenchidos
+     */
+    private function sortPreenchidosPorNome(array &$preenchidos, bool $descendente): void
+    {
+        $semNome = static function (string $nome): bool {
+            $nome = trim($nome);
+
+            return $nome === '' || $nome === '—';
+        };
+
+        usort($preenchidos, function (array $a, array $b) use ($semNome, $descendente): int {
+            $na = (string) ($a['nome'] ?? '');
+            $nb = (string) ($b['nome'] ?? '');
+            $pa = $semNome($na);
+            $pb = $semNome($nb);
+            if ($pa !== $pb) {
+                return $pa ? 1 : -1;
+            }
+
+            $ca = mb_strtolower($na, 'UTF-8');
+            $cb = mb_strtolower($nb, 'UTF-8');
+            $cmp = strnatcasecmp($ca, $cb);
+
+            if ($cmp !== 0) {
+                return $descendente ? -$cmp : $cmp;
+            }
+
+            return [$a['vaga_titulo'] ?? '', $a['posicao']]
+                <=> [$b['vaga_titulo'] ?? '', $b['posicao']];
+        });
     }
 }

@@ -15,10 +15,11 @@
     @php
         $steps = [
             ['id' => 'step-recrutamento', 'number' => '01', 'label' => 'Recrutamento e Seleção'],
-            ['id' => 'step-treinamentos', 'number' => '02', 'label' => 'Exame Médico'],
-            ['id' => 'step-assinatura', 'number' => '03', 'label' => 'Treinamentos e Assinatura Documental'],
-            ['id' => 'step-sgc', 'number' => '04', 'label' => 'Postagem SGC'],
-            ['id' => 'step-liberacao', 'number' => '05', 'label' => 'Liberação para Atividades'],
+            ['id' => 'step-exameMedico', 'number' => '02', 'label' => 'Exame Médico'],
+            ['id' => 'step-treinamentos', 'number' => '03', 'label' => 'Treinamentos'],
+            ['id' => 'step-assinatura', 'number' => '04', 'label' => 'Assinatura Documental'],
+            ['id' => 'step-sgc', 'number' => '05', 'label' => 'Postagem SGC'],
+            ['id' => 'step-liberacao', 'number' => '06', 'label' => 'Liberação para Atividades'],
         ];
         $state = old('form_state', json_encode($vaga?->form_state ?? [], JSON_UNESCAPED_UNICODE));
         $stateArray = json_decode($state ?: '{}', true) ?: [];
@@ -174,7 +175,7 @@
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <h3 class="text-lg font-black text-brand-black">Ação da etapa</h3>
                         <p class="mt-2 text-xs text-brand-gray">Quando concluir os itens, avance para Exame Médico.</p>
-                        <button type="button" class="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white" data-rh-next-step="step-treinamentos" data-rh-save-next>Concluir Passo 01</button>
+                        <button type="button" class="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white" data-rh-next-step="step-exameMedico" data-rh-save-next>Concluir Passo 01</button>
                         <button type="submit" class="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
                             <i data-lucide="save" class="h-4 w-4"></i>
                             Salvar vaga
@@ -183,16 +184,30 @@
                 </div>
             </div>
 
-            <div id="step-treinamentos" class="content" role="tabpanel" aria-labelledby="step-treinamentos-trigger" data-rh-step="step-treinamentos">
+            <div id="step-exameMedico" class="content" role="tabpanel" aria-labelledby="step-exameMedico-trigger" data-rh-step="step-exameMedico">
                 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
                         <h2 class="text-3xl font-black text-[#3f0812]">Exame Médico</h2>
                         <p class="mt-2 text-sm text-brand-gray">Cada candidato aprovado segue com exame médico individual, sem depender das outras posições da vaga.</p>
-                        <div class="mt-6 space-y-4" data-rh-candidate-step="treinamentos"></div>
+                        <div class="mt-6 space-y-4" data-rh-candidate-step="exameMedico"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
                         <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-recrutamento">Voltar Passo 01</button>
-                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-assinatura" data-rh-save-next>Concluir Passo 02</button>
+                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-treinamentos" data-rh-save-next>Concluir Passo 02</button>
+                    </aside>
+                </div>
+            </div>
+
+            <div id="step-treinamentos" class="content" role="tabpanel" aria-labelledby="step-treinamentos-trigger" data-rh-step="step-treinamentos">
+                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+                    <section class="rounded-2xl border border-zinc-200 bg-white p-6">
+                        <h2 class="text-3xl font-black text-[#3f0812]">Treinamentos</h2>
+                        <p class="mt-2 text-sm text-brand-gray">Registre o início e a confirmação dos treinamentos por candidato aprovado, após o exame médico.</p>
+                        <div class="mt-6 space-y-4" data-rh-candidate-step="treinamentos"></div>
+                    </section>
+                    <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
+                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-exameMedico">Voltar Passo 02</button>
+                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-assinatura" data-rh-save-next>Concluir Passo 03</button>
                     </aside>
                 </div>
             </div>
@@ -200,13 +215,13 @@
             <div id="step-assinatura" class="content" role="tabpanel" aria-labelledby="step-assinatura-trigger" data-rh-step="step-assinatura">
                 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                     <section class="rounded-2xl border border-zinc-200 bg-white p-6">
-                        <h2 class="text-3xl font-black text-[#3f0812]">Treinamentos e Assinatura Documental</h2>
-                        <p class="mt-2 text-sm text-brand-gray">Neste passo, valide a etapa de treinamentos e finalize a assinatura documental por candidato aprovado.</p>
+                        <h2 class="text-3xl font-black text-[#3f0812]">Assinatura Documental</h2>
+                        <p class="mt-2 text-sm text-brand-gray">Programe e confirme a assinatura contratual e o kit documental de cada candidato.</p>
                         <div class="mt-6 space-y-4" data-rh-candidate-step="assinatura"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
-                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-treinamentos">Voltar Passo 02</button>
-                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-sgc" data-rh-save-next>Concluir Passo 03</button>
+                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-treinamentos">Voltar Passo 03</button>
+                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-sgc" data-rh-save-next>Concluir Passo 04</button>
                     </aside>
                 </div>
             </div>
@@ -219,8 +234,8 @@
                         <div class="mt-6 space-y-4" data-rh-candidate-step="sgc"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
-                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-assinatura">Voltar Passo 03</button>
-                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-liberacao" data-rh-save-next>Concluir Passo 04</button>
+                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-assinatura">Voltar Passo 04</button>
+                        <button type="button" class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white" data-rh-next-step="step-liberacao" data-rh-save-next>Concluir Passo 05</button>
                     </aside>
                 </div>
             </div>
@@ -233,10 +248,10 @@
                         <div class="mt-6 space-y-4" data-rh-candidate-step="liberacao"></div>
                     </section>
                     <aside class="h-fit min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:z-[5] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto">
-                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-sgc">Voltar Passo 04</button>
+                        <button type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-brand-black" data-rh-prev-step="step-sgc">Voltar Passo 05</button>
                         <!-- omegaadm-rh-finish-guard:v2 (se nao existir no "Ver codigo fonte", o deploy nao trouxe o Blade novo) -->
                         <button type="button" disabled class="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-burgundy text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" data-rh-finish-flow title="Disponível quando o progresso do fluxo RH estiver em 100%">Concluir fluxo e voltar à lista</button>
-                        <div class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Fluxo RH concluído quando todos os itens dos 5 passos estiverem completos.</div>
+                        <div class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Fluxo RH concluído quando todos os itens dos 6 passos estiverem completos.</div>
                     </aside>
                 </div>
             </div>
@@ -274,11 +289,16 @@
             const quantityField = wrapper.querySelector('[data-rh-field="vaga_quantidade"]');
             const candidateStepContainers = Array.from(wrapper.querySelectorAll('[data-rh-candidate-step]'));
             const candidateStepConfig = {
-                treinamentos: {
+                exameMedico: {
                     checks: [
                         ['matriz', 'Matriz definida', 'Cursos alinhados ao cargo e contrato.'],
                         ['realizados', 'Exames realizados', 'Atendimento e conclusão registrados.'],
                         ['certificados', 'ASO emitido', 'Comprovante do exame pronto para anexar.'],
+                    ],
+                },
+                treinamentos: {
+                    checks: [
+                        ['capacitacao', 'Treinamentos registrados', 'Início e confirmação dos treinamentos preenchidos.'],
                     ],
                 },
                 assinatura: {
@@ -532,6 +552,7 @@
                     state[`candidato_${position}_treinamentos_matriz`] = trainingStart.trim() !== '';
                     state[`candidato_${position}_treinamentos_realizados`] = trainingConfirmed;
                     state[`candidato_${position}_treinamentos_certificados`] = trainingConfirmed;
+                    state[`candidato_${position}_treinamentos_capacitacao`] = trainingStart.trim() !== '' && trainingConfirmed;
 
                     const signatureConfirmed = parseDate(state[`candidato_${position}_assinatura_data_confirmacao`] || '') !== null;
                     state[`candidato_${position}_assinatura_pendencias`] = signatureConfirmed;
@@ -555,7 +576,7 @@
                 saveState(state);
             };
 
-            const stepIds = ['step-recrutamento', 'step-treinamentos', 'step-assinatura', 'step-sgc', 'step-liberacao'];
+            const stepIds = ['step-recrutamento', 'step-exameMedico', 'step-treinamentos', 'step-assinatura', 'step-sgc', 'step-liberacao'];
             const stepChecks = (stepId) => checks.filter((check) => check.getAttribute('data-rh-check') === stepId);
             const stepDone = (stepId) => {
                 const candidateStep = stepId.replace('step-', '');
@@ -600,9 +621,8 @@
 
             /**
              * Mesma formula da barra "Progresso do fluxo RH" e do botao "Concluir fluxo".
-             * Passo 01: 1/5 se os checkboxes da vaga estiverem OK.
-             * Passos 02-05: cada um vale 1/5 * (aprovados que cumpriram o passo / total de aprovados).
-             * Assim, quantidade da vaga > aprovados nao bloqueia 100% nem deixa o botao ativo com barra incompleta.
+             * Passo 01: 1/6 se os checkboxes da vaga estiverem OK.
+             * Passos 02-06: cada subetapa de candidato vale 1/6 * (aprovados que cumpriram / total de aprovados).
              */
             const computeRhFlowProgressPercent = () => {
                 applyAutomaticCandidateRules();
@@ -795,7 +815,7 @@
 
                     container.innerHTML = approved.map((candidate) => {
                         const done = candidateStepDone(candidate.position, step);
-                        const trainingStatus = step === 'treinamentos' ? trainingFollowUp(candidate.position) : null;
+                        const trainingStatus = step === 'exameMedico' || step === 'treinamentos' ? trainingFollowUp(candidate.position) : null;
                         const signatureStatus = step === 'assinatura' ? signatureFollowUp(candidate.position) : null;
                         const sgcStatus = step === 'sgc' ? sgcFollowUp(candidate.position) : null;
                         const state = loadState();
@@ -814,7 +834,7 @@
                                         ${done ? 'Concluído' : 'Em andamento'}
                                     </span>
                                 </div>
-                                ${step === 'treinamentos' ? `
+                                ${step === 'exameMedico' ? `
                                     <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data do agendamento do exame médico</span>
@@ -837,23 +857,22 @@
                                         </div>
                                     </div>
                                 ` : ''}
-                                ${step === 'assinatura' ? `
-                                    <div class="mb-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4">
-                                        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Etapa Treinamentos</p>
-                                        <div class="mt-3 grid gap-4 sm:grid-cols-2">
-                                            <label class="space-y-2">
-                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início dos treinamentos</span>
-                                                <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                                            </label>
-                                            <label class="space-y-2">
-                                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de confirmação dos treinamentos</span>
-                                                <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                                            </label>
-                                        </div>
-                                        <div class="mt-3 rounded-xl border px-4 py-3 text-sm font-semibold ${trainingFollowUp(candidate.position).className}">
-                                            ${trainingFollowUp(candidate.position).label}
+                                ${step === 'treinamentos' ? `
+                                    <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
+                                        <label class="space-y-2">
+                                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de início dos treinamentos</span>
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_inicio" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                        </label>
+                                        <label class="space-y-2">
+                                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data de confirmação dos treinamentos</span>
+                                            <input type="date" data-rh-field="candidato_${candidate.position}_treinamentos_data_confirmacao" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                        </label>
+                                        <div class="sm:col-span-2 rounded-xl border px-4 py-3 text-sm font-semibold ${trainingStatus.className}">
+                                            ${trainingStatus.label}
                                         </div>
                                     </div>
+                                ` : ''}
+                                ${step === 'assinatura' ? `
                                     <div class="mb-4 grid gap-4 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-4 sm:grid-cols-2">
                                         <label class="space-y-2">
                                             <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data programada da assinatura contratual</span>
@@ -890,7 +909,7 @@
                                 <div class="grid gap-3">
                                     ${config.checks.map(([key, title, help]) => `
                                         <label class="flex gap-3 rounded-xl border border-zinc-200 p-4">
-                                            <input type="checkbox" ${step === 'treinamentos' || step === 'assinatura' || step === 'sgc' || step === 'liberacao' ? 'disabled' : ''} class="mt-1 h-5 w-5 rounded border-zinc-300 accent-[#6f1731] disabled:cursor-not-allowed disabled:opacity-80" data-rh-field="candidato_${candidate.position}_${step}_${key}">
+                                            <input type="checkbox" ${step === 'exameMedico' || step === 'treinamentos' || step === 'assinatura' || step === 'sgc' || step === 'liberacao' ? 'disabled' : ''} class="mt-1 h-5 w-5 rounded border-zinc-300 accent-[#6f1731] disabled:cursor-not-allowed disabled:opacity-80" data-rh-field="candidato_${candidate.position}_${step}_${key}">
                                             <span class="flex-1 min-w-0">
                                                 <strong class="block">${title}</strong>
                                                 <small class="text-brand-gray">${help}</small>
@@ -939,14 +958,41 @@
                 updateProgress();
             };
 
+            const RH_FLOW_SCHEMA = 2;
+
+            const migrateRhFlowState = (state) => {
+                let changed = false;
+                const ver = Number(state.rhFlowSchemaVersion || 0);
+                if (state.currentStep === 'step-treinamentos' && ver < RH_FLOW_SCHEMA) {
+                    state.currentStep = 'step-exameMedico';
+                    changed = true;
+                }
+                if (ver < RH_FLOW_SCHEMA) {
+                    state.rhFlowSchemaVersion = RH_FLOW_SCHEMA;
+                    changed = true;
+                }
+                if (changed) {
+                    saveState(state);
+                }
+
+                return state;
+            };
+
             const applyState = () => {
-                const state = loadState();
+                const raw = loadState();
+                const ver0 = Number(raw.rhFlowSchemaVersion || 0);
+                const urlStepRaw = new URLSearchParams(window.location.search).get('step');
+                let effectiveUrl = urlStepRaw;
+                if (urlStepRaw === 'step-treinamentos' && ver0 < RH_FLOW_SCHEMA) {
+                    effectiveUrl = 'step-exameMedico';
+                }
+
+                const state = migrateRhFlowState(raw);
                 checks.forEach((check) => {
                     check.checked = Boolean(state[check.id]);
                 });
                 applyFieldValues();
-                const urlStep = new URLSearchParams(window.location.search).get('step');
-                const step = urlStep || state.currentStep || 'step-recrutamento';
+                const step = effectiveUrl || state.currentStep || 'step-recrutamento';
                 goStep(step);
                 updateApprovedFields();
                 renderCandidateWorkflows();

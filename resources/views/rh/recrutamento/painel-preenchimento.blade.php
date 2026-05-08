@@ -5,7 +5,7 @@
 @section('page-title', 'Painel de vagas e candidatos')
 
 @section('actions')
-    <a href="{{ route('rh.recrutamento.index', request()->only(['contrato', 'busca'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+    <a href="{{ route('rh.recrutamento.index', request()->only(['contrato', 'busca', 'ordem_nome'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
         <i data-lucide="arrow-left" class="h-4 w-4"></i>
         Voltar ao recrutamento
     </a>
@@ -25,7 +25,7 @@
                 <h2 class="text-xl font-bold text-brand-black">Todas as posições do contrato</h2>
                 <p class="mt-1 text-sm text-brand-gray">Candidatos com ficha iniciada (nome, telefone ou data de aceite), fase atual do fluxo, e posições ainda sem cadastro.</p>
             </div>
-            <form method="GET" action="{{ route('rh.recrutamento.painel-preenchimento') }}" class="flex flex-col gap-2 sm:flex-row">
+            <form method="GET" action="{{ route('rh.recrutamento.painel-preenchimento') }}" class="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
                 <label class="relative">
                     <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
                     <input name="busca" value="{{ request('busca') }}" placeholder="Filtrar por vaga, gestor..." class="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-72">
@@ -38,7 +38,15 @@
                         @endforeach
                     </select>
                 </label>
-                <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+                <label class="min-w-[11rem]">
+                    <span class="mb-1 block text-[11px] font-semibold text-brand-gray">Ordenar por nome</span>
+                    <select name="ordem_nome" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-44">
+                        <option value="padrao" @selected(($ordemNome ?? 'padrao') === 'padrao')>Padrão (vaga)</option>
+                        <option value="az" @selected(($ordemNome ?? '') === 'az')>Nome A → Z</option>
+                        <option value="za" @selected(($ordemNome ?? '') === 'za')>Nome Z → A</option>
+                    </select>
+                </label>
+                <button type="submit" class="inline-flex h-11 shrink-0 items-center justify-center gap-2 self-end rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy sm:self-end">
                     <i data-lucide="layout-list" class="h-4 w-4"></i>
                     Atualizar
                 </button>
@@ -108,7 +116,14 @@
                                 <tr>
                                     <th class="px-4 py-3">Vaga</th>
                                     <th class="px-4 py-3">Pos.</th>
-                                    <th class="px-4 py-3">Nome</th>
+                                    <th class="px-4 py-3">
+                                        <span class="block">Nome</span>
+                                        @if (($ordemNome ?? 'padrao') === 'az')
+                                            <span class="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-brand-burgundy">A → Z</span>
+                                        @elseif (($ordemNome ?? 'padrao') === 'za')
+                                            <span class="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-brand-burgundy">Z → A</span>
+                                        @endif
+                                    </th>
                                     <th class="px-4 py-3">Telefone</th>
                                     <th class="px-4 py-3">Data de aceite</th>
                                     <th class="px-4 py-3">Fase atual</th>

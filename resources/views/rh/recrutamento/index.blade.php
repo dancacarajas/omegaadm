@@ -6,7 +6,7 @@
 
 @section('actions')
     <div class="flex flex-wrap items-center gap-2">
-        <a href="{{ route('rh.recrutamento.painel-preenchimento', request()->only(['contrato', 'busca'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+        <a href="{{ route('rh.recrutamento.painel-preenchimento', request()->only(['contrato', 'busca', 'ordem_nome'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
             <i data-lucide="layout-list" class="h-4 w-4"></i>
             Painel de vagas e candidatos
         </a>
