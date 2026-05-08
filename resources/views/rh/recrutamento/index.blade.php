@@ -51,10 +51,18 @@
             $state = $vaga->form_state ?? [];
 
             if ($step === 'exame_medico') {
-                $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
-                $trainingEnd = $state["candidato_{$position}_treinamentos_data_fim"] ?? null;
-                $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
-                $scheduledAt = $state["candidato_{$position}_treinamentos_data_agendamento"] ?? null;
+                $trainingStart = $state["candidato_{$position}_exameMedico_data_inicio"]
+                    ?? $state["candidato_{$position}_treinamentos_data_inicio"]
+                    ?? null;
+                $trainingEnd = $state["candidato_{$position}_exameMedico_data_fim"]
+                    ?? $state["candidato_{$position}_treinamentos_data_fim"]
+                    ?? null;
+                $trainingConfirmedAt = $state["candidato_{$position}_exameMedico_data_confirmacao"]
+                    ?? $state["candidato_{$position}_treinamentos_data_confirmacao"]
+                    ?? null;
+                $scheduledAt = $state["candidato_{$position}_exameMedico_data_agendamento"]
+                    ?? $state["candidato_{$position}_treinamentos_data_agendamento"]
+                    ?? null;
 
                 if (blank($trainingEnd) && filled($trainingStart)) {
                     try {
@@ -103,11 +111,17 @@
             return collect($candidateSteps[$step] ?? [])
                 ->every(fn ($key) => (bool) ($state["candidato_{$position}_{$step}_{$key}"] ?? false));
         };
-        $trainingFollowUp = function ($vaga, int $position): array {
+        $exameMedicoFollowUp = function ($vaga, int $position): array {
             $state = $vaga->form_state ?? [];
-            $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
-            $trainingEnd = $state["candidato_{$position}_treinamentos_data_fim"] ?? null;
-            $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+            $trainingStart = $state["candidato_{$position}_exameMedico_data_inicio"]
+                ?? $state["candidato_{$position}_treinamentos_data_inicio"]
+                ?? null;
+            $trainingEnd = $state["candidato_{$position}_exameMedico_data_fim"]
+                ?? $state["candidato_{$position}_treinamentos_data_fim"]
+                ?? null;
+            $trainingConfirmedAt = $state["candidato_{$position}_exameMedico_data_confirmacao"]
+                ?? $state["candidato_{$position}_treinamentos_data_confirmacao"]
+                ?? null;
 
             if (blank($trainingEnd) && filled($trainingStart)) {
                 try {
@@ -140,6 +154,21 @@
             }
 
             return ['label' => 'No prazo', 'class' => 'border-amber-200 bg-amber-50 text-amber-700'];
+        };
+        $trainingFollowUp = function ($vaga, int $position): array {
+            $state = $vaga->form_state ?? [];
+            $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+            $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+
+            if (blank($trainingStart)) {
+                return ['label' => 'Pendente', 'class' => 'border-zinc-200 bg-brand-gray-soft text-brand-gray'];
+            }
+
+            if (blank($trainingConfirmedAt)) {
+                return ['label' => 'No prazo', 'class' => 'border-amber-200 bg-amber-50 text-amber-700'];
+            }
+
+            return ['label' => 'OK', 'class' => 'border-emerald-200 bg-emerald-50 text-emerald-700'];
         };
         $recruitmentFollowUp = function ($vaga, int $position): array {
             $state = $vaga->form_state ?? [];
@@ -468,7 +497,7 @@
                                                             [
                                                                 'key' => 'exame_medico',
                                                                 'title' => 'Exame Médico',
-                                                                'status' => $trainingFollowUp($vaga, $candidate['position']),
+                                                                'status' => $exameMedicoFollowUp($vaga, $candidate['position']),
                                                                 'done' => $candidateStepDone($vaga, $candidate['position'], 'exame_medico'),
                                                             ],
                                                             [
@@ -498,10 +527,21 @@
                                                                 ],
                                                                 'done' => $candidateStepDone($vaga, $candidate['position'], 'liberacao'),
                                                             ],
-                                                        ])->map(function ($item) use ($timelineTone) {
-                                                            $item['tone'] = $timelineTone($item['status'], $item['done']);
-                                                            return $item;
-                                                        });
+                                                        ]);
+                                                        $nextIdx = $timelineItems->search(fn ($item) => !($item['done'] ?? false));
+                                                        $timelineItems = $timelineItems
+                                                            ->values()
+                                                            ->map(function ($item, $idx) use ($timelineTone, $nextIdx) {
+                                                                if ($nextIdx !== false && $idx === $nextIdx && !($item['done'] ?? false)) {
+                                                                    $item['status'] = [
+                                                                        'label' => 'No prazo',
+                                                                        'class' => 'border-amber-200 bg-amber-50 text-amber-700',
+                                                                    ];
+                                                                }
+                                                                $item['tone'] = $timelineTone($item['status'], $item['done']);
+
+                                                                return $item;
+                                                            });
                                                         $candidateCompleted = $timelineItems->filter(fn ($item) => $item['done'])->count();
                                                         $candidatePercent = (int) round(($candidateCompleted / max(1, $timelineItems->count())) * 100);
                                                     @endphp
