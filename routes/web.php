@@ -248,6 +248,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::put('/sesmt/registro-mensal/{registro}', [SsmaRegistroMensalController::class, 'update'])->name('sesmt.registros.update');
     Route::post('/sesmt/sincronizar', [SesmtController::class, 'sync'])->name('sesmt.sync');
     Route::put('/sesmt/tarefas/{tarefa}', [SesmtController::class, 'update'])->name('sesmt.tarefas.update');
+    Route::get('patrimonial/histograma', [ContratoHistogramaController::class, 'index'])->name('patrimonial.histograma.index');
+    Route::post('patrimonial/histograma', [ContratoHistogramaController::class, 'salvar'])->name('patrimonial.histograma.salvar');
     Route::resource('patrimonial', PatrimonialController::class)
         ->parameters(['patrimonial' => 'patrimonio']);
     Route::get('/medicao', [MedicaoController::class, 'index'])->name('medicao.index');

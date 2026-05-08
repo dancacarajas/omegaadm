@@ -599,6 +599,7 @@ window.pguDashboard = function () {
                 consolidadas: Math.max(0, Math.round(Number(t0.completed || 0))),
                 emEvolucao: Math.max(0, Math.round(Number(t0.pending || 0))),
                 progresso: Math.max(0, Math.min(100, Number(t0.progress || 0))),
+                recrutamento: Math.max(0, Math.round(Number(f0.recrutamento || 0))),
                 exameMedico: Math.max(0, Math.round(Number(f0.exame_medico || 0))),
                 treinamentos: Math.max(0, Math.round(Number(f0.treinamentos || 0))),
                 assinatura: Math.max(0, Math.round(Number(f0.assinatura_documental || 0))),
@@ -615,6 +616,7 @@ window.pguDashboard = function () {
                 dCons: 0,
                 dPend: 0,
                 dProg: 0,
+                dRecrutamento: 0,
                 dExameMedico: 0,
                 dTreinamentos: 0,
                 dAssinaturaDocumental: 0,
@@ -625,6 +627,7 @@ window.pguDashboard = function () {
             z.dCons = Math.round(Number(resumo.consolidadas || 0) - baseline.consolidadas);
             z.dPend = Math.round(Number(resumo.emEvolucao || 0) - baseline.emEvolucao);
             z.dProg = Math.round((Number(resumo.progressoAtual || 0) - baseline.progresso) * 10) / 10;
+            z.dRecrutamento = Math.round(Number(etapas[0]?.value || 0) - baseline.recrutamento);
             z.dExameMedico = Math.round(Number(etapas[1]?.value || 0) - baseline.exameMedico);
             z.dTreinamentos = Math.round(Number(etapas[2]?.value || 0) - baseline.treinamentos);
             z.dAssinaturaDocumental = Math.round(Number(etapas[3]?.value || 0) - baseline.assinatura);
@@ -675,11 +678,22 @@ window.pguDashboard = function () {
         clienteDestaquesMovimentacoesFooter() {
             const n = this.clienteDestaquesMovimentacoesRows().length;
             if (n === 0) {
-                return 'Sem movimentações registradas para o período do ciclo neste recorte.';
+                return 'Sem movimentações reais registradas no período do ciclo para este recorte.';
             }
-            return `Mostrando ${n} marcos do período do ciclo (início, posição atual e meta).`;
+            return `Mostrando ${n} movimentação(ões) reais registradas no período do ciclo.`;
         },
         clienteDestaquesMovimentacoesRows() {
+            const apiRows = Array.isArray(this.data?.cycle_movements) ? this.data.cycle_movements : [];
+            if (apiRows.length > 0) {
+                return apiRows.map((row) => ({
+                    data: String(row?.date || ''),
+                    mov: String(row?.mov || 'Atualização de ciclo'),
+                    qtd: String(row?.qtd || '+0'),
+                    impactoPos: Boolean(row?.impactoPos),
+                    impacto: String(row?.impacto || '+0,0 p.p.'),
+                }));
+            }
+
             const baseline = this.clienteDestaquesBaselineInicioCiclo();
             const resumo = this.clienteCicloResumo();
             const inicio = this.parseDateAny(this.competencia ? `${this.competencia}-01` : null)

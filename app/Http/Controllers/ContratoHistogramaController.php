@@ -15,6 +15,11 @@ class ContratoHistogramaController extends Controller
 {
     use ContratosHistogramaCatalog;
 
+    private function isPatrimonialRoute(Request $request): bool
+    {
+        return str_starts_with((string) $request->route()?->getName(), 'patrimonial.');
+    }
+
     private function isPublicRoute(Request $request): bool
     {
         return str_starts_with((string) $request->route()?->getName(), 'publico.');
@@ -109,6 +114,10 @@ class ContratoHistogramaController extends Controller
             'diasAteLimite' => $diasAteLimite,
             'linhaRecrutamentoStatus' => $linhaRecrutamentoStatus,
             'layout' => $this->isPublicRoute($request) ? 'layouts.public-contratos' : 'layouts.app',
+            'salvarRoute' => $this->isPatrimonialRoute($request)
+                ? 'patrimonial.histograma.salvar'
+                : 'contratos.histograma.salvar',
+            'histogramaEyebrow' => $this->isPatrimonialRoute($request) ? 'Patrimonial' : 'Contrato',
         ]);
     }
 
@@ -222,8 +231,12 @@ class ContratoHistogramaController extends Controller
             ]);
         }
 
+        $routeName = str_starts_with((string) $request->route()?->getName(), 'patrimonial.')
+            ? 'patrimonial.histograma.index'
+            : 'contratos.histograma.index';
+
         return redirect()
-            ->route('contratos.histograma.index', [
+            ->route($routeName, [
                 'contrato' => $data['contrato'],
                 'competencia' => $data['competencia'],
             ])

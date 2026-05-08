@@ -1,7 +1,7 @@
 @extends($layout ?? 'layouts.app')
 
 @section('title', 'Histograma de contrato - Omega286')
-@section('eyebrow', 'Contrato')
+@section('eyebrow', $histogramaEyebrow ?? 'Contrato')
 @section('page-title', 'Histograma')
 
 @section('content')
@@ -42,7 +42,7 @@
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <form
             method="POST"
-            action="{{ route('contratos.histograma.salvar') }}"
+            action="{{ route($salvarRoute ?? 'contratos.histograma.salvar') }}"
             class="space-y-0"
             data-histograma-form
             data-hoje="{{ $histogramaHoje }}"

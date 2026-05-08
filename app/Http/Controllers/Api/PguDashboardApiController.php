@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PguDashboardApiController extends Controller
 {
@@ -67,6 +68,14 @@ class PguDashboardApiController extends Controller
             ->latest('id')
             ->get();
 
+        $cycleStartAt = $recorte?->inicio_monitoramento
+            ? $recorte->inicio_monitoramento->copy()->startOfDay()
+            : $competenciaMes->copy()->startOfMonth();
+        $monthsInCycle = max(
+            1,
+            $cycleStartAt->copy()->startOfMonth()->diffInMonths($competenciaMes->copy()->startOfMonth()) + 1
+        );
+
         $kpisItens = $this->buildKpisRecrutamento($vagas);
         $ranking = $this->buildRankingFromVagas($vagas);
         $rankingExecutivo = $this->buildRankingExecutivo($ranking, 5);
@@ -87,11 +96,17 @@ class PguDashboardApiController extends Controller
             (float) $kpisItens['vagas_concluidas_no_pgu'],
             (float) $kpisItens['vagas_pendentes_por_funcao'],
             $ranking === [] ? 0.0 : round(collect($ranking)->avg('progress'), 1),
-            6
+            $monthsInCycle
         );
         $trend = $trendPayload['points'];
         $faseAtual = $this->buildCurrentPhaseProgress($vagas);
-        $faseTrend = $this->buildPhaseTrend($data['contrato'], $competenciaMes, 6);
+        $faseTrend = $this->buildPhaseTrend($data['contrato'], $competenciaMes, $monthsInCycle);
+        $cycleMovements = $this->buildCycleMovementsFromHistorico(
+            $data['contrato'],
+            $competenciaMes,
+            $cycleStartAt,
+            $deadline
+        );
         $heatmap = $this->buildHeatmapExecutivo($rankingExecutivo);
         $treemap = $this->buildTreemapPendencias($rankingExecutivo);
         $funcoesPgu100 = $this->buildFuncoesPgu100($ranking);
@@ -119,9 +134,7 @@ class PguDashboardApiController extends Controller
         $deadlineRisk = $this->deadlineRisk($deadline, $overallProgress);
         $progressDelta = $this->progressDeltaFromTrend($trend);
         $itensAtrasadosFase2 = (int) collect($ranking)->filter(fn ($row) => ((float) ($row['progress'] ?? 0)) < 100)->count();
-        $cycleStartAt = $recorte?->inicio_monitoramento
-            ? $recorte->inicio_monitoramento->toDateString()
-            : $competenciaMes->copy()->startOfMonth()->toDateString();
+        $cycleStartDate = $cycleStartAt->toDateString();
 
         $kpiVagasPrevistas = (int) round((float) ($kpisItens['vagas_pgu_previstas'] ?? 0));
         $maturidadeTotalVagas = $kpiVagasPrevistas > 0 ? $kpiVagasPrevistas : $totalFunctions;
@@ -139,7 +152,7 @@ class PguDashboardApiController extends Controller
                 'deadline_risk' => $deadlineRisk,
                 'deadline_risk_label' => $this->deadlineRiskLabel($deadlineRisk),
                 'deadline_date' => $deadline?->toDateString(),
-                'cycle_start_date' => $cycleStartAt,
+                'cycle_start_date' => $cycleStartDate,
                 'itens_atrasados_fase2' => $itensAtrasadosFase2,
                 'kpis_mao_de_obra_itens' => $kpisItens,
                 /** Avanço médio (ponderado por vagas) do fluxo RH até Postagem SGC — mesma fórmula do passo a passo, sem Liberação (5 pesos). */
@@ -159,6 +172,7 @@ class PguDashboardApiController extends Controller
             'pareto_executivo_diretas' => $paretoDiretas,
             'trend' => $trend,
             'trend_notas' => $trendPayload['note'],
+            'cycle_movements' => $cycleMovements,
             'fase_atual' => $faseAtual,
             'fase_trend' => $faseTrend,
             'heatmap' => $heatmap,
@@ -974,5 +988,76 @@ class PguDashboardApiController extends Controller
         $prev = (float) ($trend[count($trend) - 2]['progress'] ?? 0);
 
         return round($last - $prev, 1);
+    }
+
+    /**
+     * Movimentações reais do ciclo com base no histórico intraday do histograma.
+     *
+     * @return array<int, array{date:string,mov:string,qtd:string,impactoPos:bool,impacto:string}>
+     */
+    private function buildCycleMovementsFromHistorico(
+        string $contrato,
+        Carbon $competenciaMes,
+        Carbon $cycleStartAt,
+        ?Carbon $deadline
+    ): array {
+        $endAt = Carbon::today()->endOfDay();
+        if ($deadline && $deadline->lt($endAt)) {
+            $endAt = $deadline->copy()->endOfDay();
+        }
+
+        $rows = DB::table('contrato_histograma_historicos')
+            ->where('contrato', $contrato)
+            ->whereDate('competencia', $competenciaMes->toDateString())
+            ->where('snapshot_at', '>=', $cycleStartAt->copy()->startOfDay())
+            ->where('snapshot_at', '<=', $endAt)
+            ->orderBy('snapshot_at')
+            ->get([
+                'snapshot_at',
+                'completed',
+                'pending',
+                'progress',
+            ]);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $out = [];
+        $prev = null;
+        foreach ($rows as $r) {
+            $completed = (float) ($r->completed ?? 0);
+            $progress = (float) ($r->progress ?? 0);
+            $dt = Carbon::parse((string) $r->snapshot_at);
+
+            if ($prev === null) {
+                $out[] = [
+                    'date' => $dt->format('d/m/Y'),
+                    'mov' => 'Início do período',
+                    'qtd' => '+' . (string) ((int) round($completed)),
+                    'impactoPos' => $progress >= 0,
+                    'impacto' => '+' . number_format($progress, 1, ',', '') . ' p.p.',
+                ];
+                $prev = ['completed' => $completed, 'progress' => $progress];
+                continue;
+            }
+
+            $dCompleted = (float) $completed - (float) $prev['completed'];
+            $dProgress = (float) $progress - (float) $prev['progress'];
+            if (abs($dCompleted) < 0.00001 && abs($dProgress) < 0.00001) {
+                continue;
+            }
+
+            $out[] = [
+                'date' => $dt->format('d/m/Y'),
+                'mov' => $dCompleted >= 0 ? 'Atualização de consolidação' : 'Reclassificação de consolidação',
+                'qtd' => ($dCompleted >= 0 ? '+' : '−') . (string) ((int) round(abs($dCompleted))),
+                'impactoPos' => $dProgress >= 0,
+                'impacto' => ($dProgress >= 0 ? '+' : '') . number_format($dProgress, 1, ',', '') . ' p.p.',
+            ];
+            $prev = ['completed' => $completed, 'progress' => $progress];
+        }
+
+        return array_slice($out, -6);
     }
 }

@@ -49,6 +49,7 @@
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
                     $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu') || request()->routeIs('contratos.apresentacao');
+                    $patrimonialOpen = request()->routeIs('patrimonial.*');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                     $ssmaOpen = request()->routeIs('sesmt.*');
@@ -206,10 +207,24 @@
                         </div>
                         @endif
                         @if ($podeModulo('patrimonial'))
-                        <a href="{{ route('patrimonial.index') }}" class="group flex h-11 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('patrimonial.*') ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                            <i data-lucide="warehouse" class="h-5 w-5"></i>
-                            Patrimonial
-                        </a>
+                        <div data-menu-group="patrimonial">
+                            <button type="button" data-menu-toggle="patrimonial" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $patrimonialOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="warehouse" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Patrimonial</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $patrimonialOpen ? 'rotate-180' : '' }}" data-menu-chevron="patrimonial"></i>
+                            </button>
+
+                            <div data-menu-panel="patrimonial" class="{{ $patrimonialOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('patrimonial.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('patrimonial.index') || request()->routeIs('patrimonial.create') || request()->routeIs('patrimonial.edit') || request()->routeIs('patrimonial.show') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="list" class="h-4 w-4"></i>
+                                    Gestão patrimonial
+                                </a>
+                                <a href="{{ route('patrimonial.histograma.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('patrimonial.histograma.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                                    Histograma
+                                </a>
+                            </div>
+                        </div>
                         @endif
                         @if ($podeModulo('medicao') || $podeModulo('rdo'))
                         <div data-menu-group="medicao">

@@ -1397,14 +1397,14 @@
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
                                 <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
-                                    <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+                                    <i data-lucide="users-round" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
-                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas em evolução</p>
-                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></p>
+                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas preenchidas</p>
+                                    <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[0]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dPend >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dPend))} desde o início do ciclo`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dRecrutamento >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dRecrutamento))} desde o início do ciclo`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
