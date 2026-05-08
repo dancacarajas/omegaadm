@@ -374,12 +374,15 @@ class PguDashboardApiController extends Controller
 
         if ($step === 'treinamentos') {
             if (! empty($state["candidato_{$position}_treinamentos_capacitacao"])) {
-                return true;
+                if (! $this->hasLegacyMirroredTrainingData($state, $position)) {
+                    return true;
+                }
             }
             $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
             $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
 
-            return filled($trainingStart) && filled($trainingConfirmedAt);
+            return filled($trainingStart) && filled($trainingConfirmedAt)
+                && ! $this->hasLegacyMirroredTrainingData($state, $position);
         }
 
         if ($step === 'assinatura') {
@@ -405,6 +408,32 @@ class PguDashboardApiController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Protege indicadores contra legado onde Treinamentos recebeu cópia automática de Exame Médico.
+     */
+    private function hasLegacyMirroredTrainingData(array $state, int $position): bool
+    {
+        $trainingStart = trim((string) ($state["candidato_{$position}_treinamentos_data_inicio"] ?? ''));
+        $trainingConfirmed = trim((string) ($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? ''));
+        if ($trainingStart === '' || $trainingConfirmed === '') {
+            return false;
+        }
+
+        $exameStart = trim((string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? ''));
+        $exameConfirmed = trim((string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? ''));
+        if ($exameStart === '' || $exameConfirmed === '') {
+            return false;
+        }
+
+        $sgcPosted = filled($state["candidato_{$position}_sgc_data_postagem"] ?? null);
+        $signed = filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+        if ($sgcPosted || $signed) {
+            return false;
+        }
+
+        return $trainingStart === $exameStart && $trainingConfirmed === $exameConfirmed;
     }
 
     /**

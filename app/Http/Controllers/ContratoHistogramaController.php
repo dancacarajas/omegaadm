@@ -514,7 +514,8 @@ class ContratoHistogramaController extends Controller
     {
         if ($step === 'treinamentos') {
             return filled($state["candidato_{$position}_treinamentos_data_inicio"] ?? null)
-                && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null);
+                && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null)
+                && ! $this->hasLegacyMirroredTrainingData($state, $position);
         }
 
         if ($step === 'assinatura') {
@@ -540,5 +541,28 @@ class ContratoHistogramaController extends Controller
         }
 
         return false;
+    }
+
+    private function hasLegacyMirroredTrainingData(array $state, int $position): bool
+    {
+        $trainingStart = trim((string) ($state["candidato_{$position}_treinamentos_data_inicio"] ?? ''));
+        $trainingConfirmed = trim((string) ($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? ''));
+        if ($trainingStart === '' || $trainingConfirmed === '') {
+            return false;
+        }
+
+        $exameStart = trim((string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? ''));
+        $exameConfirmed = trim((string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? ''));
+        if ($exameStart === '' || $exameConfirmed === '') {
+            return false;
+        }
+
+        $sgcPosted = filled($state["candidato_{$position}_sgc_data_postagem"] ?? null);
+        $signed = filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+        if ($sgcPosted || $signed) {
+            return false;
+        }
+
+        return $trainingStart === $exameStart && $trainingConfirmed === $exameConfirmed;
     }
 }

@@ -193,7 +193,8 @@ class DashboardController extends Controller
     private function trainingDone(array $state, int $position): bool
     {
         return filled($state["candidato_{$position}_treinamentos_data_inicio"] ?? null)
-            && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null);
+            && filled($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null)
+            && ! $this->hasLegacyMirroredTrainingData($state, $position);
     }
 
     private function trainingLate(array $state, int $position, Carbon $today): bool
@@ -209,10 +210,36 @@ class DashboardController extends Controller
         if (blank($plannedEnd)) {
             return false;
         }
+        if ($this->hasLegacyMirroredTrainingData($state, $position)) {
+            return false;
+        }
 
         $reference = filled($confirmedAt) ? Carbon::parse($confirmedAt) : $today;
 
         return Carbon::parse($plannedEnd)->startOfDay()->diffInDays($reference->startOfDay(), false) > 0;
+    }
+
+    private function hasLegacyMirroredTrainingData(array $state, int $position): bool
+    {
+        $trainingStart = trim((string) ($state["candidato_{$position}_treinamentos_data_inicio"] ?? ''));
+        $trainingConfirmed = trim((string) ($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? ''));
+        if ($trainingStart === '' || $trainingConfirmed === '') {
+            return false;
+        }
+
+        $exameStart = trim((string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? ''));
+        $exameConfirmed = trim((string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? ''));
+        if ($exameStart === '' || $exameConfirmed === '') {
+            return false;
+        }
+
+        $sgcPosted = filled($state["candidato_{$position}_sgc_data_postagem"] ?? null);
+        $signed = filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
+        if ($sgcPosted || $signed) {
+            return false;
+        }
+
+        return $trainingStart === $exameStart && $trainingConfirmed === $exameConfirmed;
     }
 
     private function daysSince(mixed $date, Carbon $today): int

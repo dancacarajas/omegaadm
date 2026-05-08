@@ -49,6 +49,23 @@
         };
         $candidateStepDone = function ($vaga, int $position, string $step) use ($candidateSteps): bool {
             $state = $vaga->form_state ?? [];
+            $legacyMirroredTraining = function () use ($state, $position): bool {
+                $trainingStart = trim((string) ($state["candidato_{$position}_treinamentos_data_inicio"] ?? ''));
+                $trainingConfirmed = trim((string) ($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? ''));
+                if ($trainingStart === '' || $trainingConfirmed === '') {
+                    return false;
+                }
+                $exameStart = trim((string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? ''));
+                $exameConfirmed = trim((string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? ''));
+                if ($exameStart === '' || $exameConfirmed === '') {
+                    return false;
+                }
+                if (filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null) || filled($state["candidato_{$position}_sgc_data_postagem"] ?? null)) {
+                    return false;
+                }
+
+                return $trainingStart === $exameStart && $trainingConfirmed === $exameConfirmed;
+            };
 
             if ($step === 'exame_medico') {
                 $trainingStart = $state["candidato_{$position}_exameMedico_data_inicio"]
@@ -78,12 +95,12 @@
 
             if ($step === 'treinamentos') {
                 if (! empty($state["candidato_{$position}_treinamentos_capacitacao"])) {
-                    return true;
+                    return ! $legacyMirroredTraining();
                 }
                 $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
                 $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
 
-                return filled($trainingStart) && filled($trainingConfirmedAt);
+                return filled($trainingStart) && filled($trainingConfirmedAt) && ! $legacyMirroredTraining();
             }
 
             if ($step === 'assinatura') {
@@ -159,8 +176,16 @@
             $state = $vaga->form_state ?? [];
             $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
             $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
+            $legacyMirrored = filled($trainingStart)
+                && filled($trainingConfirmedAt)
+                && filled($state["candidato_{$position}_exameMedico_data_inicio"] ?? null)
+                && filled($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? null)
+                && (string) $trainingStart === (string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? '')
+                && (string) $trainingConfirmedAt === (string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? '')
+                && blank($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null)
+                && blank($state["candidato_{$position}_sgc_data_postagem"] ?? null);
 
-            if (blank($trainingStart)) {
+            if (blank($trainingStart) || $legacyMirrored) {
                 return ['label' => 'Pendente', 'class' => 'border-zinc-200 bg-brand-gray-soft text-brand-gray'];
             }
 
