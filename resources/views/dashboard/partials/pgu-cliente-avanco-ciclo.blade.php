@@ -800,7 +800,7 @@
                 <h2 class="pgu-client-cycle-title">2. Avanço do Ciclo até a Data Limite</h2>
                 <p class="pgu-client-cycle-subtitle">
                     Acompanhamento do avanço da mobilização do contrato em relação ao prazo final acordado.
-                    Visão clara do progresso atual, do SLA operacional e do tempo restante até a conclusão das fases.
+                    Visão clara do progresso atual, dos prazos operacionais e do tempo restante até a conclusão das fases.
                 </p>
             </div>
         </div>
@@ -924,7 +924,7 @@
                 <div class="pgu-client-cycle-track-col pgu-client-cycle-track-col--sla">
                     <div class="pgu-client-cycle-sla-box">
                         <div class="pgu-client-cycle-sla-main">
-                            SLA padrão: <span x-text="clienteCicloSlaResumo().slaAceiteSgc"></span>
+                            Prazo padrão: <span x-text="clienteCicloSlaResumo().slaAceiteSgc"></span>
                         </div>
                         <div class="pgu-client-cycle-sla-desc">
                             Da data de aceite da proposta até a postagem no SGC
@@ -948,7 +948,7 @@
                 <div class="pgu-client-cycle-track-col pgu-client-cycle-track-col--sla">
                     <div class="pgu-client-cycle-sla-box">
                         <div class="pgu-client-cycle-sla-main">
-                            SLA médio: <span x-text="clienteCicloSlaResumo().slaSgcLiberacao"></span>
+                            Prazo médio: <span x-text="clienteCicloSlaResumo().slaSgcLiberacao"></span>
                         </div>
                         <div class="pgu-client-cycle-sla-desc">
                             Da postagem no SGC até a avaliação para liberação
@@ -1020,7 +1020,7 @@
 
     <div class="pgu-client-cycle-bottom-grid">
         <div class="pgu-client-cycle-panel">
-            <h3 class="pgu-client-cycle-section-title">Composição do SLA</h3>
+            <h3 class="pgu-client-cycle-section-title">Composição dos Prazos</h3>
 
             <div class="pgu-client-cycle-sla-row">
                 <div class="pgu-client-cycle-sla-row-label">
@@ -1073,7 +1073,7 @@
             <div class="pgu-client-cycle-info-strip" style="margin-top: 16px;">
                 <i data-lucide="trending-up" class="h-5 w-5"></i>
                 <span>
-                    A mobilização evolui conforme o avanço das vagas pelas etapas do SLA operacional.
+                    A mobilização evolui conforme o avanço das vagas pelas etapas dos prazos operacionais.
                 </span>
             </div>
         </div>
@@ -1138,7 +1138,7 @@
                 <i data-lucide="target" class="h-7 w-7"></i>
             </span>
             <span>
-                Nosso compromisso é conduzir a mobilização com previsibilidade, respeitando o SLA operacional
+                Nosso compromisso é conduzir a mobilização com previsibilidade, respeitando os prazos operacionais
                 e a conclusão do ciclo até
                 <strong x-text="clienteCicloSlaResumo().dataLimiteLabel"></strong>.
             </span>

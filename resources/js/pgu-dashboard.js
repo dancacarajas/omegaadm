@@ -493,19 +493,20 @@ window.pguDashboard = function () {
             };
         },
         /**
-         * Referência de SLA de mobilização (valores acordados para leitura executiva;
+         * Referência de prazos de mobilização (valores acordados para leitura executiva;
          * não substitui regras contratuais específicas).
          */
         clienteCicloSlaReferencia() {
-            const diasAceiteAteSgc = 15;
-            const diasSgcAteLiberacaoMin = 5;
-            const diasSgcAteLiberacaoMax = 10;
+            const prazoDataLimiteDias = 25;
+            const diasSgcAteLiberacaoMin = 3;
+            const diasSgcAteLiberacaoMax = 3;
+            const diasAceiteAteSgc = prazoDataLimiteDias - diasSgcAteLiberacaoMax;
             return {
                 diasAceiteAteSgc,
                 diasSgcAteLiberacaoMin,
                 diasSgcAteLiberacaoMax,
-                janelaTotalMin: diasAceiteAteSgc + diasSgcAteLiberacaoMin,
-                janelaTotalMax: diasAceiteAteSgc + diasSgcAteLiberacaoMax,
+                janelaTotalMin: prazoDataLimiteDias,
+                janelaTotalMax: prazoDataLimiteDias,
             };
         },
         /** Data limite em DD/MM/AAAA (para textos longos no card do ciclo). */
@@ -833,11 +834,18 @@ window.pguDashboard = function () {
         },
         clientePlanoSlaJanelaDiasLabel() {
             const ref = this.clienteCicloSlaReferencia();
-            return `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
+            return ref.janelaTotalMin === ref.janelaTotalMax
+                ? `${ref.janelaTotalMin} dias`
+                : `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
         },
         clientePlanoSlaJanelaDatasLabel() {
             const sla = this.clientePlanoSlaDatas();
-            if (!sla) return `D+${this.clienteCicloSlaReferencia().janelaTotalMin} a D+${this.clienteCicloSlaReferencia().janelaTotalMax}`;
+            if (!sla) {
+                const ref = this.clienteCicloSlaReferencia();
+                return ref.janelaTotalMin === ref.janelaTotalMax
+                    ? `D+${ref.janelaTotalMin}`
+                    : `D+${ref.janelaTotalMin} a D+${ref.janelaTotalMax}`;
+            }
             return `${this.clientePlanoFmtDiaMes(sla.liberacaoMin)} a ${this.clientePlanoFmtDiaMes(sla.liberacaoMax)}`;
         },
         /** Marcos ao longo do ciclo (padrão: 6 etapas de maturidade PGU). */
@@ -995,7 +1003,7 @@ window.pguDashboard = function () {
             const dl = this.clientePlanoDataLimiteCompleta();
             return [
                 { texto: `Priorizar funções com maior volume de vagas em evolução até ${dl}.`, icon: 'target' },
-                { texto: `SLA operacional de liberação previsto para ${this.clientePlanoSlaJanelaDatasLabel()} (${this.clientePlanoSlaJanelaDiasLabel()}).`, icon: 'calendar-clock' },
+                { texto: `Prazo operacional de liberação previsto para ${this.clientePlanoSlaJanelaDatasLabel()} (${this.clientePlanoSlaJanelaDiasLabel()}).`, icon: 'calendar-clock' },
                 { texto: 'Manter cadência de treinamentos e assinaturas alinhada ao calendário do ciclo.', icon: 'pencil-line' },
                 { texto: 'Tratar primeiro funções críticas ou com pendência elevada no ranking PGU.', icon: 'shield-check' },
                 { texto: 'Garantir comunicação clara com as áreas demandantes sobre marcos de liberação.', icon: 'users-round' },
@@ -1157,7 +1165,7 @@ window.pguDashboard = function () {
                 : progresso;
 
             let statusLabel = 'Em acompanhamento';
-            let statusText = 'O ciclo está sendo acompanhado conforme o SLA operacional e a data limite contratual.';
+            let statusText = 'O ciclo está sendo acompanhado conforme os prazos operacionais e a data limite contratual.';
             let statusTone = 'neutral';
 
             if (progresso >= 100) {
@@ -1174,13 +1182,17 @@ window.pguDashboard = function () {
                 statusTone = 'warning';
             } else if (diasRestantes !== null && diasRestantes >= 0) {
                 statusLabel = 'No prazo';
-                statusText = 'O ciclo está sendo acompanhado com base no SLA operacional e na data limite contratual.';
+                statusText = 'O ciclo está sendo acompanhado com base nos prazos operacionais e na data limite contratual.';
                 statusTone = 'success';
             }
 
             const slaAceiteSgc = `${ref.diasAceiteAteSgc} dias`;
-            const slaSgcLiberacao = `${ref.diasSgcAteLiberacaoMin} a ${ref.diasSgcAteLiberacaoMax} dias`;
-            const janelaTotalSla = `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
+            const slaSgcLiberacao = ref.diasSgcAteLiberacaoMin === ref.diasSgcAteLiberacaoMax
+                ? `${ref.diasSgcAteLiberacaoMin} dias`
+                : `${ref.diasSgcAteLiberacaoMin} a ${ref.diasSgcAteLiberacaoMax} dias`;
+            const janelaTotalSla = ref.janelaTotalMin === ref.janelaTotalMax
+                ? `${ref.janelaTotalMin} dias`
+                : `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
 
             return {
                 contrato: this.contrato || '—',
@@ -1590,6 +1602,7 @@ window.pguDashboard = function () {
             const totalFases = Math.max(1, Number(this.data?.summary?.total_functions || 0));
             const faseFinal = fases[fases.length - 1] || { name: 'Liberação', value: 0 };
             const pctFinal = (Number(faseFinal.value || 0) / totalFases) * 100;
+            const totalPendente = Math.max(0, totalFases - Math.max(0, Number(faseFinal.value || 0)));
             const donutData = fases.map((f) => {
                 const v = Math.max(0, Number(f.value || 0));
                 const pct = (v / totalFases) * 100;
@@ -1605,6 +1618,18 @@ window.pguDashboard = function () {
                         labelLine: { show: temConcluidos },
                     },
                 };
+            });
+            donutData.push({
+                value: totalPendente,
+                name: 'Total pendente',
+                labelText: `Total pendente: ${this.formatPctPtBr((totalPendente / totalFases) * 100)}%`,
+                label: { show: totalPendente > 0 },
+                labelLine: { show: totalPendente > 0 },
+                emphasis: {
+                    label: { show: totalPendente > 0 },
+                    labelLine: { show: totalPendente > 0 },
+                },
+                itemStyle: { color: '#B8BDC7' },
             });
             /** Largura mínima para o motor do pie não aplicar `constrainTextWidth` (reticências). ~6.8px/caractere em 11px bold. */
             const rotulosCompletos = donutData
@@ -1625,7 +1650,7 @@ window.pguDashboard = function () {
                         return `<strong>${d.name}</strong><br/>Candidatos: ${this.formatQtyPtBr(v)}<br/>Participação: ${this.formatPctPtBr(pct)}%`;
                     },
                 },
-                color: fases.map((f) => f.color),
+                color: [...fases.map((f) => f.color), '#B8BDC7'],
                 title: { show: false },
                 graphic: [
                     {

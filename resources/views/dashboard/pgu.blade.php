@@ -472,7 +472,7 @@
                             <div class="flex min-h-[64px] items-start gap-2">
                                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="users-round" class="h-5 w-5"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Recrutamento</p>
+                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Vagas Preenchidas</p>
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().aprovados)"></p>
                                 </div>
                             </div>
@@ -1774,7 +1774,9 @@
                     <div class="rounded-xl border border-pgu-border bg-white p-4 sm:p-5">
                         <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Roteiro do ciclo até a data limite</p>
                         <p class="mt-1 text-xs text-pgu-muted sm:text-sm">
-                            Marcos alinhados ao SLA operacional: 15 dias até SGC e liberação em
+                            Marcos alinhados aos prazos operacionais:
+                            <strong class="text-pgu-ink" x-text="`${clienteCicloSlaReferencia().diasAceiteAteSgc} dias`"></strong>
+                            até SGC e liberação em
                             <strong class="text-pgu-ink" x-text="clientePlanoSlaJanelaDiasLabel()"></strong>,
                             respeitando a data limite contratual.
                         </p>
