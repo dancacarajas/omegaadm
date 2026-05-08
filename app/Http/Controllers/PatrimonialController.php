@@ -102,6 +102,37 @@ class PatrimonialController extends Controller
             ->with('success', 'Patrimônio removido do inventário.');
     }
 
+    public function fluxo(Patrimonio $patrimonio)
+    {
+        $this->authorizeContratoString($patrimonio->contrato);
+
+        return view('patrimonial.fluxo', compact('patrimonio'));
+    }
+
+    public function salvarFluxo(Request $request, Patrimonio $patrimonio)
+    {
+        $this->authorizeContratoString($patrimonio->contrato);
+
+        $data = $request->validate([
+            'fluxo_state' => ['nullable', 'string'],
+            'fluxo_step' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        $state = json_decode($data['fluxo_state'] ?? '{}', true);
+        if (! is_array($state)) {
+            $state = [];
+        }
+
+        $patrimonio->update([
+            'fluxo_state' => $state,
+            'fluxo_step' => $data['fluxo_step'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('patrimonial.fluxo.edit', $patrimonio)
+            ->with('success', 'Fluxo do equipamento salvo com sucesso.');
+    }
+
     private function authorizeContratoString(?string $contrato): void
     {
         if (! ContratoAccess::shouldRestrict()) {

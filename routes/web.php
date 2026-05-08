@@ -10,6 +10,7 @@ use App\Http\Controllers\MedicaoContratualController;
 use App\Http\Controllers\MedicaoController;
 use App\Http\Controllers\MedicaoFluxoFinanceiroController;
 use App\Http\Controllers\PatrimonialController;
+use App\Http\Controllers\PatrimonialHistogramaController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PguDashboardController;
 use App\Http\Controllers\RdoController;
@@ -248,8 +249,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::put('/sesmt/registro-mensal/{registro}', [SsmaRegistroMensalController::class, 'update'])->name('sesmt.registros.update');
     Route::post('/sesmt/sincronizar', [SesmtController::class, 'sync'])->name('sesmt.sync');
     Route::put('/sesmt/tarefas/{tarefa}', [SesmtController::class, 'update'])->name('sesmt.tarefas.update');
-    Route::get('patrimonial/histograma', [ContratoHistogramaController::class, 'index'])->name('patrimonial.histograma.index');
-    Route::post('patrimonial/histograma', [ContratoHistogramaController::class, 'salvar'])->name('patrimonial.histograma.salvar');
+    Route::get('patrimonial/histograma', [PatrimonialHistogramaController::class, 'index'])->name('patrimonial.histograma.index');
+    Route::post('patrimonial/histograma', [PatrimonialHistogramaController::class, 'salvar'])->name('patrimonial.histograma.salvar');
+    Route::get('patrimonial/{patrimonio}/fluxo', [PatrimonialController::class, 'fluxo'])->name('patrimonial.fluxo.edit');
+    Route::put('patrimonial/{patrimonio}/fluxo', [PatrimonialController::class, 'salvarFluxo'])->name('patrimonial.fluxo.update');
     Route::resource('patrimonial', PatrimonialController::class)
         ->parameters(['patrimonial' => 'patrimonio']);
     Route::get('/medicao', [MedicaoController::class, 'index'])->name('medicao.index');

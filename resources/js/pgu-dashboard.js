@@ -593,6 +593,20 @@ window.pguDashboard = function () {
         clienteDestaquesBaselineInicioCiclo() {
             const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
             const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
+            if (trend.length < 2 && ft.length < 2) {
+                // Sem histórico comparável no período: baseline parte de zero.
+                return {
+                    consolidadas: 0,
+                    emEvolucao: 0,
+                    progresso: 0,
+                    recrutamento: 0,
+                    exameMedico: 0,
+                    treinamentos: 0,
+                    assinatura: 0,
+                    sgc: 0,
+                    liberacao: 0,
+                };
+            }
             const t0 = trend[0] || {};
             const f0 = ft[0] || {};
             return {
@@ -777,19 +791,21 @@ window.pguDashboard = function () {
         },
         clienteDestaquesContribuicaoEtapas() {
             const e = this.clienteMaturidadeEtapas();
-            const prog = this.clienteProgressoConsolidadoCicloPct();
+            const baseline = this.clienteDestaquesBaselineInicioCiclo();
+            const resumo = this.clienteCicloResumo();
+            const totalPpPeriodo = Math.max(0, Math.round((Number(resumo.progressoAtual || 0) - Number(baseline.progresso || 0)) * 10) / 10);
             const parts = [
-                { label: 'Exame médico', value: Math.max(0, Number(e[1]?.value || 0)), color: '#14532D' },
-                { label: 'Treinamentos', value: Math.max(0, Number(e[2]?.value || 0)), color: '#22C55E' },
-                { label: 'Assinatura documental', value: Math.max(0, Number(e[3]?.value || 0)), color: '#4ADE80' },
-                { label: 'SGC', value: Math.max(0, Number(e[4]?.value || 0)), color: '#F59E0B' },
-                { label: 'Liberação', value: Math.max(0, Number(e[5]?.value || 0)), color: '#9333EA' },
+                { label: 'Exame médico', value: Math.max(0, Number(e[1]?.value || 0) - Number(baseline.exameMedico || 0)), color: '#14532D' },
+                { label: 'Treinamentos', value: Math.max(0, Number(e[2]?.value || 0) - Number(baseline.treinamentos || 0)), color: '#22C55E' },
+                { label: 'Assinatura documental', value: Math.max(0, Number(e[3]?.value || 0) - Number(baseline.assinatura || 0)), color: '#4ADE80' },
+                { label: 'SGC', value: Math.max(0, Number(e[4]?.value || 0) - Number(baseline.sgc || 0)), color: '#F59E0B' },
+                { label: 'Liberação', value: Math.max(0, Number(e[5]?.value || 0) - Number(baseline.liberacao || 0)), color: '#9333EA' },
             ];
             const sum = parts.reduce((a, p) => a + p.value, 0);
             return parts.map((p) => ({
                 ...p,
-                pp: sum > 0 ? Math.round(((p.value / sum) * prog) * 10) / 10 : 0,
-                pctShare: sum > 0 ? Math.round(((p.value / sum) * 100) * 10) / 10 : 0,
+                pp: (sum > 0 && totalPpPeriodo > 0) ? Math.round(((p.value / sum) * totalPpPeriodo) * 10) / 10 : 0,
+                pctShare: (sum > 0 && totalPpPeriodo > 0) ? Math.round(((p.value / sum) * 100) * 10) / 10 : 0,
             }));
         },
         clienteDestaquesResumoOperacionalTexto() {

@@ -5,6 +5,10 @@
 @section('page-title', $patrimonio->nome)
 
 @section('actions')
+    <a href="{{ route('patrimonial.fluxo.edit', $patrimonio) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+        <i data-lucide="workflow" class="h-4 w-4"></i>
+        Fluxo
+    </a>
     <a href="{{ route('patrimonial.edit', $patrimonio) }}" class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
         <i data-lucide="pencil" class="h-4 w-4"></i>
         Editar

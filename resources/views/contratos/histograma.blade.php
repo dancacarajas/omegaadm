@@ -1,6 +1,6 @@
 @extends($layout ?? 'layouts.app')
 
-@section('title', 'Histograma de contrato - Omega286')
+@section('title', ($histogramaEyebrow ?? 'Contrato').' - Histograma - Omega286')
 @section('eyebrow', $histogramaEyebrow ?? 'Contrato')
 @section('page-title', 'Histograma')
 
@@ -16,8 +16,8 @@
     @endif
     <section class="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
-            <h2 class="text-xl font-bold text-brand-black">Histograma de mão de obra por contrato</h2>
-            <p class="mt-1 text-sm text-brand-gray">Competência = mês-base dos dados (snapshot) · Pré-PGU = mobilização disponível · PGU = necessidade prevista · A data limite da Fase 2 é um prazo calendário e pode estar em mês diferente da competência.</p>
+            <h2 class="text-xl font-bold text-brand-black">{{ $histogramaTitulo ?? 'Histograma de mão de obra por contrato' }}</h2>
+            <p class="mt-1 text-sm text-brand-gray">{{ $histogramaDescricao ?? 'Competência = mês-base dos dados (snapshot) · Pré-PGU = mobilização disponível · PGU = necessidade prevista · A data limite da Fase 2 é um prazo calendário e pode estar em mês diferente da competência.' }}</p>
         </div>
         <form method="GET" class="grid gap-3 p-5 md:grid-cols-[1fr_170px_auto] md:items-end">
             <label>
@@ -59,7 +59,7 @@
                         {{ $contratoSelecionado ?: 'Selecione um contrato' }} · {{ \Carbon\Carbon::createFromFormat('Y-m', $competenciaMes)->format('m/Y') }}
                     </h3>
                     <p class="text-sm text-brand-gray">Use “Grupo” para linhas de título e “Item” para linhas detalhadas.</p>
-                    @if ($contratoSelecionado)
+                    @if (($mostrarAcoesRecomendadas ?? true) && $contratoSelecionado)
                         <p class="mt-2 text-xs text-brand-gray">
                             Ação recomendada e responsável do <strong class="font-semibold text-brand-black">Slide 5</strong> (plano executivo PGU) são editados no módulo
                             <a href="{{ route('contratos.acoes-recomendadas.index', ['contrato' => $contratoSelecionado, 'competencia' => $competenciaMes]) }}" class="font-semibold text-brand-burgundy underline-offset-2 hover:underline">Ações recomendadas</a>.
@@ -128,7 +128,11 @@
             @endif
 
             <div class="border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-xs text-brand-gray">
-                <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas <span class="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">Item</span> ficam verdes quando <strong>todas as vagas da função concluírem os steps do recrutamento</strong>. Enquanto não concluir, a linha mostra barra de progresso. Linhas amarelas = <strong>Grupo</strong> (título).</p>
+                @if ($usarStatusRh ?? true)
+                    <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas <span class="rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-900">Item</span> ficam verdes quando <strong>todas as vagas da função concluírem os steps do recrutamento</strong>. Enquanto não concluir, a linha mostra barra de progresso. Linhas amarelas = <strong>Grupo</strong> (título).</p>
+                @else
+                    <p><strong class="text-brand-black">Legenda da tabela:</strong> linhas amarelas = <strong>Grupo</strong> (título de categoria) e linhas brancas = <strong>Item</strong> (equipamento). Os quantitativos são editáveis e salvos de forma isolada no módulo Patrimonial.</p>
+                @endif
             </div>
 
             <div class="overflow-x-auto">
@@ -152,9 +156,10 @@
                             @php
                                 $ehGrupo = ($linha->tipo_linha ?? '') === 'grupo';
                                 $rhStatus = $linhaRecrutamentoStatus[$linha->id] ?? ['percent' => 0, 'completed' => false];
-                                $linhaConcluida = ! $ehGrupo && (bool) ($rhStatus['completed'] ?? false);
-                                $linhaProgress = (int) ($rhStatus['percent'] ?? 0);
-                                $linhaMobilizacao = (float) ($rhStatus['mobilizacao'] ?? $linha->mobilizacao);
+                                $usarStatusRh = (bool) ($usarStatusRh ?? true);
+                                $linhaConcluida = $usarStatusRh && ! $ehGrupo && (bool) ($rhStatus['completed'] ?? false);
+                                $linhaProgress = $usarStatusRh ? (int) ($rhStatus['percent'] ?? 0) : 0;
+                                $linhaMobilizacao = $usarStatusRh ? (float) ($rhStatus['mobilizacao'] ?? $linha->mobilizacao) : (float) $linha->mobilizacao;
                                 $histogramaTrEstado = 'histograma-tr-item';
                                 if ($ehGrupo) {
                                     $histogramaTrEstado = 'histograma-tr-grupo';
@@ -185,7 +190,7 @@
                                             class="{{ $linhaConcluida ? 'inline-flex shrink-0 items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white' : 'hidden' }}"
                                         >Concluída</span>
                                     </div>
-                                    @if (! $ehGrupo && ! $linhaConcluida)
+                                    @if (($usarStatusRh ?? true) && ! $ehGrupo && ! $linhaConcluida)
                                         <div class="mt-2">
                                             <div class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
                                                 <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ $linhaProgress }}%"></div>
@@ -196,7 +201,7 @@
                                 </td>
                                 <td class="px-3 py-2.5 align-middle"><input name="linhas[{{ $i }}][unidade]" value="{{ $linha->unidade }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs shadow-sm"></td>
                                 <td class="px-3 py-2.5 align-middle">
-                                    <input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linhaMobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao" readonly>
+                                    <input type="number" step="0.01" min="0" name="linhas[{{ $i }}][mobilizacao]" value="{{ $linhaMobilizacao }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="mobilizacao" @readonly($mobilizacaoReadonly ?? true)>
                                 </td>
                                 <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pre_pgu]" value="{{ $linha->pre_pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pre_pgu"></td>
                                 <td class="px-3 py-2.5 align-middle"><input type="number" step="0.01" min="0" name="linhas[{{ $i }}][pgu]" value="{{ $linha->pgu }}" class="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-xs tabular-nums shadow-sm" data-num="pgu"></td>

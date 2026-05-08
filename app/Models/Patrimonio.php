@@ -28,6 +28,8 @@ class Patrimonio extends Model
         'ultima_conferencia',
         'proxima_conferencia',
         'observacoes',
+        'fluxo_state',
+        'fluxo_step',
     ];
 
     protected $casts = [
@@ -36,5 +38,6 @@ class Patrimonio extends Model
         'ultima_conferencia' => 'date',
         'proxima_conferencia' => 'date',
         'valor' => 'decimal:2',
+        'fluxo_state' => 'array',
     ];
 }

@@ -167,6 +167,10 @@
                                         <i data-lucide="pencil" class="h-4 w-4"></i>
                                         Editar
                                     </a>
+                                    <a href="{{ route('patrimonial.fluxo.edit', $patrimonio) }}" class="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+                                        <i data-lucide="workflow" class="h-4 w-4"></i>
+                                        Fluxo
+                                    </a>
                                     <form method="POST" action="{{ route('patrimonial.destroy', $patrimonio) }}" onsubmit="return confirm('Deseja realmente excluir este patrimônio?');">
                                         @csrf
                                         @method('DELETE')
