@@ -29,17 +29,9 @@
                                 <span class="flex-1 text-left">Contrato</span>
                             </div>
                             <div class="mt-2 space-y-1 border-l border-zinc-200 pl-4">
-                                <a href="{{ route('publico.contratos.histograma.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('publico.contratos.histograma.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
-                                    Histograma
-                                </a>
-                                <a href="{{ route('publico.dashboard.pgu') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('publico.dashboard.pgu') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
-                                    PGU — visão completa
-                                </a>
-                                <a href="{{ route('publico.contratos.apresentacao') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('publico.contratos.apresentacao') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <a href="{{ route('publico.contratos.apresentacao') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('publico.dashboard.pgu') || request()->routeIs('publico.contratos.apresentacao') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
-                                    Apresentação
+                                    PGU - Visao Completa
                                 </a>
                             </div>
                         </div>
