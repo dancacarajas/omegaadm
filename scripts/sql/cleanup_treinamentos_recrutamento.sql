@@ -1,6 +1,9 @@
 -- Limpeza em lote da etapa "Treinamentos" no RH/Recrutamento.
--- Uso: execute este script no banco de produção (MySQL 8+).
--- Segurança: faz backup lógico da coluna form_state antes da limpeza.
+-- ATENÇÃO: operação DESTRUTIVA. Só execute com backup COMPLETO do banco (dump)
+-- validado fora do servidor. O backup criado abaixo cobre apenas linhas que
+-- ainda têm chaves *_treinamentos_* — não substitui dump integral.
+-- Antes do COMMIT: confira contagens, compare com o backup e use ROLLBACK se houver dúvida.
+-- MySQL 8+.
 
 START TRANSACTION;
 

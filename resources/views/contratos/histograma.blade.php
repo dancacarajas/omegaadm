@@ -83,6 +83,9 @@
                     <button type="button" data-add-item class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-brand-black transition hover:border-brand-burgundy hover:text-brand-burgundy">
                         + Item
                     </button>
+                    <span data-autosave-status class="inline-flex h-10 items-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-brand-gray">
+                        Auto-save ativo
+                    </span>
                     <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
                         Salvar histograma
                     </button>
@@ -220,7 +223,63 @@
                 const form = document.querySelector('[data-histograma-form]');
                 if (!form) return;
                 const tbody = form.querySelector('[data-histograma-rows]');
+                const autosaveStatus = form.querySelector('[data-autosave-status]');
                 const emptyRow = () => tbody.querySelector('[data-empty-row]');
+                let autosaveTimer = null;
+                let autosaveInFlight = false;
+                let autosaveQueued = false;
+
+                const setAutosaveStatus = (text, tone = 'muted') => {
+                    if (!autosaveStatus) return;
+                    autosaveStatus.textContent = text;
+                    autosaveStatus.className = 'inline-flex h-10 items-center rounded-lg border px-3 text-xs font-semibold';
+                    if (tone === 'ok') {
+                        autosaveStatus.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-800');
+                    } else if (tone === 'saving') {
+                        autosaveStatus.classList.add('border-sky-200', 'bg-sky-50', 'text-sky-800');
+                    } else if (tone === 'error') {
+                        autosaveStatus.classList.add('border-red-200', 'bg-red-50', 'text-red-800');
+                    } else {
+                        autosaveStatus.classList.add('border-zinc-200', 'bg-zinc-50', 'text-brand-gray');
+                    }
+                };
+
+                const runAutosave = async () => {
+                    if (autosaveInFlight) {
+                        autosaveQueued = true;
+                        return;
+                    }
+                    autosaveInFlight = true;
+                    setAutosaveStatus('Salvando...', 'saving');
+
+                    try {
+                        const payload = new FormData(form);
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: payload,
+                            credentials: 'same-origin',
+                        });
+                        if (!response.ok) throw new Error('Falha ao salvar');
+                        setAutosaveStatus('Salvo automaticamente', 'ok');
+                    } catch (_e) {
+                        setAutosaveStatus('Erro no auto-save', 'error');
+                    } finally {
+                        autosaveInFlight = false;
+                        if (autosaveQueued) {
+                            autosaveQueued = false;
+                            scheduleAutosave(200);
+                        }
+                    }
+                };
+
+                const scheduleAutosave = (delay = 700) => {
+                    clearTimeout(autosaveTimer);
+                    autosaveTimer = setTimeout(runAutosave, delay);
+                };
 
                 const rowBaseCls = (tipo) =>
                     tipo === 'grupo' ? 'histograma-tr-grupo' : 'histograma-tr-item';
@@ -329,6 +388,7 @@
                     reindex();
                     recalcTotals();
                     refreshRowStates();
+                    scheduleAutosave();
                 };
 
                 form.querySelector('[data-add-grupo]')?.addEventListener('click', () => addRow('grupo'));
@@ -343,12 +403,14 @@
                         }
                         recalcTotals();
                         refreshRowStates();
+                        scheduleAutosave();
                     }
                 });
 
                 limiteInput?.addEventListener('change', () => {
                     form.dataset.limite = limiteInput.value || '';
                     refreshRowStates();
+                    scheduleAutosave();
                 });
 
                 tbody.addEventListener('change', (e) => {
@@ -357,11 +419,13 @@
                     }
                     if (e.target.matches('[data-num]')) recalcTotals();
                     if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshRowStates();
+                    if (e.target.matches('input, select')) scheduleAutosave();
                 });
 
                 tbody.addEventListener('input', (e) => {
                     if (e.target.matches('[data-num]')) recalcTotals();
                     if (e.target.matches('[data-num="pre_pgu"], [data-num="pgu"]')) refreshRowStates();
+                    if (e.target.matches('input, select')) scheduleAutosave();
                 });
 
                 recalcTotals();

@@ -11,7 +11,7 @@ window.pguDashboard = function () {
         contrato: '',
         competencia: '',
         dataLimite: '',
-        visaoAba: 'diretoria',
+        visaoAba: 'cliente',
         clienteMenuOpen: false,
         clienteEvolucaoMenuOpen: false,
         clienteCoberturaMenuOpen: false,
@@ -653,13 +653,37 @@ window.pguDashboard = function () {
             });
             return out;
         },
+        /** Exibe data da série mensal (m/Y) como dd/mm/aaaa (1º dia do mês). */
+        clienteDestaquesMovimentacaoDataLabel(raw) {
+            const s = String(raw || '').trim();
+            const m = s.match(/^(\d{1,2})\/(\d{4})$/);
+            if (!m) {
+                return s;
+            }
+            return `01/${m[1].padStart(2, '0')}/${m[2]}`;
+        },
+        clienteDestaquesMovimentacoesFooter() {
+            const n = this.clienteDestaquesMovimentacoesRows().length;
+            if (n === 0) {
+                return 'Sem movimentações na série do ciclo para este recorte.';
+            }
+            return `Mostrando as ${n} última${n === 1 ? '' : 's'} movimentações do ciclo.`;
+        },
         clienteDestaquesMovimentacoesRows() {
             const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];
+            const ft = Array.isArray(this.data?.fase_trend) ? this.data.fase_trend : [];
             if (trend.length === 0) {
                 return [];
             }
             const start = Math.max(0, trend.length - 6);
             const rows = [];
+            const faseLabels = [
+                ['exame_medico', 'Exame médico'],
+                ['treinamentos', 'Treinamentos concluídos'],
+                ['assinatura_documental', 'Assinaturas de contrato'],
+                ['sgc', 'SGC concluído'],
+                ['liberacao', 'Liberações'],
+            ];
             for (let i = start; i < trend.length; i++) {
                 const cur = trend[i];
                 const prev = trend[i - 1];
@@ -667,16 +691,29 @@ window.pguDashboard = function () {
                 const dProg = prev
                     ? Math.round((Number(cur.progress || 0) - Number(prev.progress || 0)) * 10) / 10
                     : Math.round(Number(cur.progress || 0) * 10) / 10;
-                let mov = 'Atualização de consolidação';
+                let mov = 'Vagas consolidadas';
                 if (!prev) {
                     mov = 'Posição no período';
                 } else if (dC < 0) {
                     mov = 'Ajuste no saldo consolidado';
+                } else if (ft[i] && ft[i - 1]) {
+                    let best = -1;
+                    let label = '';
+                    for (const [key, name] of faseLabels) {
+                        const d = Math.round(Number(ft[i][key] || 0) - Number(ft[i - 1][key] || 0));
+                        if (d > best) {
+                            best = d;
+                            label = name;
+                        }
+                    }
+                    if (best > 0 && label) {
+                        mov = label;
+                    }
                 }
                 rows.push({
-                    data: String(cur.date || '—'),
+                    data: this.clienteDestaquesMovimentacaoDataLabel(cur.date),
                     mov,
-                    qtd: this.formatQtyPtBr(Math.abs(dC)),
+                    qtd: `${dC >= 0 ? '+' : '−'}${this.formatQtyPtBr(Math.abs(dC))}`,
                     impactoPos: dProg >= 0,
                     impacto: `${dProg >= 0 ? '+' : ''}${this.formatPctPtBr(dProg)} p.p.`,
                 });
@@ -759,16 +796,72 @@ window.pguDashboard = function () {
             const n = e.filter((et) => this.clienteMaturidadeEtapaStatus(et) === 'concluido').length;
             return { concluidas: n, total: e.length || 6 };
         },
-        clientePlanoMilestonePrazo(idx) {
+        clientePlanoSlaDatas() {
+            const ref = this.clienteCicloSlaReferencia();
+            const start = this.parseDateAny(this.data?.summary?.cycle_start_date)
+                || this.parseDateAny(this.competencia ? `${this.competencia}-01` : null);
+            if (!start) return null;
+            const addDays = (base, days) => this.clientePlanoAddBusinessDays(base, days);
+            return {
+                ...ref,
+                inicio: start,
+                sgc: addDays(start, ref.diasAceiteAteSgc),
+                liberacaoMin: addDays(start, ref.janelaTotalMin),
+                liberacaoMax: addDays(start, ref.janelaTotalMax),
+            };
+        },
+        clientePlanoFmtDiaMes(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '--/--';
+            return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+        },
+        clientePlanoAddBusinessDays(baseDate, days) {
+            const base = (baseDate instanceof Date && !Number.isNaN(baseDate.getTime()))
+                ? new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate())
+                : null;
+            if (!base) return null;
+            const target = Math.max(0, Math.round(Number(days) || 0));
+            if (target === 0) return base;
+            let acc = 0;
+            while (acc < target) {
+                base.setDate(base.getDate() + 1);
+                const weekDay = base.getDay();
+                if (weekDay !== 0 && weekDay !== 6) {
+                    acc += 1;
+                }
+            }
+            return base;
+        },
+        clientePlanoSlaJanelaDiasLabel() {
+            const ref = this.clienteCicloSlaReferencia();
+            return `${ref.janelaTotalMin} a ${ref.janelaTotalMax} dias`;
+        },
+        clientePlanoSlaJanelaDatasLabel() {
+            const sla = this.clientePlanoSlaDatas();
+            if (!sla) return `D+${this.clienteCicloSlaReferencia().janelaTotalMin} a D+${this.clienteCicloSlaReferencia().janelaTotalMax}`;
+            return `${this.clientePlanoFmtDiaMes(sla.liberacaoMin)} a ${this.clientePlanoFmtDiaMes(sla.liberacaoMax)}`;
+        },
+        /** Marcos ao longo do ciclo (padrão: 6 etapas de maturidade PGU). */
+        clientePlanoMilestonePrazo(idx, nSteps = 6) {
+            const sla = this.clientePlanoSlaDatas();
+            if (sla) {
+                const offsets = [3, 7, 11, 13, 15];
+                if (idx >= 0 && idx <= 4) {
+                    return `Até ${this.clientePlanoFmtDiaMes(this.clientePlanoAddBusinessDays(sla.inicio, offsets[idx]))}`;
+                }
+                if (idx === 5) {
+                    return `${this.clientePlanoFmtDiaMes(sla.liberacaoMin)} a ${this.clientePlanoFmtDiaMes(sla.liberacaoMax)}`;
+                }
+            }
             const start = this.parseDateAny(this.data?.summary?.cycle_start_date)
                 || this.parseDateAny(this.competencia ? `${this.competencia}-01` : null);
             const end = this.parseDateAny(this.dataLimite);
             if (!start || !end) return '—';
-            const r = (idx + 1) / 6;
+            const r = (idx + 1) / nSteps;
             const t = start.getTime() + (end.getTime() - start.getTime()) * r;
             const d = new Date(t);
             return `Até ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
         },
+        /** Todas as etapas do ciclo de recrutamento/maturidade no roteiro. */
         clientePlanoRoteiroEtapas() {
             const etapas = this.clienteMaturidadeEtapas();
             const map = [
@@ -779,18 +872,44 @@ window.pguDashboard = function () {
                 { step: 5, titulo: 'Postagem SGC', keyIdx: 4 },
                 { step: 6, titulo: 'Liberação', keyIdx: 5 },
             ];
+            const tituloRoteiroMap = {
+                Recrutamento: 'Recrutamento',
+                'Exame médico': 'Exame médico',
+                Treinamentos: 'Treinamentos',
+                'Assinatura documental': 'Assinatura de contrato',
+                'Postagem SGC': 'SGC',
+                Liberação: 'Liberação',
+            };
+            const n = 6;
             return map.map((L, i) => {
                 const e = etapas[L.keyIdx] || { pct: 0 };
                 const st = this.clienteMaturidadeEtapaStatus(e);
                 const statusTxt = st === 'concluido' ? 'Concluída' : st === 'iniciar' ? 'A iniciar' : 'Em andamento';
                 return {
-                    ...L,
+                    step: L.step,
+                    titulo: L.titulo,
+                    tituloRoteiro: tituloRoteiroMap[L.titulo] || L.titulo,
                     pct: Number(e.pct || 0),
                     statusKey: st,
                     statusTxt,
-                    prazoAte: this.clientePlanoMilestonePrazo(i),
+                    prazoAte: this.clientePlanoMilestonePrazo(i, n),
                 };
             });
+        },
+        /** Largura % da barra do roteiro até o centro da última etapa já iniciada ou concluída. */
+        clientePlanoRoteiroLinhaPct() {
+            const steps = this.clientePlanoRoteiroEtapas();
+            let last = -1;
+            steps.forEach((s, i) => {
+                if (s.statusKey !== 'iniciar') {
+                    last = i;
+                }
+            });
+            if (last < 0 || steps.length === 0) {
+                return '0%';
+            }
+            const frac = (last + 0.5) / steps.length;
+            return `${Math.round(frac * 1000) / 10}%`;
         },
         clientePlanoSituacaoCicloLabel() {
             return this.clienteCicloResumo().situacaoNoPrazo ? 'NO PRAZO' : 'ATENÇÃO AO PRAZO';
@@ -806,14 +925,19 @@ window.pguDashboard = function () {
             };
             const impacto = (i) => (i >= 4 && st(i) === 'iniciar' ? 'Crítico' : 'Alto');
             const dl = this.clientePlanoDataLimiteCompleta();
+            const sla = this.clientePlanoSlaDatas();
+            const examePrazo = sla ? `Até ${this.clientePlanoFmtDiaMes(this.clientePlanoAddBusinessDays(sla.inicio, 7))}` : 'Contínuo';
+            const liberacaoPrazo = sla ? `${this.clientePlanoFmtDiaMes(sla.liberacaoMin)} a ${this.clientePlanoFmtDiaMes(sla.liberacaoMax)}` : dl;
             return [
                 {
                     acao: 'Exame médico',
                     desc: 'Concluir agendamento e confirmação do exame para candidatos aprovados, com datas registradas no PGU.',
                     resp: 'Equipe de Saúde Ocupacional / RH',
-                    prazo: st(1) === 'concluido' ? `Até ${dl}` : 'Contínuo',
+                    prazo: st(1) === 'concluido' ? `Até ${dl}` : examePrazo,
                     pill: pill(1),
                     impacto: impacto(1),
+                    icon: 'graduation-cap',
+                    iconClass: 'bg-emerald-50 text-emerald-700',
                 },
                 {
                     acao: 'Treinamentos',
@@ -822,6 +946,8 @@ window.pguDashboard = function () {
                     prazo: this.clientePlanoMilestonePrazo(2),
                     pill: pill(2),
                     impacto: impacto(2),
+                    icon: 'pencil-line',
+                    iconClass: 'bg-emerald-50 text-emerald-700',
                 },
                 {
                     acao: 'Assinatura documental',
@@ -830,6 +956,8 @@ window.pguDashboard = function () {
                     prazo: this.clientePlanoMilestonePrazo(3),
                     pill: pill(3),
                     impacto: impacto(3),
+                    icon: 'shield-check',
+                    iconClass: 'bg-emerald-50 text-emerald-700',
                 },
                 {
                     acao: 'Postagem e acompanhamento SGC',
@@ -838,14 +966,18 @@ window.pguDashboard = function () {
                     prazo: this.clientePlanoMilestonePrazo(4),
                     pill: pill(4),
                     impacto: impacto(4),
+                    icon: 'user-round-check',
+                    iconClass: 'bg-sky-50 text-sky-700',
                 },
                 {
                     acao: 'Liberação de candidatos',
                     desc: 'Concluir liberações pendentes e comunicar as áreas operacionais até a data limite do ciclo.',
                     resp: 'Gestão PGU',
-                    prazo: dl,
+                    prazo: liberacaoPrazo,
                     pill: pill(5),
                     impacto: impacto(5),
+                    icon: 'chart-no-axes-column-increasing',
+                    iconClass: 'bg-amber-50 text-amber-700',
                 },
                 {
                     acao: 'Monitoramento executivo',
@@ -854,17 +986,20 @@ window.pguDashboard = function () {
                     prazo: 'Contínuo',
                     pill: { text: 'Em andamento', class: 'bg-amber-100 text-amber-900 ring-amber-200/80' },
                     impacto: 'Alto',
+                    icon: 'activity',
+                    iconClass: 'bg-emerald-50 text-emerald-700',
                 },
             ];
         },
         clientePlanoFocosLista() {
             const dl = this.clientePlanoDataLimiteCompleta();
             return [
-                { texto: `Priorizar funções com maior volume de vagas em evolução até ${dl}.` },
-                { texto: 'Manter cadência de treinamentos e assinaturas alinhada ao calendário do ciclo.' },
-                { texto: 'Tratar primeiro funções críticas ou com pendência elevada no ranking PGU.' },
-                { texto: 'Garantir comunicação clara com as áreas demandantes sobre marcos de liberação.' },
-                { texto: 'Confirmar 100% das liberações antes da data limite contratual.' },
+                { texto: `Priorizar funções com maior volume de vagas em evolução até ${dl}.`, icon: 'target' },
+                { texto: `SLA operacional de liberação previsto para ${this.clientePlanoSlaJanelaDatasLabel()} (${this.clientePlanoSlaJanelaDiasLabel()}).`, icon: 'calendar-clock' },
+                { texto: 'Manter cadência de treinamentos e assinaturas alinhada ao calendário do ciclo.', icon: 'pencil-line' },
+                { texto: 'Tratar primeiro funções críticas ou com pendência elevada no ranking PGU.', icon: 'shield-check' },
+                { texto: 'Garantir comunicação clara com as áreas demandantes sobre marcos de liberação.', icon: 'users-round' },
+                { texto: 'Confirmar 100% das liberações antes da data limite contratual.', icon: 'chart-no-axes-column-increasing' },
             ];
         },
         daysUntilDeadline() {
@@ -1456,13 +1591,27 @@ window.pguDashboard = function () {
             const faseFinal = fases[fases.length - 1] || { name: 'Liberação', value: 0 };
             const pctFinal = (Number(faseFinal.value || 0) / totalFases) * 100;
             const donutData = fases.map((f) => {
-                const pct = (Number(f.value || 0) / totalFases) * 100;
+                const v = Math.max(0, Number(f.value || 0));
+                const pct = (v / totalFases) * 100;
+                const temConcluidos = v > 0;
                 return {
-                    value: f.value,
+                    value: v,
                     name: f.name,
                     labelText: `${f.name}: ${this.formatPctPtBr(pct)}%`,
+                    label: { show: temConcluidos },
+                    labelLine: { show: temConcluidos },
+                    emphasis: {
+                        label: { show: temConcluidos },
+                        labelLine: { show: temConcluidos },
+                    },
                 };
             });
+            /** Largura mínima para o motor do pie não aplicar `constrainTextWidth` (reticências). ~6.8px/caractere em 11px bold. */
+            const rotulosCompletos = donutData
+                .filter((d) => Number(d.value || 0) > 0)
+                .map((d) => `${d.name} (${this.formatPctPtBr((Number(d.value) / totalFases) * 100)}%)`);
+            const maxRotuloLen = rotulosCompletos.reduce((m, s) => Math.max(m, s.length), 0);
+            const labelWidthPx = Math.min(480, Math.max(200, Math.ceil(maxRotuloLen * 6.8) + 8));
             chart.setOption({
                 backgroundColor: 'transparent',
                 tooltip: {
@@ -1482,7 +1631,7 @@ window.pguDashboard = function () {
                     {
                         type: 'text',
                         left: 'center',
-                        top: '42%',
+                        top: '50%',
                         silent: true,
                         style: {
                             text: `{big|${this.formatPctPtBr(pctFinal)}%}\n{sub|${faseFinal.name}}`,
@@ -1490,7 +1639,14 @@ window.pguDashboard = function () {
                             textVerticalAlign: 'middle',
                             rich: {
                                 big: { fontSize: 50, fontWeight: 800, fill: '#6F1731', lineHeight: 56 },
-                                sub: { fontSize: 16, fontWeight: 600, fill: '#475569', lineHeight: 24 },
+                                sub: {
+                                    fontSize: String(faseFinal.name || '').length > 10 ? 14 : 16,
+                                    fontWeight: 600,
+                                    fill: '#475569',
+                                    lineHeight: 22,
+                                    width: 220,
+                                    align: 'center',
+                                },
                             },
                         },
                     },
@@ -1500,40 +1656,43 @@ window.pguDashboard = function () {
                     {
                         name: 'Panorama',
                         type: 'pie',
-                        radius: ['46%', '64%'],
-                        center: ['50%', '46%'],
-                        avoidLabelOverlap: false,
-                        minShowLabelAngle: 0,
+                        /* Anel um pouco menor + linhas mais curtas: rótulos ficam mais perto do centro e não estouram a borda, mantendo centro em 50%. */
+                        radius: ['40%', '56%'],
+                        center: ['50%', '50%'],
+                        avoidLabelOverlap: true,
+                        minShowLabelAngle: 0.8,
                         label: {
                             show: true,
                             position: 'outside',
-                            distance: 10,
-                            distanceToLabelLine: 4,
+                            distance: 8,
+                            distanceToLabelLine: 3,
+                            bleedMargin: 28,
                             color: '#334155',
                             fontSize: 11,
                             fontWeight: 700,
+                            overflow: 'none',
+                            width: labelWidthPx,
                             formatter: (p) => {
                                 const row = donutData[p.dataIndex];
-                                if (!row) return `${p.name}`;
+                                if (!row || Number(row.value || 0) <= 0) return '';
                                 const pct = this.formatPctPtBr((Number(row.value || 0) / totalFases) * 100);
                                 return `${row.name} (${pct}%)`;
                             },
                         },
                         labelLayout: {
-                            hideOverlap: false,
-                            moveOverlap: 'none',
+                            hideOverlap: true,
+                            moveOverlap: 'shiftY',
                         },
                         labelLine: {
                             show: true,
-                            length: 22,
-                            length2: 18,
+                            length: 18,
+                            length2: 14,
                             smooth: false,
                             lineStyle: { color: '#94A3B8', width: 1 },
                         },
                         emphasis: {
                             scale: false,
-                            label: { show: true },
-                            labelLine: { show: true, lineStyle: { width: 1, color: '#64748B' } },
+                            labelLine: { lineStyle: { width: 1.5, color: '#64748B' } },
                         },
                         itemStyle: {
                             borderColor: '#fff',
@@ -1968,23 +2127,23 @@ window.pguDashboard = function () {
             const chart = this.baseChart('chartClientePlanoSemiDonut');
             if (!chart) return;
             const p = Math.max(0, Math.min(100, Number(this.clienteProgressoConsolidadoCicloPct())));
-            const rest = Math.max(0, 100 - p);
-            const track = rest < 0.05 ? 0.05 : rest;
             chart.setOption({
                 backgroundColor: 'transparent',
                 tooltip: { show: false },
                 series: [{
                     name: 'Progresso',
                     type: 'pie',
-                    radius: ['58%', '82%'],
-                    center: ['50%', '70%'],
+                    radius: ['72%', '96%'],
+                    center: ['50%', '90%'],
                     startAngle: 180,
                     clockwise: true,
                     label: { show: false },
+                    silent: true,
                     itemStyle: { borderColor: '#fff', borderWidth: 0 },
                     data: [
-                        { value: p, itemStyle: { color: '#166534' } },
-                        { value: track, itemStyle: { color: '#E5E7EB' } },
+                        { value: p, itemStyle: { color: '#7A1632' } },
+                        { value: 100 - p, itemStyle: { color: '#ECEFF3' } },
+                        { value: 100, itemStyle: { color: 'transparent' }, tooltip: { show: false } },
                     ],
                 }],
             });

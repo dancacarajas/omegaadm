@@ -2,7 +2,7 @@
 
 @section('title', 'PGU Command Center - Omega286')
 @section('eyebrow', 'Contrato')
-@section('page-title', 'PGU — Visão executiva')
+@section('page-title', 'Reporte Vale')
 
 @section('content')
 <div
@@ -16,7 +16,7 @@
 >
     <div class="mx-auto max-w-[1600px] space-y-6">
         <x-pgu.page-header
-            title="PGU — Visão executiva"
+            title="Reporte Vale"
             subtitle="Central de gráficos para reunião: concentração, prioridade e evolução do avanço PGU."
         >
             <select x-model="contrato" class="rounded-xl border border-pgu-border bg-white px-4 py-2 text-sm text-pgu-ink shadow-sm focus:border-pgu-primary">
@@ -26,7 +26,7 @@
             </select>
             <input type="month" x-model="competencia" class="rounded-xl border border-pgu-border bg-white px-4 py-2 text-sm text-pgu-ink shadow-sm focus:border-pgu-primary">
             <input type="date" x-model="dataLimite" class="rounded-xl border border-pgu-border bg-white px-4 py-2 text-sm text-pgu-ink shadow-sm focus:border-pgu-primary">
-            <button @click="refresh()" class="inline-flex items-center gap-2 rounded-xl bg-pgu-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800">
+            <button @click="refresh()" class="inline-flex items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
                 <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                 Atualizar
             </button>
@@ -34,22 +34,11 @@
 
         <div x-show="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" x-text="error"></div>
 
-        <section class="rounded-2xl border border-pgu-border bg-white p-2 shadow-sm">
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" @click="setVisaoAba('diretoria')"
-                    :class="visaoAba === 'diretoria' ? 'bg-pgu-primary text-white' : 'bg-zinc-50 text-pgu-ink hover:bg-zinc-100'"
-                    class="rounded-xl px-4 py-3 text-sm font-semibold transition">
-                    Visão Diretoria
-                </button>
-                <button type="button" @click="setVisaoAba('cliente')"
-                    :class="visaoAba === 'cliente' ? 'bg-pgu-primary text-white' : 'bg-zinc-50 text-pgu-ink hover:bg-zinc-100'"
-                    class="rounded-xl px-4 py-3 text-sm font-semibold transition">
-                    Visão Cliente
-                </button>
-            </div>
+        <section class="rounded-2xl border border-pgu-border bg-white px-4 py-3 shadow-sm">
+            <p class="text-sm font-semibold text-brand-burgundy">Visão Cliente</p>
         </section>
 
-        <div x-show="visaoAba === 'diretoria'" class="space-y-6">
+        <div x-show="false" class="space-y-6">
         <section
             class="rounded-[1.5rem] border border-pgu-border bg-white p-6 shadow-sm"
             x-show="!loading && !error && data?.summary?.kpis_mao_de_obra_itens"
@@ -285,12 +274,17 @@
         </section>
         </div>
 
-        <div x-show="visaoAba === 'cliente'" class="space-y-6" x-cloak>
-            <section class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm overflow-hidden">
+        <div class="space-y-6">
+            <section class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm">
                 <div class="flex items-center justify-between border-b border-pgu-border px-6 py-5">
-                    <div>
-                        <h2 class="text-[44px] font-black leading-none text-pgu-ink">Panorama Executivo do PGU</h2>
-                        <p class="mt-2 text-lg text-pgu-muted">Cobertura e consolidação da base funcional do contrato</p>
+                    <div class="flex items-start gap-4">
+                        <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
+                            <i data-lucide="chart-line" class="h-6 w-6"></i>
+                        </span>
+                        <div>
+                            <h2 class="text-[44px] font-black leading-none text-pgu-ink">1. Panorama Executivo do PGU</h2>
+                            <p class="mt-2 text-lg text-pgu-muted">Cobertura e consolidação da base funcional do contrato</p>
+                        </div>
                     </div>
                     <div class="relative flex items-center gap-2 text-pgu-muted">
                         <button type="button" @click="clienteInfo()" class="rounded-lg p-2 transition hover:bg-zinc-100 hover:text-pgu-ink" title="Sobre o indicador">
@@ -314,8 +308,8 @@
                 </div>
                 <div class="grid gap-0 lg:grid-cols-[58%_42%]">
                     <div class="border-b border-r border-pgu-border p-6 lg:border-b-0">
-                        <div class="flex justify-center">
-                            <div id="chartClientePanorama" class="h-[460px] w-[540px] max-w-full"></div>
+                        <div class="flex justify-center overflow-x-visible overflow-y-visible px-2 sm:px-4">
+                            <div id="chartClientePanorama" class="h-[460px] w-full max-w-[680px] min-w-[320px] overflow-visible"></div>
                         </div>
                         <div class="mt-3 overflow-x-auto border-t border-pgu-border pt-4">
                             <div class="grid min-w-[34rem] grid-cols-6 gap-x-1 gap-y-2 sm:min-w-0 sm:w-full sm:gap-x-2 md:gap-x-3">
@@ -430,11 +424,11 @@
             <section id="cardClienteMaturidade" class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm">
                 <div class="flex flex-col gap-4 border-b border-pgu-border px-6 py-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
                     <div class="flex min-w-0 flex-1 items-start gap-4">
-                        <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm">
+                        <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
                             <i data-lucide="workflow" class="h-8 w-8"></i>
                         </span>
                         <div>
-                            <h2 class="text-[44px] font-black leading-none text-brand-burgundy">3. MATURIDADE DO FLUXO PGU</h2>
+                            <h2 class="text-[44px] font-black leading-none text-pgu-ink">3. Maturidade do Fluxo PGU</h2>
                             <p class="mt-1 text-lg text-pgu-muted">Acompanhamento das etapas do processo de mobilização, desde a aprovação dos candidatos até a liberação para início das atividades.</p>
                         </div>
                     </div>
@@ -1018,11 +1012,11 @@
                     <div class="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
                         {{-- Bloco título: à esquerda; caixa de resumo: à direita na mesma linha (lg+) --}}
                         <div class="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm sm:h-14 sm:w-14">
-                                <i data-lucide="bar-chart-3" class="h-7 w-7 sm:h-8 sm:w-8"></i>
+                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
+                                <i data-lucide="bar-chart-3" class="h-6 w-6"></i>
                             </span>
                             <div class="min-w-0 flex-1 pr-0 lg:max-w-[calc(100%-28rem)] lg:pr-4">
-                                <h2 class="text-2xl font-black leading-tight text-brand-burgundy sm:text-3xl lg:text-4xl xl:text-[40px] xl:leading-none">4. MAPA DE CONSOLIDAÇÃO POR FUNÇÃO PGU</h2>
+                                <h2 class="text-[44px] font-black leading-none text-pgu-ink">4. Mapa de Consolidação por Função PGU</h2>
                                 <p class="mt-2 max-w-3xl text-base leading-snug text-pgu-muted sm:text-lg">
                                     Visão detalhada do avanço da mobilização por função, com acompanhamento das vagas previstas, consolidadas e em evolução no ciclo contratual.
                                 </p>
@@ -1315,11 +1309,11 @@
                 <div class="border-b border-pgu-border px-4 py-4 sm:px-6">
                     <div class="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
                         <div class="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-burgundy text-white shadow-sm ring-2 ring-brand-burgundy/15 sm:h-14 sm:w-14">
-                                <i data-lucide="megaphone" class="h-7 w-7 sm:h-8 sm:w-8"></i>
+                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
+                                <i data-lucide="megaphone" class="h-6 w-6"></i>
                             </span>
                             <div class="min-w-0 flex-1 pr-0 lg:max-w-[calc(100%-28rem)] lg:pr-4">
-                                <h2 class="text-2xl font-black leading-tight text-brand-burgundy sm:text-3xl lg:text-4xl xl:text-[40px] xl:leading-none">5. DESTAQUES OPERACIONAIS DO CICLO</h2>
+                                <h2 class="text-[44px] font-black leading-none text-pgu-ink">5. Destaques Operacionais do Ciclo</h2>
                                 <p class="mt-2 max-w-3xl text-base leading-snug text-pgu-muted sm:text-lg">
                                     Principais avanços, movimentações e pontos de atenção da mobilização PGU no ciclo contratual. Visão executiva do que mais impactou o avanço da consolidação até o momento.
                                 </p>
@@ -1390,7 +1384,7 @@
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="line-chart" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1398,11 +1392,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-emerald-700" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dCons >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dCons))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dCons >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dCons))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="refresh-cw" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1410,11 +1404,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-orange-700" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dPend >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dPend))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dPend >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dPend))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="stethoscope" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1422,11 +1416,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[1]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-violet-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dExameMedico >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dExameMedico))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dExameMedico >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dExameMedico))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="badge-check" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1434,11 +1428,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteDestaquesTreinamentosCount())"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-purple-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinamentos >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinamentos))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dTreinamentos >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dTreinamentos))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="file-signature" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1446,11 +1440,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[3]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-rose-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dAssinaturaDocumental))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="shield-check" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1458,11 +1452,11 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[4]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-teal-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dSgc >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dSgc))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dSgc >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dSgc))} desde o último reporte`"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3 sm:col-span-2 lg:col-span-1">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="flag" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -1470,20 +1464,24 @@
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeEtapas()[5]?.value ?? 0)"></p>
                                 </div>
                             </div>
-                            <p class="mt-2 text-[12px] font-semibold text-emerald-800" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dLib >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dLib))} desde o último reporte`"></p>
+                            <p class="mt-2 text-[12px] font-semibold text-brand-burgundy" x-text="`${clienteDestaquesDeltaUltimoPeriodo().dLib >= 0 ? '+' : '−'}${formatQtyPtBr(Math.abs(clienteDestaquesDeltaUltimoPeriodo().dLib))} desde o último reporte`"></p>
                         </div>
                     </div>
 
                     <div class="grid gap-5 lg:grid-cols-3">
                         <div class="rounded-xl border border-pgu-border bg-white p-4">
                             <div class="flex items-center gap-2 text-brand-burgundy">
-                                <i data-lucide="arrow-up-right" class="h-5 w-5 shrink-0"></i>
+                                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-burgundy/25 bg-brand-burgundy-soft">
+                                    <i data-lucide="arrow-up-right" class="h-4 w-4 shrink-0"></i>
+                                </span>
                                 <p class="text-sm font-black uppercase tracking-wide">Principais avanços do ciclo</p>
                             </div>
                             <ul class="mt-4 space-y-3">
                                 <template x-for="(item, idx) in clienteDestaquesPrincipaisAvancos()" :key="`avanco-${idx}`">
-                                    <li class="flex gap-2.5 text-[13px] leading-snug">
-                                        <i data-lucide="check" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"></i>
+                                    <li class="flex gap-2.5 border-b border-pgu-border/80 pb-3 text-[13px] leading-snug last:border-0 last:pb-0">
+                                        <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-burgundy text-white">
+                                            <i data-lucide="check" class="h-3 w-3 stroke-2"></i>
+                                        </span>
                                         <div>
                                             <p class="font-bold text-pgu-ink" x-text="item.titulo"></p>
                                             <p class="mt-0.5 text-pgu-muted" x-text="item.desc"></p>
@@ -1494,29 +1492,37 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white p-4">
                             <div class="flex items-center gap-2 text-brand-burgundy">
-                                <i data-lucide="history" class="h-5 w-5 shrink-0"></i>
+                                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-burgundy/25 bg-brand-burgundy-soft">
+                                    <i data-lucide="history" class="h-4 w-4 shrink-0"></i>
+                                </span>
                                 <p class="text-sm font-black uppercase tracking-wide">Movimentações recentes</p>
                             </div>
-                            <div class="mt-3 overflow-x-auto">
+                            <div class="mt-3 overflow-hidden rounded-lg border border-pgu-border">
                                 <table class="w-full min-w-[320px] border-collapse text-left text-[13px]">
                                     <thead>
-                                        <tr class="border-b border-pgu-border text-[10px] font-black uppercase text-pgu-muted">
-                                            <th class="pb-2 pr-2">Data</th>
-                                            <th class="pb-2 pr-2">Movimentação</th>
-                                            <th class="pb-2 pr-2 text-right">Qtd.</th>
-                                            <th class="pb-2 text-right">Impacto</th>
+                                        <tr class="bg-brand-burgundy text-white">
+                                            <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide">Data</th>
+                                            <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide">Movimentação</th>
+                                            <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-wide">Quantidade</th>
+                                            <th class="px-3 py-3 text-center text-[10px] font-black uppercase tracking-wide">Impacto</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <template x-for="(row, idx) in clienteDestaquesMovimentacoesRows()" :key="`mov-${idx}-${row.data}`">
-                                            <tr class="border-b border-pgu-border/70">
-                                                <td class="py-2 pr-2 tabular-nums text-pgu-muted" x-text="row.data"></td>
-                                                <td class="py-2 pr-2 font-medium text-pgu-ink" x-text="row.mov"></td>
-                                                <td class="py-2 pr-2 text-right tabular-nums" x-text="row.qtd"></td>
-                                                <td class="py-2 text-right">
-                                                    <span class="inline-flex items-center justify-end gap-0.5 font-semibold tabular-nums" :class="row.impactoPos ? 'text-emerald-700' : 'text-amber-700'">
-                                                        <i data-lucide="arrow-up" class="h-3.5 w-3.5" x-show="row.impactoPos"></i>
-                                                        <i data-lucide="arrow-down" class="h-3.5 w-3.5" x-show="!row.impactoPos"></i>
+                                            <tr
+                                                class="border-b border-pgu-border/60 last:border-b-0"
+                                                :class="idx % 2 === 1 ? 'bg-zinc-50/90' : 'bg-white'"
+                                            >
+                                                <td class="px-3 py-2.5 tabular-nums text-pgu-muted" x-text="row.data"></td>
+                                                <td class="px-3 py-2.5 font-medium text-pgu-ink" x-text="row.mov"></td>
+                                                <td class="px-3 py-2.5 text-center tabular-nums font-semibold text-pgu-ink" x-text="row.qtd"></td>
+                                                <td class="px-3 py-2.5 text-center">
+                                                    <span
+                                                        class="inline-flex items-center justify-center gap-0.5 font-semibold tabular-nums"
+                                                        :class="row.impactoPos ? 'text-brand-burgundy' : 'text-pgu-muted'"
+                                                    >
+                                                        <i data-lucide="arrow-up" class="h-3.5 w-3.5 shrink-0" x-show="row.impactoPos"></i>
+                                                        <i data-lucide="arrow-down" class="h-3.5 w-3.5 shrink-0" x-show="!row.impactoPos"></i>
                                                         <span x-text="row.impacto"></span>
                                                     </span>
                                                 </td>
@@ -1525,17 +1531,19 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <p class="mt-3 text-center text-[11px] text-pgu-muted">Mostrando as últimas movimentações da série mensal do ciclo.</p>
+                            <p class="mt-3 text-center text-[11px] text-pgu-muted" x-text="clienteDestaquesMovimentacoesFooter()"></p>
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white p-4">
-                            <div class="flex items-center gap-2 text-amber-700">
-                                <i data-lucide="triangle-alert" class="h-5 w-5 shrink-0"></i>
-                                <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Pontos de atenção</p>
+                            <div class="flex items-center gap-2 text-brand-burgundy">
+                                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-burgundy/25 bg-brand-burgundy-soft">
+                                    <i data-lucide="triangle-alert" class="h-4 w-4 shrink-0"></i>
+                                </span>
+                                <p class="text-sm font-black uppercase tracking-wide">Pontos de atenção</p>
                             </div>
                             <ul class="mt-4 space-y-3">
                                 <template x-for="(pt, idx) in clienteDestaquesPontosAtencao()" :key="`at-${idx}`">
-                                    <li class="flex gap-2.5 text-[13px] leading-snug">
-                                        <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+                                    <li class="flex gap-2.5 border-b border-pgu-border/80 pb-3 text-[13px] leading-snug last:border-0 last:pb-0">
+                                        <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-burgundy"></span>
                                         <div>
                                             <p class="font-bold text-pgu-ink" x-text="pt.titulo"></p>
                                             <p class="mt-0.5 text-pgu-muted" x-text="pt.texto"></p>
@@ -1585,41 +1593,53 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-white p-4">
                             <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Resumo operacional do ciclo</p>
-                            <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-3">
-                                <div class="flex gap-2.5">
-                                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-200/80">
-                                        <i data-lucide="target" class="h-4 w-4"></i>
+                            <div class="mt-4 rounded-xl bg-zinc-100/90 p-4">
+                                <div class="flex items-center gap-3 rounded-lg bg-brand-burgundy-soft/90 px-4 py-3.5">
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-brand-burgundy shadow-sm ring-1 ring-brand-burgundy/20">
+                                        <i data-lucide="target" class="h-5 w-5"></i>
                                     </span>
-                                    <p class="min-w-0 text-[13px] font-semibold leading-snug text-emerald-900" x-text="clienteDestaquesResumoOperacionalTexto()"></p>
+                                    <p class="min-w-0 flex-1 text-[14px] font-semibold leading-snug text-pgu-ink" x-text="clienteDestaquesResumoOperacionalTexto()"></p>
+                                </div>
+                                <div class="mt-4 overflow-hidden rounded-lg border border-pgu-border/80 bg-white">
+                                    <div class="flex items-center gap-4 border-b border-pgu-border/70 px-4 py-3.5 last:border-b-0">
+                                        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="users-round" class="h-5 w-5"></i>
+                                        </span>
+                                        <span class="shrink-0 text-3xl font-black tabular-nums leading-none text-brand-burgundy sm:text-[2rem]" x-text="formatQtyPtBr(clienteCicloResumo().mapeadas)"></span>
+                                        <p class="min-w-0 flex-1 text-[13px] font-medium leading-snug text-pgu-muted">Vagas mapeadas no PGU</p>
+                                    </div>
+                                    <div class="flex items-center gap-4 border-b border-pgu-border/70 px-4 py-3.5 last:border-b-0">
+                                        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="check-circle-2" class="h-5 w-5"></i>
+                                        </span>
+                                        <span class="shrink-0 text-3xl font-black tabular-nums leading-none text-brand-burgundy sm:text-[2rem]" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></span>
+                                        <p class="min-w-0 flex-1 text-[13px] font-medium leading-snug text-pgu-muted">
+                                            Vagas consolidadas (<span class="tabular-nums text-pgu-ink" x-text="formatPctPtBr(clienteProgressoConsolidadoCicloPct())"></span>%)
+                                        </p>
+                                    </div>
+                                    <div class="flex items-center gap-4 px-4 py-3.5">
+                                        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+                                        </span>
+                                        <span class="shrink-0 text-3xl font-black tabular-nums leading-none text-brand-burgundy sm:text-[2rem]" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></span>
+                                        <p class="min-w-0 flex-1 text-[13px] font-medium leading-snug text-pgu-muted">
+                                            Vagas em evolução (<span class="tabular-nums text-pgu-ink" x-text="formatPctPtBr(clienteCicloResumo().mapeadas > 0 ? (clienteCicloResumo().emEvolucao / clienteCicloResumo().mapeadas) * 100 : 0)"></span>%)
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                            <ul class="mt-4 space-y-3 text-[13px]">
-                                <li class="flex items-center gap-2.5">
-                                    <i data-lucide="users-round" class="h-4 w-4 shrink-0 text-brand-burgundy"></i>
-                                    <span><span class="font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().mapeadas)"></span> Vagas mapeadas</span>
-                                </li>
-                                <li class="flex items-center gap-2.5">
-                                    <i data-lucide="check-circle-2" class="h-4 w-4 shrink-0 text-brand-burgundy"></i>
-                                    <span><span class="font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></span> Vagas consolidadas (<span x-text="formatPctPtBr(clienteProgressoConsolidadoCicloPct())"></span>%)</span>
-                                </li>
-                                <li class="flex items-center gap-2.5">
-                                    <i data-lucide="refresh-cw" class="h-4 w-4 shrink-0 text-brand-burgundy"></i>
-                                    <span><span class="font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></span> Vagas em evolução (<span x-text="formatPctPtBr(clienteCicloResumo().mapeadas > 0 ? (clienteCicloResumo().emEvolucao / clienteCicloResumo().mapeadas) * 100 : 0)"></span>%)</span>
-                                </li>
-                            </ul>
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-4 rounded-xl border border-pgu-border bg-zinc-100/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                        <div class="flex min-w-0 items-start gap-3">
-                            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-brand-burgundy shadow-sm ring-1 ring-pgu-border">
-                                <i data-lucide="sparkles" class="h-5 w-5"></i>
+                    <div class="flex flex-col gap-4 rounded-xl border border-pgu-border bg-zinc-100/90 px-4 py-5 sm:flex-row sm:items-center sm:px-6">
+                        <div class="flex min-w-0 items-start gap-4">
+                            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-brand-burgundy shadow-sm ring-1 ring-pgu-border sm:h-12 sm:w-12">
+                                <i data-lucide="sparkles" class="h-5 w-5 sm:h-6 sm:w-6"></i>
                             </span>
-                            <p class="min-w-0 text-[13px] leading-relaxed text-pgu-ink">
+                            <p class="min-w-0 text-base leading-relaxed text-pgu-ink sm:text-lg">
                                 Seguimos com foco na conclusão de todas as fases até <strong class="text-brand-burgundy" x-text="clienteCicloResumo().dataLimite"></strong>, garantindo mobilização qualificada, segura e dentro do prazo contratual.
                             </p>
                         </div>
-                        <p class="shrink-0 text-right text-xs font-black uppercase tracking-wider text-brand-burgundy/80 sm:text-sm">Omega Service</p>
                     </div>
                 </div>
             </section>
@@ -1628,11 +1648,11 @@
                 <div class="border-b border-pgu-border px-4 py-4 sm:px-6">
                     <div class="flex flex-col items-stretch gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
                         <div class="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm ring-2 ring-brand-burgundy/15 sm:h-14 sm:w-14">
-                                <i data-lucide="calendar-range" class="h-7 w-7 sm:h-8 sm:w-8"></i>
+                            <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
+                                <i data-lucide="calendar-range" class="h-6 w-6"></i>
                             </span>
                             <div class="min-w-0 flex-1 pr-0 lg:max-w-[calc(100%-28rem)] lg:pr-4">
-                                <h2 class="text-2xl font-black leading-tight text-brand-burgundy sm:text-3xl lg:text-4xl xl:text-[40px] xl:leading-none">6. PLANO DE ACOMPANHAMENTO ATÉ A DATA LIMITE</h2>
+                                <h2 class="text-[44px] font-black leading-none text-pgu-ink">6. Plano de Acompanhamento até a Data Limite</h2>
                                 <p class="mt-2 max-w-3xl text-base leading-snug text-pgu-muted sm:text-lg">
                                     Roteiro de fases, responsabilidades e marcos até o encerramento do ciclo de mobilização, com projeção de conclusão e focos para cumprir 100% das etapas no prazo contratual.
                                 </p>
@@ -1697,7 +1717,7 @@
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"><i data-lucide="users-round" class="h-5 w-5"></i></span>
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="users-round" class="h-5 w-5"></i></span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas mapeadas</p>
                                     <p class="mt-1 text-2xl font-black text-brand-burgundy sm:text-3xl" x-text="formatQtyPtBr(clienteCicloResumo().mapeadas)"></p>
@@ -1707,7 +1727,7 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"><i data-lucide="check-circle-2" class="h-5 w-5"></i></span>
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="check-circle-2" class="h-5 w-5"></i></span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas consolidadas</p>
                                     <p class="mt-1 text-2xl font-black text-brand-burgundy sm:text-3xl" x-text="formatQtyPtBr(clienteCicloResumo().consolidadas)"></p>
@@ -1717,7 +1737,7 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700"><i data-lucide="refresh-cw" class="h-5 w-5"></i></span>
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="refresh-cw" class="h-5 w-5"></i></span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Vagas em evolução</p>
                                     <p class="mt-1 text-2xl font-black text-brand-burgundy sm:text-3xl" x-text="formatQtyPtBr(clienteCicloResumo().emEvolucao)"></p>
@@ -1727,7 +1747,7 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-800"><i data-lucide="shield-check" class="h-5 w-5"></i></span>
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="shield-check" class="h-5 w-5"></i></span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Fases concluídas</p>
                                     <p class="mt-1 text-2xl font-black text-brand-burgundy sm:text-3xl">
@@ -1741,7 +1761,7 @@
                         </div>
                         <div class="rounded-xl border border-pgu-border bg-zinc-50/70 px-3 py-3 sm:col-span-2 lg:col-span-1">
                             <div class="flex items-start gap-2">
-                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-800"><i data-lucide="flag" class="h-5 w-5"></i></span>
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="flag" class="h-5 w-5"></i></span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Data limite</p>
                                     <p class="mt-1 text-lg font-black leading-tight text-brand-burgundy sm:text-xl" x-text="clientePlanoDataLimiteCompleta()"></p>
@@ -1753,34 +1773,71 @@
 
                     <div class="rounded-xl border border-pgu-border bg-white p-4 sm:p-5">
                         <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Roteiro do ciclo até a data limite</p>
-                        <div class="mt-4 overflow-x-auto pb-2">
-                            <div class="flex min-w-[720px] flex-nowrap items-stretch justify-between gap-0 px-1">
-                                <template x-for="(ms, idx) in clientePlanoRoteiroEtapas()" :key="`roteiro-${ms.step}`">
-                                    <div class="flex min-w-0 flex-1 flex-col items-center border-r border-pgu-border/60 px-2 text-center">
-                                        <span class="mt-1 flex h-12 w-12 items-center justify-center rounded-full border-2 shadow-sm"
-                                              :class="ms.statusKey === 'concluido' ? 'border-emerald-600 bg-emerald-600 text-white' : (ms.statusKey === 'andamento' ? 'border-emerald-600 bg-white text-emerald-700' : 'border-zinc-300 bg-white text-zinc-400')">
-                                            <i data-lucide="check" class="h-5 w-5" x-show="ms.statusKey === 'concluido'"></i>
-                                            <span class="text-sm font-black" x-show="ms.statusKey !== 'concluido'" x-text="ms.step"></span>
-                                        </span>
-                                        <p class="mt-2 text-[11px] font-black leading-tight text-brand-burgundy" x-text="`${ms.step}. ${ms.titulo}`"></p>
-                                        <p class="mt-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-pgu-muted" x-text="ms.statusTxt"></p>
-                                        <p class="mt-1 text-sm font-black tabular-nums text-pgu-ink" x-text="`${formatPctPtBr(ms.pct)}%`"></p>
-                                        <p class="mt-0.5 text-[11px] leading-snug text-pgu-muted" x-text="ms.prazoAte"></p>
+                        <p class="mt-1 text-xs text-pgu-muted sm:text-sm">
+                            Marcos alinhados ao SLA operacional: 15 dias até SGC e liberação em
+                            <strong class="text-pgu-ink" x-text="clientePlanoSlaJanelaDiasLabel()"></strong>,
+                            respeitando a data limite contratual.
+                        </p>
+
+                        <div class="mt-6 overflow-x-auto pb-1">
+                            <div class="grid min-w-[1040px] w-full grid-cols-[repeat(6,minmax(0,1fr))_minmax(100px,112px)] items-start gap-x-2 sm:gap-x-3">
+                                <template x-for="(ms, idx) in clientePlanoRoteiroEtapas()" :key="`roteiro-head-${ms.step}`">
+                                    <div class="flex min-h-[5.25rem] min-w-0 flex-col items-center justify-start text-center">
+                                        <p class="max-w-[min(100%,11rem)] text-[11px] font-black uppercase leading-tight text-pgu-ink sm:text-xs" x-text="`${ms.step}. ${ms.tituloRoteiro}`"></p>
+                                        <p class="mt-1 max-w-[min(100%,11rem)] text-[11px] font-semibold text-pgu-ink" x-text="ms.statusTxt"></p>
+                                        <p
+                                            class="mt-2 text-xl font-black tabular-nums leading-none sm:text-2xl"
+                                            :class="ms.pct > 0 ? 'text-brand-burgundy' : 'text-slate-400'"
+                                            x-text="`${formatPctPtBr(ms.pct)}%`"
+                                        ></p>
                                     </div>
                                 </template>
-                                <div class="flex w-[92px] shrink-0 flex-col items-center border-l border-dashed border-pgu-border/70 pl-3 text-center">
-                                    <span class="mt-1 inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-brand-burgundy bg-brand-burgundy-soft text-brand-burgundy">
-                                        <i data-lucide="flag" class="h-5 w-5"></i>
+                                <div class="min-h-[5.25rem] min-w-0" aria-hidden="true"></div>
+
+                                <div class="relative col-span-6 w-full pt-0.5">
+                                    <div class="pointer-events-none absolute left-0 right-0 top-[22px] z-0 h-2 rounded-full bg-zinc-200"></div>
+                                    <div
+                                        class="pointer-events-none absolute left-0 top-[22px] z-0 h-2 rounded-l-full bg-brand-burgundy transition-[width] duration-500"
+                                        :style="`width: ${clientePlanoRoteiroLinhaPct()}`"
+                                    ></div>
+                                    <div class="relative z-[1] grid w-full grid-cols-6 gap-x-2 sm:gap-x-3">
+                                        <template x-for="(ms, idx) in clientePlanoRoteiroEtapas()" :key="`roteiro-dot-${ms.step}`">
+                                            <div class="flex flex-col items-center">
+                                                <span
+                                                    class="flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm sm:h-10 sm:w-10"
+                                                    :class="ms.statusKey === 'concluido'
+                                                        ? 'border-brand-burgundy bg-brand-burgundy text-white'
+                                                        : (ms.statusKey === 'andamento'
+                                                            ? 'border-brand-burgundy bg-white'
+                                                            : 'border-zinc-300 bg-white')"
+                                                >
+                                                    <i data-lucide="check" class="h-4 w-4 sm:h-5 sm:w-5" x-show="ms.statusKey === 'concluido'"></i>
+                                                    <span class="h-2.5 w-2.5 rounded-full bg-brand-burgundy" x-show="ms.statusKey === 'andamento'"></span>
+                                                </span>
+                                                <p class="mt-2.5 max-w-[5.5rem] text-center text-[10px] font-semibold leading-tight text-pgu-muted sm:max-w-none sm:text-[11px]" x-text="ms.prazoAte"></p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="flex min-w-0 flex-col items-center border-l border-dashed border-pgu-border/80 pl-2 text-center sm:pl-3">
+                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy text-white shadow-sm ring-2 ring-brand-burgundy/20 sm:h-12 sm:w-12">
+                                        <i data-lucide="flag" class="h-5 w-5 sm:h-6 sm:w-6"></i>
                                     </span>
                                     <p class="mt-2 text-[10px] font-black uppercase leading-tight text-brand-burgundy">Data limite</p>
                                     <p class="mt-1 text-[11px] font-bold leading-snug text-pgu-ink" x-text="clientePlanoDataLimiteCompleta()"></p>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-4 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3 py-3 sm:px-4">
-                            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-200/80"><i data-lucide="calendar-days" class="h-5 w-5"></i></span>
-                            <p class="min-w-0 text-[13px] leading-relaxed text-emerald-950">
-                                O roteiro distribui marcos entre o início do ciclo e <strong x-text="clientePlanoDataLimiteCompleta()"></strong>, com base nos percentuais atuais de cada etapa de maturidade no PGU.
+
+                        <div class="mt-5 flex gap-3 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/80 px-3 py-3.5 sm:px-4">
+                            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-burgundy shadow-sm ring-1 ring-brand-burgundy/15">
+                                <i data-lucide="calendar-days" class="h-5 w-5"></i>
+                            </span>
+                            <p class="min-w-0 text-sm leading-relaxed text-pgu-ink sm:text-base">
+                                Acompanhamento contínuo com janela operacional de liberação entre
+                                <strong class="text-brand-burgundy" x-text="clientePlanoSlaJanelaDatasLabel()"></strong>
+                                (<span x-text="clientePlanoSlaJanelaDiasLabel()"></span>) e compromisso contratual até
+                                <strong class="text-brand-burgundy" x-text="clientePlanoDataLimiteCompleta()"></strong>.
                             </p>
                         </div>
                     </div>
@@ -1802,18 +1859,20 @@
                                     </thead>
                                     <tbody>
                                         <template x-for="(row, ridx) in clientePlanoAcoesRows()" :key="`plano-ac-${ridx}`">
-                                            <tr class="border-b border-pgu-border/70 align-top" :class="ridx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/60'">
+                                            <tr class="border-b border-pgu-border/60 align-top last:border-b-0" :class="ridx % 2 === 0 ? 'bg-white' : 'bg-zinc-50/40'">
                                                 <td class="px-3 py-2.5">
-                                                    <div class="flex items-center gap-2 font-semibold text-pgu-ink">
-                                                        <i data-lucide="list-todo" class="h-4 w-4 shrink-0 text-brand-burgundy"></i>
+                                                    <div class="flex items-center gap-2.5 font-semibold text-pgu-ink">
+                                                        <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full" :class="row.iconClass || 'bg-zinc-100 text-pgu-ink'">
+                                                            <i :data-lucide="row.icon || 'list-todo'" class="h-3.5 w-3.5"></i>
+                                                        </span>
                                                         <span x-text="row.acao"></span>
                                                     </div>
                                                 </td>
-                                                <td class="max-w-xs px-3 py-2.5 text-pgu-muted" x-text="row.desc"></td>
-                                                <td class="px-3 py-2.5 font-medium text-pgu-ink" x-text="row.resp"></td>
+                                                <td class="max-w-xs px-3 py-2.5 text-[12px] text-pgu-muted" x-text="row.desc"></td>
+                                                <td class="px-3 py-2.5 text-[12px] font-medium text-pgu-ink" x-text="row.resp"></td>
                                                 <td class="whitespace-nowrap px-3 py-2.5 tabular-nums text-pgu-ink" x-text="row.prazo"></td>
                                                 <td class="px-3 py-2.5">
-                                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1" :class="row.pill.class" x-text="row.pill.text"></span>
+                                                    <span class="inline-flex h-6 w-[98px] items-center justify-center whitespace-nowrap rounded-full px-2.5 text-[11px] font-bold leading-none ring-1" :class="row.pill.class" x-text="row.pill.text"></span>
                                                 </td>
                                                 <td class="px-3 py-2.5 font-semibold" :class="row.impacto === 'Crítico' ? 'text-red-700' : 'text-pgu-ink'" x-text="row.impacto"></td>
                                             </tr>
@@ -1824,28 +1883,63 @@
                         </div>
 
                         <div class="space-y-4">
-                            <div class="rounded-xl border border-pgu-border bg-white p-4">
-                                <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Projeção de conclusão</p>
-                                <div class="relative mx-auto mt-2 h-[200px] w-full max-w-[280px]">
+                            <div class="rounded-2xl border border-pgu-border bg-zinc-50/70 p-4 shadow-sm">
+                                <p class="text-[12px] font-black uppercase tracking-wide text-brand-burgundy">Projeção de conclusão</p>
+
+                                <div class="relative mx-auto mt-2 h-[210px] w-full max-w-[320px]">
                                     <div id="chartClientePlanoSemiDonut" class="absolute inset-0 h-full w-full"></div>
-                                    <div class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-end pb-6 text-center select-none">
-                                        <span class="text-[28px] font-black leading-none text-emerald-800" x-text="`${formatPctPtBr(clienteProgressoConsolidadoCicloPct())}%`"></span>
-                                        <span class="mt-1 text-[10px] font-bold uppercase tracking-wide text-pgu-muted">Progresso consolidado</span>
+                                    <div class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-end pb-8 text-center select-none">
+                                        <span class="text-[32px] font-black leading-none text-brand-burgundy" x-text="`${formatPctPtBr(clienteProgressoConsolidadoCicloPct())}%`"></span>
+                                        <span class="mt-1 text-[14px] font-bold leading-none text-pgu-ink">Progresso atual</span>
                                     </div>
                                 </div>
-                                <ul class="mt-2 space-y-2.5 border-t border-pgu-border pt-3 text-[13px]">
-                                    <li class="flex items-center gap-2"><i data-lucide="clock-3" class="h-4 w-4 shrink-0 text-brand-burgundy"></i><span>Dias restantes: <strong class="text-brand-burgundy" x-text="`${formatQtyPtBr(clienteCicloResumo().diasRestantes)} dias`"></strong></span></li>
-                                    <li class="flex items-center gap-2"><i data-lucide="calendar-check-2" class="h-4 w-4 shrink-0 text-brand-burgundy"></i><span>Projeção: <strong class="text-brand-burgundy" x-text="clientePlanoDataLimiteCompleta()"></strong></span></li>
-                                    <li class="flex items-center gap-2"><i data-lucide="activity" class="h-4 w-4 shrink-0 text-brand-burgundy"></i><span>Situação do ciclo: <strong :class="clienteCicloResumo().situacaoNoPrazo ? 'text-emerald-700' : 'text-amber-700'" x-text="clientePlanoSituacaoCicloLabel()"></strong></span></li>
+
+                                <ul class="mt-2 space-y-3 border-t border-pgu-border/90 pt-3">
+                                    <li class="flex items-start gap-2.5">
+                                        <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="calendar-days" class="h-4 w-4"></i>
+                                        </span>
+                                        <div class="min-w-0 leading-tight">
+                                            <p class="text-[10px] font-semibold uppercase tracking-wide text-pgu-muted">Dias restantes</p>
+                                            <p class="mt-0.5 text-[24px] font-black leading-none text-brand-burgundy">
+                                                <span x-text="formatQtyPtBr(clienteCicloResumo().diasRestantes)"></span>
+                                                <span class="text-[17px]"> dias</span>
+                                            </p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start gap-2.5">
+                                        <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="chart-column" class="h-4 w-4"></i>
+                                        </span>
+                                        <div class="min-w-0 leading-tight">
+                                            <p class="text-[10px] font-semibold uppercase tracking-wide text-pgu-muted">Projeção de conclusão</p>
+                                            <p class="mt-0.5 text-[24px] font-black leading-none text-brand-burgundy" x-text="clientePlanoDataLimiteCompleta()"></p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start gap-2.5">
+                                        <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-burgundy-soft text-brand-burgundy">
+                                            <i data-lucide="shield-check" class="h-4 w-4"></i>
+                                        </span>
+                                        <div class="min-w-0 leading-tight">
+                                            <p class="text-[10px] font-semibold uppercase tracking-wide text-pgu-muted">Situação do ciclo</p>
+                                            <p
+                                                class="mt-1 inline-flex rounded-lg px-2.5 py-1 text-[14px] font-black leading-none"
+                                                :class="clienteCicloResumo().situacaoNoPrazo ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'bg-amber-50 text-amber-700'"
+                                                x-text="clientePlanoSituacaoCicloLabel()"
+                                            ></p>
+                                        </div>
+                                    </li>
                                 </ul>
                             </div>
-                            <div class="rounded-xl border border-pgu-border bg-white p-4">
+                            <div class="rounded-xl border border-pgu-border bg-zinc-50/70 p-4">
                                 <p class="text-sm font-black uppercase tracking-wide text-brand-burgundy">Focos para garantir a conclusão</p>
-                                <ul class="mt-3 space-y-2.5">
+                                <ul class="mt-2 divide-y divide-pgu-border/80 overflow-hidden rounded-lg border border-pgu-border/70 bg-white">
                                     <template x-for="(fc, fidx) in clientePlanoFocosLista()" :key="`foco-${fidx}`">
-                                        <li class="flex gap-2.5 text-[13px] leading-snug text-pgu-ink">
-                                            <i data-lucide="check-circle-2" class="mt-0.5 h-4 w-4 shrink-0 text-brand-burgundy"></i>
-                                            <span x-text="fc.texto"></span>
+                                        <li class="flex items-start gap-2.5 px-3 py-2.5 text-[12px] leading-snug text-pgu-ink">
+                                            <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy">
+                                                <i :data-lucide="fc.icon || 'check-circle-2'" class="h-4 w-4"></i>
+                                            </span>
+                                            <span class="pt-0.5" x-text="fc.texto"></span>
                                         </li>
                                     </template>
                                 </ul>
@@ -1853,14 +1947,13 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-3 rounded-xl bg-brand-burgundy px-4 py-4 text-white sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <div class="flex flex-col gap-3 rounded-xl bg-brand-burgundy px-4 py-4 text-white sm:flex-row sm:items-center sm:px-5">
                         <div class="flex min-w-0 items-start gap-3">
                             <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/30"><i data-lucide="trophy" class="h-5 w-5"></i></span>
                             <p class="min-w-0 text-[13px] leading-relaxed">
                                 Nosso compromisso é concluir <strong>100% das fases do ciclo</strong> até <strong x-text="clientePlanoDataLimiteCompleta()"></strong>, com mobilização qualificada, segura e alinhada ao contrato.
                             </p>
                         </div>
-                        <p class="shrink-0 text-right text-xs font-black uppercase tracking-wider text-white/80 sm:text-sm">Omega Service</p>
                     </div>
                 </div>
             </section>

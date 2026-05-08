@@ -5,7 +5,7 @@
 
 <header class="flex flex-col gap-4 rounded-[1.5rem] border border-pgu-border bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
     <div class="flex items-center gap-3">
-        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-pgu-primary text-white shadow-sm">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-burgundy text-white shadow-sm ring-1 ring-brand-burgundy/15">
             <i data-lucide="layout-dashboard" class="h-6 w-6"></i>
         </div>
         <div>

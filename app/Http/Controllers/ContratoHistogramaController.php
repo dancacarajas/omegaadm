@@ -208,6 +208,13 @@ class ContratoHistogramaController extends Controller
             $this->syncRecrutamentoFromHistograma($data['contrato'], $competencia, $linhas);
         });
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Histograma salvo com sucesso.',
+            ]);
+        }
+
         return redirect()
             ->route('contratos.histograma.index', [
                 'contrato' => $data['contrato'],
@@ -331,42 +338,35 @@ class ContratoHistogramaController extends Controller
             if ($dataSolicitacaoHistograma === '') {
                 $dataSolicitacaoHistograma = Carbon::today()->toDateString();
             }
-            $origemKey = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
+            $origemKeyHistograma = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
             $tituloKey = mb_strtolower(trim($descricao));
 
-            $vagaExistente = $existentes
-                ->first(function (RecrutamentoVaga $vaga) use ($origemKey) {
-                    $state = $vaga->form_state ?? [];
-
-                    return ($state['origem_histograma_key'] ?? null) === $origemKey;
-                });
-
-            if (! $vagaExistente) {
-                $vagaExistente = $existentes
-                    ->filter(fn (RecrutamentoVaga $vaga) => mb_strtolower(trim((string) $vaga->titulo)) === $tituloKey)
-                    ->sortByDesc(function (RecrutamentoVaga $vaga) {
-                        $state = $vaga->form_state ?? [];
-
-                        return $this->countCandidateStateSignals($state) * 1000000 + (int) $vaga->id;
-                    })
-                    ->first();
-            }
+            $vagaExistente = $this->resolveRecrutamentoVagaForHistogramLinha(
+                $existentes,
+                $origemKeyHistograma,
+                $tituloKey
+            );
 
             if ($vagaExistente) {
                 $state = $vagaExistente->form_state ?? [];
-                $state['vaga_quantidade'] = (string) $quantidadePlanejada;
+                $quantidadeFinal = $quantidadePlanejada;
+
+                $tituloSalvar = $this->resolveTituloPreservandoCustomizacao($vagaExistente, $state, $descricao);
+                $state['vaga_titulo'] = $tituloSalvar;
+                $state['vaga_quantidade'] = (string) $quantidadeFinal;
                 $state['vaga_contrato'] = $contrato;
                 $state['origem_histograma_pre_total'] = (float) $funcao['pre_total'];
                 $state['vaga_data_solicitacao'] = $dataSolicitacaoHistograma;
                 $state['origem_histograma_data_solicitacao_auto'] = true;
                 $state['origem_histograma'] = true;
-                $state['origem_histograma_key'] = $origemKey;
                 $state['origem_histograma_competencia'] = $competenciaYm;
                 $state['origem_histograma_item_codigo'] = $itemCodigo;
+                $state['origem_histograma_descricao'] = $tituloSalvar;
+                $state['origem_histograma_key'] = implode('|', ['histograma', $contrato, $competenciaYm, $tituloSalvar]);
 
                 $vagaExistente->update([
-                    'titulo' => $descricao,
-                    'quantidade' => $quantidadePlanejada,
+                    'titulo' => $tituloSalvar,
+                    'quantidade' => $quantidadeFinal,
                     'contrato' => $contrato,
                     'tipo' => $vagaExistente->tipo ?: 'Nova vaga',
                     'status' => $vagaExistente->status ?: 'Em abertura',
@@ -377,6 +377,7 @@ class ContratoHistogramaController extends Controller
                 continue;
             }
 
+            $origemKeyNova = implode('|', ['histograma', $contrato, $competenciaYm, $descricao]);
             $created = RecrutamentoVaga::query()->create([
                 'titulo' => $descricao,
                 'quantidade' => $quantidadePlanejada,
@@ -400,7 +401,8 @@ class ContratoHistogramaController extends Controller
                     'vaga_data_solicitacao' => $dataSolicitacaoHistograma,
                     'origem_histograma_data_solicitacao_auto' => true,
                     'origem_histograma' => true,
-                    'origem_histograma_key' => $origemKey,
+                    'origem_histograma_key' => $origemKeyNova,
+                    'origem_histograma_descricao' => $descricao,
                     'origem_histograma_competencia' => $competenciaYm,
                     'origem_histograma_item_codigo' => $itemCodigo,
                     'origem_histograma_pre_total' => (float) $funcao['pre_total'],
@@ -414,13 +416,6 @@ class ContratoHistogramaController extends Controller
             ->where('form_state->origem_histograma', true)
             ->where('form_state->origem_histograma_competencia', $competenciaYm)
             ->when(! empty($keepIds), fn ($query) => $query->whereNotIn('id', $keepIds))
-            ->get()
-            ->filter(function (RecrutamentoVaga $vaga) {
-                $state = $vaga->form_state ?? [];
-
-                return $this->countCandidateStateSignals($state) === 0;
-            })
-            ->each
             ->delete();
     }
 
@@ -441,6 +436,70 @@ class ContratoHistogramaController extends Controller
         }
 
         return $count;
+    }
+
+    /**
+     * Maior índice de posição (candidato_N_*) com algum dado persistido — evita reduzir quantidade e “apagar” fichas na UI.
+     */
+    private function maxCandidatePositionWithData(array $state): int
+    {
+        $max = 0;
+        foreach (array_keys($state) as $key) {
+            if (! preg_match('/^candidato_(\d+)_/', (string) $key, $m)) {
+                continue;
+            }
+            $pos = (int) $m[1];
+            $value = $state[$key] ?? null;
+            if (is_string($value) && trim($value) !== '') {
+                $max = max($max, $pos);
+                continue;
+            }
+            if (is_bool($value) && $value === true) {
+                $max = max($max, $pos);
+            }
+        }
+
+        return $max;
+    }
+
+    /**
+     * Resolve vaga existente de origem histograma sem colidir funções distintas.
+     * Regra: prioriza chave determinística por descrição; fallback por título.
+     * Não usa item_codigo como chave de match (pode repetir para descrições diferentes).
+     *
+     * @param  \Illuminate\Support\Collection<int, RecrutamentoVaga>  $existentes
+     */
+    private function resolveRecrutamentoVagaForHistogramLinha(
+        $existentes,
+        string $origemKeyHistograma,
+        string $tituloKeyHistograma
+    ): ?RecrutamentoVaga {
+        $porChave = $existentes->first(function (RecrutamentoVaga $vaga) use ($origemKeyHistograma) {
+            $state = $vaga->form_state ?? [];
+
+            return ($state['origem_histograma_key'] ?? null) === $origemKeyHistograma;
+        });
+        if ($porChave) {
+            return $porChave;
+        }
+
+        return $existentes
+            ->filter(fn (RecrutamentoVaga $vaga) => mb_strtolower(trim((string) $vaga->titulo)) === $tituloKeyHistograma)
+            ->sortByDesc(function (RecrutamentoVaga $vaga) {
+                $state = $vaga->form_state ?? [];
+
+                return $this->countCandidateStateSignals($state) * 1000000 + (int) $vaga->id;
+            })
+            ->first();
+    }
+
+    /**
+     * Não sobrescreve título customizado no RH quando já há candidatos ou título diferente do histograma.
+     */
+    private function resolveTituloPreservandoCustomizacao(RecrutamentoVaga $vaga, array $state, string $descricaoHistograma): string
+    {
+        $hist = trim($descricaoHistograma);
+        return $hist;
     }
 
     /**

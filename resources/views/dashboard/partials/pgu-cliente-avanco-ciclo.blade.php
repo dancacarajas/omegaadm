@@ -38,23 +38,25 @@
 
         .pgu-client-cycle-icon {
             display: inline-flex;
-            width: 64px;
-            height: 64px;
+            width: 48px;
+            height: 48px;
             align-items: center;
             justify-content: center;
-            border-radius: 18px;
-            background: linear-gradient(135deg, var(--cc-accent-800), var(--cc-accent-900));
+            border-radius: 16px;
+            background: var(--cc-accent-800);
             color: white;
             flex-shrink: 0;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+            border: 1px solid color-mix(in srgb, var(--cc-accent-800) 18%, white);
         }
 
         .pgu-client-cycle-title {
             margin: 0;
-            font-size: clamp(28px, 3vw, 46px);
-            line-height: 1.02;
+            font-size: 44px;
+            line-height: 1;
             font-weight: 900;
-            letter-spacing: -0.045em;
-            color: var(--cc-accent-900);
+            letter-spacing: -0.02em;
+            color: var(--cc-ink);
         }
 
         .pgu-client-cycle-subtitle {
@@ -791,11 +793,11 @@
     <div class="pgu-client-cycle-header">
         <div class="pgu-client-cycle-title-wrap">
             <span class="pgu-client-cycle-icon">
-                <i data-lucide="line-chart" class="h-8 w-8"></i>
+                <i data-lucide="line-chart" class="h-6 w-6"></i>
             </span>
 
             <div>
-                <h2 class="pgu-client-cycle-title">2. AVANÇO DO CICLO ATÉ A DATA LIMITE</h2>
+                <h2 class="pgu-client-cycle-title">2. Avanço do Ciclo até a Data Limite</h2>
                 <p class="pgu-client-cycle-subtitle">
                     Acompanhamento do avanço da mobilização do contrato em relação ao prazo final acordado.
                     Visão clara do progresso atual, do SLA operacional e do tempo restante até a conclusão das fases.
@@ -856,12 +858,12 @@
         </div>
 
         <div class="pgu-client-cycle-kpi">
-            <span class="pgu-client-cycle-kpi-icon warning">
+            <span class="pgu-client-cycle-kpi-icon">
                 <i data-lucide="refresh-cw" class="h-7 w-7"></i>
             </span>
             <div>
                 <span class="pgu-client-cycle-kpi-label">Vagas em evolução</span>
-                <span class="pgu-client-cycle-kpi-value warning" x-text="formatQtyPtBr(clienteCicloSlaResumo().vagasEmEvolucao)"></span>
+                <span class="pgu-client-cycle-kpi-value" x-text="formatQtyPtBr(clienteCicloSlaResumo().vagasEmEvolucao)"></span>
                 <span class="pgu-client-cycle-kpi-note">Vagas em andamento</span>
             </div>
         </div>
