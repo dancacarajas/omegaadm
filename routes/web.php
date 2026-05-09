@@ -21,6 +21,7 @@ use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\FrequenciaController;
 use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\RecrutamentoController;
+use App\Http\Controllers\Rh\RecrutamentoMassUpdateController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\SsmaPlanoAcaoController;
 use App\Http\Controllers\SsmaEpiEpcController;
@@ -277,6 +278,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             ->parameters(['horarios' => 'horario_escala']);
         Route::get('recrutamento/painel-preenchimento', [RecrutamentoController::class, 'painelPreenchimento'])
             ->name('recrutamento.painel-preenchimento');
+        Route::get('recrutamento/atualizacao-massa', [RecrutamentoMassUpdateController::class, 'index'])
+            ->name('recrutamento.atualizacao-massa');
+        Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
+            ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::resource('beneficios', BeneficioController::class);
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');

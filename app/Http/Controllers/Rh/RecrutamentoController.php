@@ -8,6 +8,7 @@ use App\Models\Contrato;
 use App\Models\ContratoHistogramaLinha;
 use App\Models\RecrutamentoVaga;
 use App\Support\ContratoAccess;
+use App\Support\RecrutamentoCandidatoFase;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -249,6 +250,16 @@ class RecrutamentoController extends Controller
         return redirect()
             ->route('rh.recrutamento.index')
             ->with('success', 'Vaga removida com sucesso.');
+    }
+
+    /**
+     * Histograma e efetivo após alterar form_state (ex.: atualização em massa).
+     */
+    public function afterFormStateSaved(RecrutamentoVaga $vaga, ?string $tituloAnterior = null): void
+    {
+        $this->authorizeContratoString($vaga->contrato);
+        $this->syncHistogramaFromRecrutamento($vaga, $tituloAnterior);
+        $this->syncCandidatosAssinadosComEfetivo($vaga->fresh());
     }
 
     private function authorizeContratoString(?string $contrato): void
@@ -548,88 +559,7 @@ class RecrutamentoController extends Controller
 
     private function candidatoFaseAtualLabel(RecrutamentoVaga $vaga, int $position): string
     {
-        $state = $vaga->form_state ?? [];
-
-        if (blank($state["candidato_{$position}_data_aceite"] ?? null)) {
-            $nome = trim((string) ($state["candidato_{$position}_nome_completo"] ?? ''));
-
-            return $nome !== ''
-                ? 'Cadastro — aguardando data de aceite'
-                : 'Cadastro iniciado';
-        }
-
-        if (! $this->candidatoEtapaTreinamentosConcluida($state, $position)) {
-            return 'Exame médico / treinamentos';
-        }
-        if (! $this->candidatoEtapaAssinaturaConcluida($state, $position)) {
-            return 'Assinatura';
-        }
-        if (! $this->candidatoEtapaSgcConcluida($state, $position)) {
-            return 'SGC / mobilização';
-        }
-        if (! $this->candidatoEtapaLiberacaoConcluida($state, $position)) {
-            return 'Liberação';
-        }
-
-        return 'Concluído';
-    }
-
-    private function candidatoEtapaTreinamentosConcluida(array $state, int $position): bool
-    {
-        $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
-        $trainingConfirmedAt = $state["candidato_{$position}_treinamentos_data_confirmacao"] ?? null;
-
-        return filled($trainingStart)
-            && filled($trainingConfirmedAt)
-            && ! $this->hasLegacyMirroredTrainingData($state, $position);
-    }
-
-    private function candidatoEtapaAssinaturaConcluida(array $state, int $position): bool
-    {
-        return filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
-    }
-
-    private function candidatoEtapaSgcConcluida(array $state, int $position): bool
-    {
-        $hasPendency = filled($state["candidato_{$position}_sgc_pendencia_descricao"] ?? null);
-        $pendencyDone = $hasPendency
-            ? filled($state["candidato_{$position}_sgc_data_nova_postagem"] ?? null)
-            : filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
-
-        return filled($state["candidato_{$position}_sgc_data_postagem"] ?? null)
-            && filled($state["candidato_{$position}_sgc_numero_postagem"] ?? null)
-            && $pendencyDone
-            && filled($state["candidato_{$position}_sgc_data_mobilizacao"] ?? null);
-    }
-
-    private function candidatoEtapaLiberacaoConcluida(array $state, int $position): bool
-    {
-        return filled($state["candidato_{$position}_liberacao_orientado_data"] ?? null)
-            && filled($state["candidato_{$position}_liberacao_epi_data"] ?? null)
-            && filled($state["candidato_{$position}_liberacao_rota_endereco"] ?? null);
-    }
-
-    private function hasLegacyMirroredTrainingData(array $state, int $position): bool
-    {
-        $trainingStart = trim((string) ($state["candidato_{$position}_treinamentos_data_inicio"] ?? ''));
-        $trainingConfirmed = trim((string) ($state["candidato_{$position}_treinamentos_data_confirmacao"] ?? ''));
-        if ($trainingStart === '' || $trainingConfirmed === '') {
-            return false;
-        }
-
-        $exameStart = trim((string) ($state["candidato_{$position}_exameMedico_data_inicio"] ?? ''));
-        $exameConfirmed = trim((string) ($state["candidato_{$position}_exameMedico_data_confirmacao"] ?? ''));
-        if ($exameStart === '' || $exameConfirmed === '') {
-            return false;
-        }
-
-        $sgcPosted = filled($state["candidato_{$position}_sgc_data_postagem"] ?? null);
-        $signed = filled($state["candidato_{$position}_assinatura_data_confirmacao"] ?? null);
-        if ($sgcPosted || $signed) {
-            return false;
-        }
-
-        return $trainingStart === $exameStart && $trainingConfirmed === $exameConfirmed;
+        return RecrutamentoCandidatoFase::faseAtualLabel($vaga->form_state ?? [], $position);
     }
 
     /**
