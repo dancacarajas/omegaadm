@@ -48,6 +48,9 @@
                     'csrf' => csrf_token(),
                     'contrato' => $contratoSelecionado,
                     'initialTab' => $initialTab,
+                    'vagasTitulos' => ($vagasTitulosOpcoes ?? collect())->all(),
+                    'nomesPorAba' => $nomesPorAba ?? [],
+                    'fasesPorAba' => $fasesPorAba ?? [],
                 ];
             @endphp
             <script>
@@ -76,9 +79,90 @@
                         sgcDataMobilizacao: '',
                         loading: false,
                         feedback: '',
+                        searchQuery: '',
+                        filtroVaga: '',
+                        filtroPosicao: '',
+                        filtroColaborador: '',
+                        filtroFase: '',
+                        somenteElegiveis: false,
                         ...rest,
+                        init() {
+                            this.$watch('tab', () => {
+                                this.filtroColaborador = '';
+                                this.filtroFase = '';
+                            });
+                        },
+                        totalLinhas(slug) {
+                            return document.querySelectorAll(`tr[data-mass-row="${slug}"][data-candidate-row]`).length;
+                        },
+                        linhaVisivel(el) {
+                            if (!el || !el.hasAttribute('data-candidate-row')) {
+                                return true;
+                            }
+                            const q = (this.searchQuery || '').trim().toLowerCase();
+                            if (q) {
+                                const n = el.dataset.buscaNome || '';
+                                const v = el.dataset.buscaVaga || '';
+                                const f = el.dataset.buscaFase || '';
+                                if (!n.includes(q) && !v.includes(q) && !f.includes(q)) {
+                                    return false;
+                                }
+                            }
+                            if (this.filtroVaga && (el.dataset.vagaTitulo || '') !== this.filtroVaga) {
+                                return false;
+                            }
+                            if (this.filtroPosicao) {
+                                const pos = String(el.dataset.candPosicao || '');
+                                if (pos !== String(this.filtroPosicao).trim()) {
+                                    return false;
+                                }
+                            }
+                            if (this.somenteElegiveis && el.dataset.temAcaoLote !== '1') {
+                                return false;
+                            }
+                            if (this.filtroColaborador && (el.dataset.colaborador || '') !== this.filtroColaborador) {
+                                return false;
+                            }
+                            if (this.filtroFase && (el.dataset.faseExata || '') !== this.filtroFase) {
+                                return false;
+                            }
+                            return true;
+                        },
+                        nenhumResultadoFiltro(slug) {
+                            const rows = document.querySelectorAll(`tr[data-mass-row="${slug}"][data-candidate-row]`);
+                            if (!rows.length) {
+                                return false;
+                            }
+                            for (const tr of rows) {
+                                if (this.linhaVisivel(tr)) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        },
+                        contagemVisivel(slug) {
+                            let n = 0;
+                            document.querySelectorAll(`tr[data-mass-row="${slug}"][data-candidate-row]`).forEach((tr) => {
+                                if (this.linhaVisivel(tr)) {
+                                    n++;
+                                }
+                            });
+                            return n;
+                        },
+                        limparFiltros() {
+                            this.searchQuery = '';
+                            this.filtroVaga = '';
+                            this.filtroPosicao = '';
+                            this.filtroColaborador = '';
+                            this.filtroFase = '';
+                            this.somenteElegiveis = false;
+                        },
                         toggleTab(slug) {
                             document.querySelectorAll(`input[data-mass-cb][data-tab="${slug}"]:not(:disabled)`).forEach((el) => {
+                                const tr = el.closest('tr');
+                                if (tr && !this.linhaVisivel(tr)) {
+                                    return;
+                                }
                                 el.checked = !el.checked;
                             });
                         },
@@ -100,6 +184,10 @@
                             const sel = [];
                             const key = eligKeyForAcao[this.modalAcao] || null;
                             document.querySelectorAll(`input[data-mass-cb][data-tab="${this.modalTab}"]:checked:not(:disabled)`).forEach((el) => {
+                                const tr = el.closest('tr');
+                                if (tr && !this.linhaVisivel(tr)) {
+                                    return;
+                                }
                                 if (key && el.dataset[key] !== '1') {
                                     return;
                                 }
@@ -188,26 +276,128 @@
             </script>
             {{-- JSON com " não pode ir dentro de x-data="..." — usar aspas simples no atributo --}}
             <div class="p-5 sm:p-6" x-data='massRecruitUi(@json($massCfg))'>
-                <div class="flex flex-wrap gap-2 border-b border-zinc-200 pb-3">
-                    @foreach ($abasTitulos as $slug => $titulo)
-                        @php $qtd = ($porAba[$slug] ?? collect())->count(); @endphp
-                        <button
-                            type="button"
-                            @click="tab = '{{ $slug }}'"
-                            :class="tab === '{{ $slug }}'
-                                ? 'border-brand-burgundy bg-brand-burgundy-soft text-brand-burgundy'
-                                : 'border-zinc-200 bg-white text-brand-gray hover:border-brand-burgundy/40'"
-                            class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition"
-                        >
-                            {{ $titulo }}
-                            <span class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] tabular-nums text-brand-black">{{ $qtd }}</span>
+                @php
+                    $iconesAbasRecrutamento = [
+                        'cadastro' => 'user-plus',
+                        'exame_medico' => 'stethoscope',
+                        'treinamentos' => 'graduation-cap',
+                        'assinatura' => 'file-signature',
+                        'sgc' => 'truck',
+                        'liberacao' => 'key-round',
+                        'concluido' => 'badge-check',
+                    ];
+                @endphp
+                <div class="rounded-2xl border border-zinc-200/90 bg-gradient-to-br from-white via-white to-brand-gray-soft/40 p-2 shadow-sm">
+                    <p class="mb-2 px-2 text-[10px] font-bold uppercase tracking-wider text-brand-gray">Etapas do processo</p>
+                    <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                        @foreach ($abasTitulos as $slug => $titulo)
+                            @php
+                                $qtd = ($porAba[$slug] ?? collect())->count();
+                                $icone = $iconesAbasRecrutamento[$slug] ?? 'circle-dot';
+                            @endphp
+                            <button
+                                type="button"
+                                @click="tab = '{{ $slug }}'"
+                                :class="tab === '{{ $slug }}'
+                                    ? 'border-brand-burgundy/80 bg-white text-brand-burgundy shadow-md shadow-brand-burgundy/10 ring-1 ring-brand-burgundy/25'
+                                    : 'border-transparent bg-white/40 text-brand-gray hover:border-zinc-200 hover:bg-white hover:text-brand-black hover:shadow-sm'"
+                                class="group inline-flex min-w-0 max-w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left text-xs font-bold transition-all duration-200 sm:px-3 sm:py-2.5"
+                            >
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-200"
+                                    :class="tab === '{{ $slug }}'
+                                        ? 'bg-brand-burgundy text-white shadow-inner shadow-black/10'
+                                        : 'bg-zinc-100 text-zinc-500 group-hover:bg-brand-burgundy/10 group-hover:text-brand-burgundy'"
+                                >
+                                    <i data-lucide="{{ $icone }}" class="h-4 w-4 sm:h-[18px] sm:w-[18px]"></i>
+                                </span>
+                                <span class="min-w-0 flex-1 leading-snug">{{ $titulo }}</span>
+                                <span
+                                    class="inline-flex min-w-[1.5rem] justify-center rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums transition-colors duration-200"
+                                    :class="tab === '{{ $slug }}'
+                                        ? 'bg-brand-burgundy-soft text-brand-burgundy'
+                                        : 'bg-zinc-100 text-zinc-600 group-hover:bg-zinc-200'"
+                                >
+                                    {{ $qtd }}
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-xl border border-dashed border-zinc-200 bg-gradient-to-br from-zinc-50/95 to-white p-4 shadow-sm">
+                    <p class="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-brand-gray">
+                        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-brand-burgundy shadow-sm ring-1 ring-zinc-200/80">
+                            <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5"></i>
+                        </span>
+                        Busca e filtros (aba atual)
+                    </p>
+                    <div class="flex flex-wrap items-end gap-3">
+                        <label class="min-w-[200px] flex-1 sm:max-w-xs">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brand-gray">Colaborador</span>
+                            <select x-model="filtroColaborador" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                <option value="">Todos nesta etapa</option>
+                                <template x-for="nome in (nomesPorAba[tab] || [])" :key="'c-' + nome">
+                                    <option :value="nome" x-text="nome"></option>
+                                </template>
+                            </select>
+                        </label>
+                        <label class="min-w-[200px] flex-1 sm:max-w-md">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brand-gray">Situação (fase)</span>
+                            <select x-model="filtroFase" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                <option value="">Todas nesta etapa</option>
+                                <template x-for="faseItem in (fasesPorAba[tab] || [])" :key="'f-' + faseItem">
+                                    <option :value="faseItem" x-text="faseItem"></option>
+                                </template>
+                            </select>
+                        </label>
+                        <label class="min-w-[200px] flex-1">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brand-gray">Busca livre</span>
+                            <input
+                                type="search"
+                                x-model="searchQuery"
+                                placeholder="Contém em nome, vaga ou fase…"
+                                class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10"
+                            >
+                        </label>
+                        <label class="min-w-[180px] sm:max-w-xs">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brand-gray">Vaga</span>
+                            <select x-model="filtroVaga" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                <option value="">Todas</option>
+                                <template x-for="titulo in vagasTitulos" :key="titulo">
+                                    <option :value="titulo" x-text="titulo"></option>
+                                </template>
+                            </select>
+                        </label>
+                        <label class="w-24 min-w-[5rem]">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brand-gray">Posição</span>
+                            <input
+                                type="number"
+                                min="1"
+                                x-model="filtroPosicao"
+                                placeholder="Nº"
+                                class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10"
+                            >
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-2 pb-2 text-xs font-semibold text-brand-black" x-show="['exame_medico','treinamentos','assinatura','sgc'].includes(tab)">
+                            <input type="checkbox" x-model="somenteElegiveis" class="h-4 w-4 rounded border-zinc-300 accent-brand-burgundy">
+                            Só elegíveis para lote
+                        </label>
+                        <button type="button" @click="limparFiltros()" class="h-11 shrink-0 rounded-lg border border-zinc-200 bg-white px-4 text-xs font-semibold text-brand-black shadow-sm hover:border-brand-burgundy hover:text-brand-burgundy">
+                            Limpar filtros
                         </button>
-                    @endforeach
+                    </div>
+                    <p class="mt-2 text-xs text-brand-gray" x-show="totalLinhas(tab) > 0 && contagemVisivel(tab) < totalLinhas(tab)">
+                        Exibindo <span class="font-bold text-brand-black" x-text="contagemVisivel(tab)"></span>
+                        de <span x-text="totalLinhas(tab)"></span> nesta aba.
+                    </p>
                 </div>
 
                 @foreach ($abasTitulos as $slug => $titulo)
                     @php
                         $tabComSelecao = in_array($slug, ['exame_medico', 'treinamentos', 'assinatura', 'sgc'], true);
+                        $mostraColunaExameOk = in_array($slug, ['exame_medico', 'treinamentos'], true);
+                        $colspanTabela = ($tabComSelecao ? 1 : 0) + 4 + ($mostraColunaExameOk ? 1 : 0) + 1;
                     @endphp
                     <div x-show="tab === '{{ $slug }}'" x-cloak class="mt-4 space-y-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -273,7 +463,9 @@
                                         <th class="px-3 py-3">Vaga</th>
                                         <th class="px-3 py-3">Pos.</th>
                                         <th class="px-3 py-3">Situação (fase)</th>
-                                        <th class="px-3 py-3">Exame OK</th>
+                                        @if ($mostraColunaExameOk)
+                                            <th class="px-3 py-3">Exame OK</th>
+                                        @endif
                                         <th class="px-3 py-3 text-right">Ficha</th>
                                     </tr>
                                 </thead>
@@ -299,8 +491,28 @@
                                                 'sgc' => 'Sem elegibilidade (assinatura pendente, SGC fechado ou pendência na ficha)',
                                                 default => '',
                                             };
+                                            $temAcaoLote = match ($slug) {
+                                                'exame_medico' => $pag === '1',
+                                                'treinamentos' => $pi === '1' || $pc === '1',
+                                                'assinatura' => $pa === '1',
+                                                'sgc' => $ps === '1',
+                                                default => false,
+                                            };
                                         @endphp
-                                        <tr class="hover:bg-brand-gray-soft/30" data-mass-row="{{ $slug }}">
+                                        <tr
+                                            class="hover:bg-brand-gray-soft/30"
+                                            data-mass-row="{{ $slug }}"
+                                            data-candidate-row
+                                            data-busca-nome="{{ \Illuminate\Support\Str::lower($row['nome']) }}"
+                                            data-busca-vaga="{{ \Illuminate\Support\Str::lower($row['vaga_titulo'] ?? '') }}"
+                                            data-busca-fase="{{ \Illuminate\Support\Str::lower($row['fase'] ?? '') }}"
+                                            data-vaga-titulo="{{ $row['vaga_titulo'] }}"
+                                            data-colaborador="{{ $row['nome'] }}"
+                                            data-fase-exata="{{ $row['fase'] }}"
+                                            data-cand-posicao="{{ $row['posicao'] }}"
+                                            data-tem-acao-lote="{{ $temAcaoLote ? '1' : '0' }}"
+                                            x-show="linhaVisivel($el)"
+                                        >
                                             @if ($tabComSelecao)
                                                 <td class="px-3 py-3">
                                                     <input
@@ -323,22 +535,32 @@
                                             <td class="px-3 py-3 text-brand-gray">{{ $row['vaga_titulo'] ?: '—' }}</td>
                                             <td class="px-3 py-3 tabular-nums font-bold">{{ $row['posicao'] }}</td>
                                             <td class="px-3 py-3 text-brand-black">{{ $row['fase'] }}</td>
-                                            <td class="px-3 py-3">
-                                                @if ($row['exame_concluido'] ?? false)
-                                                    <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Sim</span>
-                                                @else
-                                                    <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-900">Não</span>
-                                                @endif
-                                            </td>
+                                            @if ($mostraColunaExameOk)
+                                                <td class="px-3 py-3">
+                                                    @if ($row['exame_concluido'] ?? false)
+                                                        <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Sim</span>
+                                                    @else
+                                                        <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-900">Não</span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td class="px-3 py-3 text-right">
                                                 <a href="{{ route('rh.recrutamento.edit', $row['vaga_id']) }}" class="inline-flex h-9 items-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-burgundy hover:border-brand-burgundy">Abrir</a>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $tabComSelecao ? 7 : 6 }}" class="px-3 py-8 text-center text-sm text-brand-gray">Nenhum candidato aprovado nesta etapa.</td>
+                                            <td colspan="{{ $colspanTabela }}" class="px-3 py-8 text-center text-sm text-brand-gray">Nenhum candidato aprovado nesta etapa.</td>
                                         </tr>
                                     @endforelse
+                                    @if (($porAba[$slug] ?? collect())->isNotEmpty())
+                                        <tr x-show="nenhumResultadoFiltro('{{ $slug }}')" x-cloak>
+                                            <td colspan="{{ $colspanTabela }}" class="px-3 py-8 text-center text-sm text-brand-gray">
+                                                Nenhum candidato corresponde aos filtros.
+                                                <button type="button" @click="limparFiltros()" class="ml-1 font-semibold text-brand-burgundy hover:underline">Limpar filtros</button>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 </tbody>
                             </table>
                         </div>

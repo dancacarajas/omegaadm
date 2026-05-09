@@ -121,11 +121,48 @@ class RecrutamentoMassUpdateController extends Controller
             }
         }
 
+        $vagasTitulosOpcoes = collect($porAba)
+            ->flatten(1)
+            ->map(fn ($r) => trim((string) ($r['vaga_titulo'] ?? '')))
+            ->filter()
+            ->unique()
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        $nomesPorAba = collect(self::ABAS)->mapWithKeys(
+            fn ($titulo, $slug) => [
+                $slug => ($porAba[$slug] ?? collect())
+                    ->pluck('nome')
+                    ->map(fn ($n) => trim((string) $n))
+                    ->filter()
+                    ->unique()
+                    ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values()
+                    ->all(),
+            ]
+        )->all();
+
+        $fasesPorAba = collect(self::ABAS)->mapWithKeys(
+            fn ($titulo, $slug) => [
+                $slug => ($porAba[$slug] ?? collect())
+                    ->pluck('fase')
+                    ->map(fn ($f) => trim((string) $f))
+                    ->filter()
+                    ->unique()
+                    ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values()
+                    ->all(),
+            ]
+        )->all();
+
         return view('rh.recrutamento.mass-update', [
             'centrosDeCusto' => $centrosDeCusto,
             'contratoSelecionado' => $contratoSelecionado,
             'abasTitulos' => self::ABAS,
             'porAba' => $porAba,
+            'vagasTitulosOpcoes' => $vagasTitulosOpcoes,
+            'nomesPorAba' => $nomesPorAba,
+            'fasesPorAba' => $fasesPorAba,
         ]);
     }
 
