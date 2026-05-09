@@ -155,14 +155,61 @@ class RecrutamentoController extends Controller
             'pct_preenchido' => $posicoes > 0 ? (int) round(($preenchidas / $posicoes) * 100) : 0,
         ];
 
+        $vagasAbertasPorFuncao = $this->painelVagasAbertasPorFuncao($preenchidos, $vagasAbertas);
+
         return view('rh.recrutamento.painel-preenchimento', compact(
             'centrosDeCusto',
             'contratoSelecionado',
             'preenchidos',
             'vagasAbertas',
             'totaisPainel',
-            'ordemNome'
+            'ordemNome',
+            'vagasAbertasPorFuncao'
         ));
+    }
+
+    /**
+     * Agrupa posições sem preenchimento por função (título da vaga), com indicadores por grupo.
+     *
+     * @param  list<array<string, mixed>>  $preenchidos
+     * @param  list<array<string, mixed>>  $vagasAbertas
+     * @return list<array<string, mixed>>
+     */
+    private function painelVagasAbertasPorFuncao(array $preenchidos, array $vagasAbertas): array
+    {
+        $chaveFuncao = static function (?string $titulo): string {
+            $t = trim((string) $titulo);
+
+            return $t !== '' ? $t : 'Sem título';
+        };
+
+        return collect($vagasAbertas)
+            ->groupBy(fn (array $r) => $chaveFuncao($r['vaga_titulo'] ?? ''))
+            ->sortKeys(SORT_NATURAL | SORT_FLAG_CASE)
+            ->map(function (Collection $rows, string $titulo) use ($chaveFuncao, $preenchidos): array {
+                $linhas = $rows->sortBy(fn (array $r) => [(int) ($r['vaga_id'] ?? 0), (int) ($r['posicao'] ?? 0)])->values()->all();
+                $aPreencher = count($linhas);
+                $fichasDistintas = collect($linhas)->pluck('vaga_id')->unique()->count();
+                $comDados = collect($preenchidos)
+                    ->filter(fn (array $p) => $chaveFuncao($p['vaga_titulo'] ?? '') === $titulo)
+                    ->count();
+                $totalPosicoes = $aPreencher + $comDados;
+                $pct = $totalPosicoes > 0 ? (int) round(($comDados / $totalPosicoes) * 100) : 0;
+
+                return [
+                    'titulo' => $titulo,
+                    'linhas' => $linhas,
+                    'indicadores' => [
+                        'a_preencher' => $aPreencher,
+                        'fichas' => $fichasDistintas,
+                        'com_dados' => $comDados,
+                        'total_posicoes' => $totalPosicoes,
+                        'pct' => $pct,
+                    ],
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function create()

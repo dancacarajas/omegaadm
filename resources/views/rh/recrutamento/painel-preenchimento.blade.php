@@ -165,42 +165,84 @@
                     <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
                         <div>
                             <p class="text-xs font-black uppercase tracking-wide text-amber-700">Posições ainda sem preenchimento</p>
-                            <p class="text-sm text-brand-gray">Vagas previstas na ficha sem nome, telefone nem data de aceite.</p>
+                            <p class="text-sm text-brand-gray">Agrupado por <strong class="text-brand-black">função</strong>. Os indicadores ficam sempre visíveis; abra o bloco para ver a lista detalhada.</p>
                         </div>
-                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">{{ count($vagasAbertas ?? []) }} posição(ões)</span>
+                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">{{ count($vagasAbertas ?? []) }} posição(ões) · {{ count($vagasAbertasPorFuncao ?? []) }} função(ões)</span>
                     </div>
-                    <div class="overflow-x-auto rounded-xl border border-amber-200/80 bg-amber-50/30">
-                        <table class="w-full min-w-[780px] text-left text-sm">
-                            <thead class="border-b border-amber-200 bg-amber-50/80 text-xs font-bold uppercase tracking-wide text-amber-900/80">
-                                <tr>
-                                    <th class="px-4 py-3">Vaga</th>
-                                    <th class="px-4 py-3">Contrato / local</th>
-                                    <th class="px-4 py-3">Posição vaga</th>
-                                    <th class="px-4 py-3 text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-amber-100/80 bg-white/60">
-                                @forelse(($vagasAbertas ?? []) as $row)
-                                    <tr class="hover:bg-amber-50/50">
-                                        <td class="px-4 py-3 font-semibold text-brand-black">{{ $row['vaga_titulo'] ?: 'Sem título' }}</td>
-                                        <td class="px-4 py-3 text-brand-gray">
-                                            <span class="font-medium text-brand-black">{{ $row['contrato'] ?: '—' }}</span>
-                                            @if (! empty($row['local']))
-                                                <span class="text-xs"> · {{ $row['local'] }}</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-3 font-bold tabular-nums text-amber-900">{{ $row['posicao'] }}</td>
-                                        <td class="px-4 py-3 text-right">
-                                            <a href="{{ route('rh.recrutamento.edit', $row['vaga_id']) }}" class="inline-flex h-9 items-center gap-1 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50">Preencher ficha</a>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="px-4 py-8 text-center text-sm text-brand-gray">Todas as posições já têm algum dado de candidato ou não há vagas no filtro.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    <div class="space-y-3">
+                        @forelse(($vagasAbertasPorFuncao ?? []) as $bloco)
+                            @php $ind = $bloco['indicadores'] ?? []; @endphp
+                            <div class="overflow-hidden rounded-xl border border-amber-200/90 bg-amber-50/25 shadow-sm">
+                                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/70 bg-amber-50/60 px-4 py-3">
+                                    <div class="min-w-0">
+                                        <p class="text-base font-bold text-brand-black">{{ $bloco['titulo'] }}</p>
+                                        <p class="text-xs text-amber-900/85">{{ $ind['a_preencher'] ?? 0 }} posição(ões) em aberto · {{ $ind['fichas'] ?? 0 }} ficha(s) de vaga</p>
+                                    </div>
+                                    <span class="shrink-0 rounded-full bg-amber-200/90 px-3 py-1 text-xs font-black tabular-nums text-amber-950">{{ $ind['a_preencher'] ?? 0 }} abertas</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 border-b border-amber-200/50 p-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div class="rounded-lg border border-amber-200 bg-white px-3 py-2.5 shadow-sm">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-amber-900/90">A preencher</p>
+                                        <p class="mt-0.5 text-xl font-black tabular-nums text-amber-950">{{ $ind['a_preencher'] ?? 0 }}</p>
+                                        <p class="mt-0.5 text-[10px] text-amber-900/80">Posições sem dados</p>
+                                    </div>
+                                    <div class="rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Fichas</p>
+                                        <p class="mt-0.5 text-xl font-black tabular-nums text-brand-black">{{ $ind['fichas'] ?? 0 }}</p>
+                                        <p class="mt-0.5 text-[10px] text-brand-gray">Registros de vaga</p>
+                                    </div>
+                                    <div class="rounded-lg border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-800">Já com dados</p>
+                                        <p class="mt-0.5 text-xl font-black tabular-nums text-emerald-900">{{ $ind['com_dados'] ?? 0 }}</p>
+                                        <p class="mt-0.5 text-[10px] text-emerald-800/90">Mesma função</p>
+                                    </div>
+                                    <div class="rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/50 px-3 py-2.5 shadow-sm">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">Preenchido</p>
+                                        <p class="mt-0.5 text-xl font-black tabular-nums text-brand-burgundy">{{ $ind['pct'] ?? 0 }}%</p>
+                                        <p class="mt-0.5 text-[10px] text-brand-burgundy/90">{{ $ind['com_dados'] ?? 0 }} / {{ $ind['total_posicoes'] ?? 0 }} posições</p>
+                                    </div>
+                                </div>
+                                <details class="group bg-white/90">
+                                    <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm font-semibold text-amber-950 transition hover:bg-amber-50/80 [&::-webkit-details-marker]:hidden">
+                                        <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-amber-800 transition group-open:-rotate-180"></i>
+                                        <span>Lista de posições ({{ count($bloco['linhas'] ?? []) }}) — clique para expandir</span>
+                                    </summary>
+                                    <div class="overflow-x-auto border-t border-amber-100/90">
+                                        <table class="w-full min-w-[780px] text-left text-sm">
+                                            <thead class="border-b border-amber-200 bg-amber-50/80 text-xs font-bold uppercase tracking-wide text-amber-900/80">
+                                                <tr>
+                                                    <th class="px-4 py-3">Vaga</th>
+                                                    <th class="px-4 py-3">Contrato / local</th>
+                                                    <th class="px-4 py-3">Posição vaga</th>
+                                                    <th class="px-4 py-3 text-right">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-amber-100/80">
+                                                @foreach ($bloco['linhas'] ?? [] as $row)
+                                                    <tr class="hover:bg-amber-50/40">
+                                                        <td class="px-4 py-3 font-semibold text-brand-black">{{ $row['vaga_titulo'] ?: 'Sem título' }}</td>
+                                                        <td class="px-4 py-3 text-brand-gray">
+                                                            <span class="font-medium text-brand-black">{{ $row['contrato'] ?: '—' }}</span>
+                                                            @if (! empty($row['local']))
+                                                                <span class="text-xs"> · {{ $row['local'] }}</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="px-4 py-3 font-bold tabular-nums text-amber-900">{{ $row['posicao'] }}</td>
+                                                        <td class="px-4 py-3 text-right">
+                                                            <a href="{{ route('rh.recrutamento.edit', $row['vaga_id']) }}" class="inline-flex h-9 items-center gap-1 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50">Preencher ficha</a>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            </div>
+                        @empty
+                            <div class="rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-8 text-center text-sm text-brand-gray">
+                                Todas as posições já têm algum dado de candidato ou não há vagas no filtro.
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
