@@ -400,6 +400,24 @@
                         $colspanTabela = ($tabComSelecao ? 1 : 0) + 4 + ($mostraColunaExameOk ? 1 : 0) + 1;
                     @endphp
                     <div x-show="tab === '{{ $slug }}'" x-cloak class="mt-4 space-y-4">
+                        @if (! empty($indicadoresPorAba[$slug] ?? []))
+                            <div class="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                                @foreach ($indicadoresPorAba[$slug] as $ind)
+                                    <div class="rounded-xl border border-zinc-200/90 bg-gradient-to-br from-white via-white to-brand-gray-soft/30 p-4 shadow-sm ring-1 ring-zinc-100/80">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <p class="text-[10px] font-bold uppercase leading-tight tracking-wide text-brand-gray">{{ $ind['label'] }}</p>
+                                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-burgundy/10 text-brand-burgundy">
+                                                <i data-lucide="{{ $ind['icon'] }}" class="h-4 w-4"></i>
+                                            </span>
+                                        </div>
+                                        <p class="mt-2 text-2xl font-black tabular-nums text-brand-black">{{ $ind['valor'] }}</p>
+                                        @if (($ind['hint'] ?? '') !== '')
+                                            <p class="mt-1 text-[11px] leading-snug text-brand-gray">{{ $ind['hint'] }}</p>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <p class="text-sm text-brand-gray">
                                 <strong class="text-brand-black">{{ $titulo }}</strong>

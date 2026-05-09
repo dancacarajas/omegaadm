@@ -163,7 +163,151 @@ class RecrutamentoMassUpdateController extends Controller
             'vagasTitulosOpcoes' => $vagasTitulosOpcoes,
             'nomesPorAba' => $nomesPorAba,
             'fasesPorAba' => $fasesPorAba,
+            'indicadoresPorAba' => $this->indicadoresPorAba($porAba),
         ]);
+    }
+
+    /**
+     * Indicadores por aba para cards no painel de atualização em massa.
+     *
+     * @param  array<string, \Illuminate\Support\Collection<int, array<string, mixed>>>  $porAba
+     * @return array<string, list<array{label: string, valor: int, hint: string, icon: string}>>
+     */
+    private function indicadoresPorAba(array $porAba): array
+    {
+        $out = [];
+
+        foreach (self::ABAS as $slug => $_titulo) {
+            $lista = $porAba[$slug] ?? collect();
+            $n = $lista->count();
+            $vagasDistintas = $lista->pluck('vaga_id')->unique()->count();
+
+            $out[$slug] = match ($slug) {
+                'cadastro' => [
+                    [
+                        'label' => 'Aprovados nesta etapa',
+                        'valor' => $n,
+                        'hint' => 'Cadastro e aceite na ficha',
+                        'icon' => 'user-round',
+                    ],
+                    [
+                        'label' => 'Vagas envolvidas',
+                        'valor' => $vagasDistintas,
+                        'hint' => 'Com candidato nesta fase',
+                        'icon' => 'briefcase-business',
+                    ],
+                ],
+                'exame_medico' => [
+                    [
+                        'label' => 'Na etapa de exame',
+                        'valor' => $n,
+                        'hint' => 'Aguardando conclusão do exame',
+                        'icon' => 'stethoscope',
+                    ],
+                    [
+                        'label' => 'Elegíveis agendamento (lote)',
+                        'valor' => $lista->where('pode_definir_agendamento_exame', true)->count(),
+                        'hint' => 'Podem receber data de agendamento em massa',
+                        'icon' => 'calendar-clock',
+                    ],
+                ],
+                'treinamentos' => [
+                    [
+                        'label' => 'Na etapa de treinos',
+                        'valor' => $n,
+                        'hint' => 'Exame OK; treino em andamento ou pendente',
+                        'icon' => 'graduation-cap',
+                    ],
+                    [
+                        'label' => 'Em treinamento',
+                        'valor' => $lista->where('fase', 'Em treinamento')->count(),
+                        'hint' => 'Com início registrado na ficha',
+                        'icon' => 'book-open',
+                    ],
+                    [
+                        'label' => 'Aguardando treinamentos',
+                        'valor' => $lista->where('fase', 'Aguardando treinamentos')->count(),
+                        'hint' => 'Sem início ou aguardando próximo passo',
+                        'icon' => 'hourglass',
+                    ],
+                    [
+                        'label' => 'Elegíveis ação em lote',
+                        'valor' => $lista->filter(
+                            fn (array $r) => ($r['pode_definir_inicio_treino'] ?? false)
+                                || ($r['pode_definir_confirmacao_treino'] ?? false)
+                        )->count(),
+                        'hint' => 'Início ou confirmação de treino',
+                        'icon' => 'list-checks',
+                    ],
+                ],
+                'assinatura' => [
+                    [
+                        'label' => 'Na assinatura',
+                        'valor' => $n,
+                        'hint' => 'Treino concluído; documentos pendentes',
+                        'icon' => 'file-signature',
+                    ],
+                    [
+                        'label' => 'Elegíveis confirmação (lote)',
+                        'valor' => $lista->where('pode_definir_assinatura', true)->count(),
+                        'hint' => 'Podem receber data de assinatura em massa',
+                        'icon' => 'pen-line',
+                    ],
+                ],
+                'sgc' => [
+                    [
+                        'label' => 'No SGC / mobilização',
+                        'valor' => $n,
+                        'hint' => 'Assinatura OK; mobilização em aberto',
+                        'icon' => 'truck',
+                    ],
+                    [
+                        'label' => 'Elegíveis SGC (lote)',
+                        'valor' => $lista->where('pode_definir_sgc', true)->count(),
+                        'hint' => 'Sem pendência textual na ficha',
+                        'icon' => 'package',
+                    ],
+                ],
+                'liberacao' => [
+                    [
+                        'label' => 'Na liberação',
+                        'valor' => $n,
+                        'hint' => 'Orientação, EPI e rota',
+                        'icon' => 'key-round',
+                    ],
+                    [
+                        'label' => 'Vagas envolvidas',
+                        'valor' => $vagasDistintas,
+                        'hint' => 'Com candidato nesta fase',
+                        'icon' => 'layers',
+                    ],
+                ],
+                'concluido' => [
+                    [
+                        'label' => 'Concluídos',
+                        'valor' => $n,
+                        'hint' => 'Fluxo de recrutamento encerrado',
+                        'icon' => 'badge-check',
+                    ],
+                    [
+                        'label' => 'Vagas envolvidas',
+                        'valor' => $vagasDistintas,
+                        'hint' => 'Com candidato nesta fase',
+                        'icon' => 'circle-check',
+                    ],
+                ],
+                default => [
+                    [
+                        'label' => 'Na etapa',
+                        'valor' => $n,
+                        'hint' => '',
+                        'icon' => 'circle-dot',
+                    ],
+                ],
+            };
+        }
+
+        return $out;
     }
 
     public function apply(Request $request, RecrutamentoController $recrutamentoController): JsonResponse
