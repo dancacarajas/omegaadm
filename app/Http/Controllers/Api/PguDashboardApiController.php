@@ -450,6 +450,29 @@ class PguDashboardApiController extends Controller
     }
 
     /**
+     * Indicadores PGU (fase Treinamentos): inclui candidatos com etapa concluída
+     * ou com data de início dos treinamentos já informada — sem exigir confirmação.
+     * Ignora legado em que Treinamentos era cópia espelhada do Exame Médico (mesma regra da listagem RH).
+     */
+    private function candidateAlcancouFaseTreinamentosParaIndicadores(array $state, int $position): bool
+    {
+        if ($this->candidateStepDone($state, $position, 'treinamentos')) {
+            return true;
+        }
+
+        $trainingStart = $state["candidato_{$position}_treinamentos_data_inicio"] ?? null;
+        if (! filled($trainingStart)) {
+            return false;
+        }
+
+        if ($this->hasLegacyMirroredTrainingData($state, $position)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Funções “100%” no recorte: mobilização (Pré-PGU) cobre a necessidade (PGU), linha a linha.
      * Ignora linhas com PGU = 0 e Pré > 0 (PGU não informado).
      *
@@ -855,7 +878,7 @@ class PguDashboardApiController extends Controller
                 if ($this->candidateStepDone($state, $position, 'exame_medico')) {
                     $counts['exame_medico']++;
                 }
-                if ($this->candidateStepDone($state, $position, 'treinamentos')) {
+                if ($this->candidateAlcancouFaseTreinamentosParaIndicadores($state, $position)) {
                     $counts['treinamentos']++;
                 }
                 if ($this->candidateStepDone($state, $position, 'assinatura')) {
