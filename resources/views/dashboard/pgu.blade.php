@@ -492,7 +492,7 @@
                             <div class="flex min-h-[64px] items-start gap-2">
                                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-burgundy-soft text-brand-burgundy"><i data-lucide="graduation-cap" class="h-5 w-5"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Treinamentos concluídos</p>
+                                    <p class="min-h-[28px] text-[11px] font-black uppercase leading-[1.05] tracking-wide text-pgu-muted">Treinamentos</p>
                                     <p class="mt-1 text-4xl font-black leading-none text-brand-burgundy" x-text="formatQtyPtBr(clienteMaturidadeResumo().treinamentos)"></p>
                                 </div>
                             </div>
@@ -1424,7 +1424,7 @@
                                     <i data-lucide="badge-check" class="h-5 w-5"></i>
                                 </span>
                                 <div class="min-w-0">
-                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Treinamentos concluídos</p>
+                                    <p class="text-[11px] font-black uppercase leading-tight text-pgu-muted">Treinamentos</p>
                                     <p class="mt-1 text-3xl font-black text-brand-burgundy" x-text="formatQtyPtBr(clienteDestaquesTreinamentosCount())"></p>
                                 </div>
                             </div>
