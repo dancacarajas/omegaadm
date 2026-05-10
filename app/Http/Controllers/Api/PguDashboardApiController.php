@@ -187,8 +187,8 @@ class PguDashboardApiController extends Controller
                 'pgu' => round((float) ($kpisItens['vagas_em_andamento'] ?? 0), 2),
                 'pos_pgu' => round((float) ($kpisItens['vagas_liberadas'] ?? 0), 2),
             ],
-            /** Contagens cumulativas por etapa (mesma base do funil de Maturidade) — painel «Avanço de Contratações». */
-            'contratacoes_funil' => $this->buildContratacoesFunil($vagas),
+            /** Contagens cumulativas por etapa; % e barras usam {@see $maturidadeTotalVagas} como denominador (vagas mapeadas PGU). */
+            'contratacoes_funil' => $this->buildContratacoesFunil($vagas, $maturidadeTotalVagas),
         ];
     }
 
@@ -861,9 +861,9 @@ class PguDashboardApiController extends Controller
      * (cartão «Maturidade do Fluxo PGU»). Cada indicador conta candidatos aprovados que já atingiram a etapa.
      * «Triagem» = base aprovada (como «Vagas preenchidas» na maturidade). «Teste prático» sem campo na ficha → 0.
      *
-     * @return array{total: int, etapas_monitoradas: int, itens: list<array{key: string, label: string, valor: int, icon: string}>}
+     * @return array{total: int, vagas_mapeadas: int, etapas_monitoradas: int, itens: list<array{key: string, label: string, valor: int, icon: string}>}
      */
-    private function buildContratacoesFunil(Collection $vagas): array
+    private function buildContratacoesFunil(Collection $vagas, int $vagasMapeadas): array
     {
         $order = [
             'triagem' => ['label' => 'TRIAGEM / AVALIAÇÃO RECRUTAMENTO', 'icon' => 'user-search'],
@@ -924,6 +924,7 @@ class PguDashboardApiController extends Controller
 
         return [
             'total' => $totalAprovados,
+            'vagas_mapeadas' => max(0, $vagasMapeadas),
             'etapas_monitoradas' => count($order),
             'itens' => $itens,
         ];

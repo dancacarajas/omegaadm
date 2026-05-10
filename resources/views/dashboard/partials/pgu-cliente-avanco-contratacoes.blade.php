@@ -18,20 +18,25 @@
                 window.pguContratacoesFunilChartRowsFromPayload = function (cf) {
                     cf = cf || {};
                     var itens = [].concat(cf.itens || []);
-                    var totalGeral = Math.max(0, Number(cf.total || 0));
+                    var totalAprovados = Math.max(0, Number(cf.total || 0));
+                    var vagasMapeadas = Math.max(0, Number(cf.vagas_mapeadas || 0));
+                    var basePct = vagasMapeadas > 0 ? vagasMapeadas : totalAprovados;
                     var maxVal = 1;
                     itens.forEach(function (i) {
                         maxVal = Math.max(maxVal, Number(i.valor || 0));
                     });
                     return itens.map(function (it, idx) {
+                        var v = Number(it.valor || 0);
+                        var pct = basePct > 0 ? (v / basePct) * 100 : 0;
+                        var barPct = basePct > 0 ? Math.min(100, (v / basePct) * 100) : maxVal > 0 ? (v / maxVal) * 100 : 0;
                         return {
                             key: it.key,
                             label: it.label,
                             valor: it.valor,
                             icon: it.icon,
                             rank: idx + 1,
-                            pctDoTotal: totalGeral > 0 ? (Number(it.valor || 0) / totalGeral) * 100 : 0,
-                            barWidthPct: (Number(it.valor || 0) / maxVal) * 100,
+                            pctDoTotal: pct,
+                            barWidthPct: barPct,
                         };
                     });
                 };
@@ -41,11 +46,13 @@
                     if (totalGeral <= 0) {
                         return ['Sem candidatos aprovados no recorte da competência.'];
                     }
+                    var vagasMapeadas = Math.max(0, Number(cf.vagas_mapeadas || 0));
+                    var basePct = vagasMapeadas > 0 ? vagasMapeadas : totalGeral;
                     var rows = [].concat(cf.itens || []).sort(function (a, b) {
                         return Number(b.valor || 0) - Number(a.valor || 0);
                     }).slice(0, 4);
                     var linhas = rows.map(function (it) {
-                        var pct = (Number(it.valor || 0) / totalGeral) * 100;
+                        var pct = basePct > 0 ? (Number(it.valor || 0) / basePct) * 100 : 0;
                         var nome = String(it.label || '').replace(/\s+/g, ' ').trim();
                         return nome + ' concentra ' + pguFmtQty(it.valor) + ' vagas (' + pguFmtPct(pct) + '%).';
                     });
@@ -72,7 +79,7 @@
                     Avanço de Contratações — Contrato <span x-text="contrato || '—'"></span>
                 </h2>
                 <p class="mt-2 text-lg text-pgu-muted">
-                    Candidatos aprovados que já atingiram cada etapa do funil (contagem cumulativa, mesma base da maturidade do fluxo PGU).
+                    Candidatos aprovados por etapa (contagem cumulativa). Os percentuais usam as vagas mapeadas no PGU como base — o mesmo denominador do funil de maturidade.
                 </p>
             </div>
         </div>
@@ -81,12 +88,18 @@
                 <i data-lucide="briefcase-business" class="h-4 w-4 shrink-0"></i>
                 <span class="text-sm font-black tracking-wide">Contrato <span x-text="contrato || '—'"></span></span>
             </div>
-            <div class="grid grid-cols-2 gap-3 px-4 py-3">
+            <div class="grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-3">
                 <div>
-                    <p class="text-[10px] font-bold uppercase tracking-wide text-pgu-muted">Total geral</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wide text-pgu-muted">Aprovados (funil)</p>
                     <p class="mt-0.5 text-xl font-black tabular-nums text-brand-burgundy">
                         <span x-text="formatQtyPtBr(data?.contratacoes_funil?.total ?? 0)"></span>
                         <span class="text-sm font-semibold text-pgu-muted"> vagas</span>
+                    </p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wide text-pgu-muted">Vagas mapeadas PGU</p>
+                    <p class="mt-0.5 text-xl font-black tabular-nums text-brand-burgundy">
+                        <span x-text="formatQtyPtBr(data?.contratacoes_funil?.vagas_mapeadas ?? 0)"></span>
                     </p>
                 </div>
                 <div>
