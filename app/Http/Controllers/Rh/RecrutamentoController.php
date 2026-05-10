@@ -13,6 +13,8 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class RecrutamentoController extends Controller
 {
@@ -59,6 +61,91 @@ class RecrutamentoController extends Controller
      * Painel consolidado: candidatos com ficha preenchida (nome/data) e posições ainda vagas.
      */
     public function painelPreenchimento()
+    {
+        return view('rh.recrutamento.painel-preenchimento', $this->painelPreenchimentoState());
+    }
+
+    /**
+     * Exporta o painel em Excel (.xlsx) com duas abas, respeitando contrato, busca e ordenação por nome.
+     */
+    public function exportPainelPreenchimentoExcel(Request $request)
+    {
+        $state = $this->painelPreenchimentoState();
+
+        if (($state['contratoSelecionado'] ?? '') === '') {
+            return redirect()
+                ->route('rh.recrutamento.painel-preenchimento', $request->only(['busca', 'ordem_nome']))
+                ->with('error', 'Selecione um centro de custo para exportar a planilha.');
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet1 = $spreadsheet->getActiveSheet();
+        $sheet1->setTitle($this->excelSheetTitle('Candidatos com dados preenchidos'));
+
+        $sheet1->fromArray([
+            ['Vaga', 'Contrato', 'Posição', 'Nome', 'Telefone', 'Data de aceite', 'Fase atual', 'Status candidato', 'ID ficha'],
+        ], null, 'A1');
+
+        $r = 2;
+        foreach ($state['preenchidos'] as $p) {
+            $sheet1->fromArray([[
+                $p['vaga_titulo'] ?: 'Sem título',
+                (string) ($p['contrato'] ?? ''),
+                (int) ($p['posicao'] ?? 0),
+                (string) ($p['nome'] ?? ''),
+                (string) ($p['telefone'] ?? ''),
+                (string) ($p['data_aceite_br'] ?? '—'),
+                (string) ($p['fase'] ?? ''),
+                ucfirst((string) ($p['status_candidato'] ?? 'pendente')),
+                (int) ($p['vaga_id'] ?? 0),
+            ]], null, 'A'.$r);
+            $r++;
+        }
+
+        $sheet2 = $spreadsheet->createSheet();
+        $sheet2->setTitle($this->excelSheetTitle('Posições ainda sem preenchimento'));
+        $sheet2->fromArray([
+            ['Vaga', 'Contrato', 'Local', 'Posição', 'ID ficha'],
+        ], null, 'A1');
+
+        $r = 2;
+        foreach ($state['vagasAbertas'] as $v) {
+            $sheet2->fromArray([[
+                $v['vaga_titulo'] ?: 'Sem título',
+                (string) ($v['contrato'] ?? ''),
+                (string) ($v['local'] ?? ''),
+                (int) ($v['posicao'] ?? 0),
+                (int) ($v['vaga_id'] ?? 0),
+            ]], null, 'A'.$r);
+            $r++;
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', $state['contratoSelecionado']);
+        $filename = 'painel-preenchimento-'.$slug.'-'.now()->format('Ymd-His').'.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Mesmos dados do painel (filtros GET: contrato, busca, ordem_nome).
+     *
+     * @return array{
+     *     centrosDeCusto: \Illuminate\Support\Collection<int, string>,
+     *     contratoSelecionado: string,
+     *     preenchidos: list<array<string, mixed>>,
+     *     vagasAbertas: list<array<string, mixed>>,
+     *     totaisPainel: array<string, int>,
+     *     ordemNome: string,
+     *     vagasAbertasPorFuncao: list<array<string, mixed>>
+     * }
+     */
+    private function painelPreenchimentoState(): array
     {
         $contratoSelecionado = trim((string) request('contrato'));
 
@@ -157,15 +244,22 @@ class RecrutamentoController extends Controller
 
         $vagasAbertasPorFuncao = $this->painelVagasAbertasPorFuncao($preenchidos, $vagasAbertas);
 
-        return view('rh.recrutamento.painel-preenchimento', compact(
-            'centrosDeCusto',
-            'contratoSelecionado',
-            'preenchidos',
-            'vagasAbertas',
-            'totaisPainel',
-            'ordemNome',
-            'vagasAbertasPorFuncao'
-        ));
+        return [
+            'centrosDeCusto' => $centrosDeCusto,
+            'contratoSelecionado' => $contratoSelecionado,
+            'preenchidos' => $preenchidos,
+            'vagasAbertas' => $vagasAbertas,
+            'totaisPainel' => $totaisPainel,
+            'ordemNome' => $ordemNome,
+            'vagasAbertasPorFuncao' => $vagasAbertasPorFuncao,
+        ];
+    }
+
+    private function excelSheetTitle(string $title): string
+    {
+        $title = str_replace(['\\', '/', '*', '?', ':', '[', ']'], '-', $title);
+
+        return mb_substr($title, 0, 31);
     }
 
     /**

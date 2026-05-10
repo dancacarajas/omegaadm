@@ -50,6 +50,12 @@
                     <i data-lucide="layout-list" class="h-4 w-4"></i>
                     Atualizar
                 </button>
+                @if (trim((string) request('contrato')) !== '')
+                    <a href="{{ route('rh.recrutamento.painel-preenchimento.export-excel', request()->only(['contrato', 'busca', 'ordem_nome'])) }}" class="inline-flex h-11 shrink-0 items-center justify-center gap-2 self-end rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-100 sm:self-end">
+                        <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+                        Exportar Excel
+                    </a>
+                @endif
             </form>
         </div>
 

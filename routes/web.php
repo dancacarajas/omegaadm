@@ -278,6 +278,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             ->parameters(['horarios' => 'horario_escala']);
         Route::get('recrutamento/painel-preenchimento', [RecrutamentoController::class, 'painelPreenchimento'])
             ->name('recrutamento.painel-preenchimento');
+        Route::get('recrutamento/painel-preenchimento/exportar-excel', [RecrutamentoController::class, 'exportPainelPreenchimentoExcel'])
+            ->name('recrutamento.painel-preenchimento.export-excel');
         Route::get('recrutamento/atualizacao-massa', [RecrutamentoMassUpdateController::class, 'index'])
             ->name('recrutamento.atualizacao-massa');
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
