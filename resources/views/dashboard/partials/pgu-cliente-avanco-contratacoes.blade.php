@@ -1,3 +1,61 @@
+{{-- Helpers globais: funcionam mesmo quando o bundle Vite em produção ainda não inclui os métodos em pguDashboard(). --}}
+@once
+    @push('scripts')
+        <script>
+            (function () {
+                function pguFmtPct(n) {
+                    var v = Number(n);
+                    if (isNaN(v)) return '0,0';
+                    return v.toFixed(1).replace('.', ',');
+                }
+                function pguFmtQty(n) {
+                    var v = Number(n);
+                    if (isNaN(v)) return '0';
+                    var rounded = Math.round(v * 100) / 100;
+                    if (Math.round(rounded) === rounded) return String(Math.round(rounded));
+                    return rounded.toFixed(2).replace('.', ',');
+                }
+                window.pguContratacoesFunilChartRowsFromPayload = function (cf) {
+                    cf = cf || {};
+                    var itens = [].concat(cf.itens || []);
+                    var totalGeral = Math.max(0, Number(cf.total || 0));
+                    var sorted = itens.slice().sort(function (a, b) {
+                        return Number(b.valor || 0) - Number(a.valor || 0);
+                    });
+                    var maxVal = 1;
+                    sorted.forEach(function (i) {
+                        maxVal = Math.max(maxVal, Number(i.valor || 0));
+                    });
+                    return sorted.map(function (it, idx) {
+                        return {
+                            key: it.key,
+                            label: it.label,
+                            valor: it.valor,
+                            icon: it.icon,
+                            rank: idx + 1,
+                            pctDoTotal: totalGeral > 0 ? (Number(it.valor || 0) / totalGeral) * 100 : 0,
+                            barWidthPct: (Number(it.valor || 0) / maxVal) * 100,
+                        };
+                    });
+                };
+                window.pguContratacoesLeituraExecutivaFromPayload = function (cf) {
+                    cf = cf || {};
+                    var totalGeral = Math.max(0, Number(cf.total || 0));
+                    if (totalGeral <= 0) {
+                        return ['Sem candidatos aprovados no recorte da competência.'];
+                    }
+                    var rows = window.pguContratacoesFunilChartRowsFromPayload(cf).slice(0, 4);
+                    var linhas = rows.map(function (it) {
+                        var pct = (Number(it.valor || 0) / totalGeral) * 100;
+                        var nome = String(it.label || '').replace(/\s+/g, ' ').trim();
+                        return nome + ' concentra ' + pguFmtQty(it.valor) + ' vagas (' + pguFmtPct(pct) + '%).';
+                    });
+                    return linhas.length ? linhas : ['Distribuição equilibrada entre as etapas monitoradas.'];
+                };
+            })();
+        </script>
+    @endpush
+@endonce
 <section
     id="cardClienteContratacoes"
     class="overflow-hidden rounded-[1.5rem] border border-pgu-border bg-white shadow-sm"
@@ -56,7 +114,7 @@
                     <p class="text-xs font-black uppercase tracking-wide">Leitura executiva</p>
                 </div>
                 <ul class="mt-3 space-y-2.5 text-[13px] leading-snug text-pgu-ink">
-                    <template x-for="(linha, idx) in clienteContratacoesLeituraExecutiva()" :key="`contratacao-insight-${idx}`">
+                    <template x-for="(linha, idx) in window.pguContratacoesLeituraExecutivaFromPayload(data?.contratacoes_funil)" :key="`contratacao-insight-${idx}`">
                         <li class="flex gap-2">
                             <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-burgundy"></span>
                             <span x-text="linha"></span>
@@ -73,7 +131,7 @@
                     <h3 class="text-sm font-black uppercase tracking-wide">Vagas em contratação por etapa do funil</h3>
                 </div>
                 <div class="mt-4 space-y-3">
-                    <template x-for="row in clienteContratacoesFunilChartRows()" :key="`contratacao-bar-${row.key}`">
+                    <template x-for="row in window.pguContratacoesFunilChartRowsFromPayload(data?.contratacoes_funil)" :key="`contratacao-bar-${row.key}`">
                         <div class="flex min-w-0 items-center gap-3 sm:gap-4">
                             <span
                                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-burgundy text-sm font-black text-white"
