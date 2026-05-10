@@ -19,14 +19,11 @@
                     cf = cf || {};
                     var itens = [].concat(cf.itens || []);
                     var totalGeral = Math.max(0, Number(cf.total || 0));
-                    var sorted = itens.slice().sort(function (a, b) {
-                        return Number(b.valor || 0) - Number(a.valor || 0);
-                    });
                     var maxVal = 1;
-                    sorted.forEach(function (i) {
+                    itens.forEach(function (i) {
                         maxVal = Math.max(maxVal, Number(i.valor || 0));
                     });
-                    return sorted.map(function (it, idx) {
+                    return itens.map(function (it, idx) {
                         return {
                             key: it.key,
                             label: it.label,
@@ -44,7 +41,9 @@
                     if (totalGeral <= 0) {
                         return ['Sem candidatos aprovados no recorte da competência.'];
                     }
-                    var rows = window.pguContratacoesFunilChartRowsFromPayload(cf).slice(0, 4);
+                    var rows = [].concat(cf.itens || []).sort(function (a, b) {
+                        return Number(b.valor || 0) - Number(a.valor || 0);
+                    }).slice(0, 4);
                     var linhas = rows.map(function (it) {
                         var pct = (Number(it.valor || 0) / totalGeral) * 100;
                         var nome = String(it.label || '').replace(/\s+/g, ' ').trim();
@@ -160,7 +159,7 @@
 
     <div class="border-t border-pgu-border bg-zinc-50/40 px-6 py-5">
         <p class="mb-4 text-center text-[10px] font-black uppercase tracking-wide text-pgu-muted">Indicadores por etapa</p>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6">
             <template x-for="card in (data?.contratacoes_funil?.itens || [])" :key="`contratacao-card-${card.key}`">
                 <div class="flex min-h-[11rem] flex-col rounded-xl border border-pgu-border bg-white px-2.5 py-3 text-center shadow-sm">
                     <span class="mx-auto inline-flex h-10 w-10 shrink-0 items-center justify-center text-brand-burgundy">

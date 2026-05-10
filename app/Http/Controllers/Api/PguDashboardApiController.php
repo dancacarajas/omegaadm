@@ -858,14 +858,13 @@ class PguDashboardApiController extends Controller
 
     /**
      * Funil executivo de contratação: uma posição aprovada por bucket, alinhado a {@see RecrutamentoCandidatoFase::faseAtualLabel()}.
-     * Inclui 7 cards (teste prático reservado até haver campo na ficha; permanece 0).
+     * Seis etapas visíveis (sem «Envio de oferta»); fases iniciais de cadastro contam em triagem. Teste prático reservado até haver campo na ficha.
      *
      * @return array{total: int, etapas_monitoradas: int, itens: list<array{key: string, label: string, valor: int, icon: string}>}
      */
     private function buildContratacoesFunil(Collection $vagas): array
     {
         $order = [
-            'envio_oferta' => ['label' => 'ENVIO DE OFERTA PARA O CANDIDATO', 'icon' => 'send'],
             'triagem' => ['label' => 'TRIAGEM / AVALIAÇÃO RECRUTAMENTO', 'icon' => 'user-search'],
             'exame' => ['label' => 'EXAME MÉDICO', 'icon' => 'stethoscope'],
             'teste_pratico' => ['label' => 'TESTE PRÁTICO', 'icon' => 'clipboard-check'],
@@ -910,8 +909,7 @@ class PguDashboardApiController extends Controller
     private function mapFaseCandidatoToContratacaoBucket(string $label): string
     {
         return match ($label) {
-            'Cadastro — aguardando data de aceite' => 'envio_oferta',
-            'Cadastro iniciado' => 'triagem',
+            'Cadastro — aguardando data de aceite', 'Cadastro iniciado' => 'triagem',
             'Exame médico' => 'exame',
             'Aguardando treinamentos', 'Em treinamento' => 'treinamento',
             'Treinamento concluído' => 'assinatura',
