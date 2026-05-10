@@ -72,7 +72,7 @@
                     Avanço de Contratações — Contrato <span x-text="contrato || '—'"></span>
                 </h2>
                 <p class="mt-2 text-lg text-pgu-muted">
-                    Distribuição das vagas em processo de contratação por etapa do funil (candidatos aprovados, fase atual na ficha RH).
+                    Candidatos aprovados que já atingiram cada etapa do funil (contagem cumulativa, mesma base da maturidade do fluxo PGU).
                 </p>
             </div>
         </div>

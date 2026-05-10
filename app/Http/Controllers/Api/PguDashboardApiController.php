@@ -187,7 +187,7 @@ class PguDashboardApiController extends Controller
                 'pgu' => round((float) ($kpisItens['vagas_em_andamento'] ?? 0), 2),
                 'pos_pgu' => round((float) ($kpisItens['vagas_liberadas'] ?? 0), 2),
             ],
-            /** Distribuição de candidatos aprovados por fase atual (ficha RH) — 7 indicadores para o painel «Avanço de Contratações». */
+            /** Contagens cumulativas por etapa (mesma base do funil de Maturidade) — painel «Avanço de Contratações». */
             'contratacoes_funil' => $this->buildContratacoesFunil($vagas),
         ];
     }
@@ -857,8 +857,9 @@ class PguDashboardApiController extends Controller
     }
 
     /**
-     * Funil executivo de contratação: uma posição aprovada por bucket, alinhado a {@see RecrutamentoCandidatoFase::faseAtualLabel()}.
-     * Seis etapas visíveis (sem «Envio de oferta»); fases iniciais de cadastro contam em triagem. Teste prático reservado até haver campo na ficha.
+     * Funil «Avanço de Contratações»: mesma lógica cumulativa de {@see buildCurrentPhaseProgress()}
+     * (cartão «Maturidade do Fluxo PGU»). Cada indicador conta candidatos aprovados que já atingiram a etapa.
+     * «Triagem» = base aprovada (como «Vagas preenchidas» na maturidade). «Teste prático» sem campo na ficha → 0.
      *
      * @return array{total: int, etapas_monitoradas: int, itens: list<array{key: string, label: string, valor: int, icon: string}>}
      */
@@ -873,18 +874,43 @@ class PguDashboardApiController extends Controller
             'sgc_e_liberacao' => ['label' => 'SGC E LIBERAÇÃO', 'icon' => 'shield-check'],
         ];
 
-        $counts = array_fill_keys(array_keys($order), 0);
+        $triagem = 0;
+        $exame = 0;
+        $treinamento = 0;
+        $assinatura = 0;
+        $sgcLiberacao = 0;
+        $totalAprovados = 0;
 
         foreach ($vagas as $vaga) {
             $state = $vaga->form_state ?? [];
             foreach ($this->approvedCandidates($vaga) as $c) {
                 $position = (int) $c['position'];
-                $bucket = $this->contratacaoFunilBucket($state, $position);
-                if (isset($counts[$bucket])) {
-                    $counts[$bucket]++;
+                $totalAprovados++;
+                $triagem++;
+                if ($this->candidateStepDone($state, $position, 'exame_medico')) {
+                    $exame++;
+                }
+                if ($this->candidateAlcancouFaseTreinamentosParaIndicadores($state, $position)) {
+                    $treinamento++;
+                }
+                if ($this->candidateStepDone($state, $position, 'assinatura')) {
+                    $assinatura++;
+                }
+                if ($this->candidateStepDone($state, $position, 'sgc')
+                    || $this->candidateStepDone($state, $position, 'liberacao')) {
+                    $sgcLiberacao++;
                 }
             }
         }
+
+        $counts = [
+            'triagem' => $triagem,
+            'exame' => $exame,
+            'teste_pratico' => 0,
+            'treinamento' => $treinamento,
+            'assinatura' => $assinatura,
+            'sgc_e_liberacao' => $sgcLiberacao,
+        ];
 
         $itens = [];
         foreach ($order as $key => $meta) {
@@ -896,39 +922,11 @@ class PguDashboardApiController extends Controller
             ];
         }
 
-        $total = array_sum($counts);
-
         return [
-            'total' => $total,
+            'total' => $totalAprovados,
             'etapas_monitoradas' => count($order),
             'itens' => $itens,
         ];
-    }
-
-    /**
-     * Uma vaga aprovada por cartão do funil: escada exclusiva alinhada à ficha RH, com exame
-     * avaliado só por campos de exame (evita que fallback de treino despeje tudo em «Treinamento»).
-     */
-    private function contratacaoFunilBucket(array $state, int $position): string
-    {
-        if (blank($state["candidato_{$position}_data_aceite"] ?? null)) {
-            return 'triagem';
-        }
-        if (! RecrutamentoCandidatoFase::etapaExameMedicoConcluidaSemFallbackTreinamentos($state, $position)) {
-            return 'exame';
-        }
-        if (! RecrutamentoCandidatoFase::etapaTreinamentosConcluida($state, $position)) {
-            return 'treinamento';
-        }
-        if (! RecrutamentoCandidatoFase::etapaAssinaturaConcluida($state, $position)) {
-            return 'assinatura';
-        }
-        if (! RecrutamentoCandidatoFase::etapaSgcConcluida($state, $position)
-            || ! RecrutamentoCandidatoFase::etapaLiberacaoConcluida($state, $position)) {
-            return 'sgc_e_liberacao';
-        }
-
-        return 'sgc_e_liberacao';
     }
 
     /**
