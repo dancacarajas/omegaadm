@@ -419,6 +419,7 @@
                 </div>
             </section>
 
+            @include('dashboard.partials.pgu-cliente-avanco-contratacoes')
             @include('dashboard.partials.pgu-cliente-avanco-ciclo')
 
             <section id="cardClienteMaturidade" class="rounded-[1.5rem] border border-pgu-border bg-white shadow-sm">

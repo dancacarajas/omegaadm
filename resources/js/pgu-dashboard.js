@@ -589,6 +589,32 @@ window.pguDashboard = function () {
                 maturidade: Math.round(maturidade * 10) / 10,
             };
         },
+        /** Funil «Avanço de Contratações»: linhas do gráfico ordenadas por volume (maior primeiro). */
+        clienteContratacoesFunilChartRows() {
+            const itens = [...(this.data?.contratacoes_funil?.itens || [])];
+            const totalGeral = Math.max(0, Number(this.data?.contratacoes_funil?.total || 0));
+            const sorted = [...itens].sort((a, b) => Number(b.valor || 0) - Number(a.valor || 0));
+            const maxVal = Math.max(...sorted.map((i) => Number(i.valor || 0)), 1);
+            return sorted.map((it, idx) => ({
+                ...it,
+                rank: idx + 1,
+                pctDoTotal: totalGeral > 0 ? (Number(it.valor || 0) / totalGeral) * 100 : 0,
+                barWidthPct: (Number(it.valor || 0) / maxVal) * 100,
+            }));
+        },
+        /** Bullets da «Leitura executiva» (top etapas por volume). */
+        clienteContratacoesLeituraExecutiva() {
+            const totalGeral = Math.max(0, Number(this.data?.contratacoes_funil?.total || 0));
+            if (totalGeral <= 0) {
+                return ['Sem candidatos aprovados no recorte da competência.'];
+            }
+            const linhas = this.clienteContratacoesFunilChartRows().slice(0, 4).map((it) => {
+                const pct = (Number(it.valor || 0) / totalGeral) * 100;
+                const nome = String(it.label || '').replace(/\s+/g, ' ').trim();
+                return `${nome} concentra ${this.formatQtyPtBr(it.valor)} vagas (${this.formatPctPtBr(pct)}%).`;
+            });
+            return linhas.length ? linhas : ['Distribuição equilibrada entre as etapas monitoradas.'];
+        },
         /** Base inicial do ciclo para comparativos por período (início -> agora). */
         clienteDestaquesBaselineInicioCiclo() {
             const trend = Array.isArray(this.data?.trend) ? this.data.trend : [];

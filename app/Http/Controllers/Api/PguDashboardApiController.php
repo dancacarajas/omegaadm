@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ContratoHistogramaLinha;
 use App\Models\ContratoHistogramaRecorte;
 use App\Models\RecrutamentoVaga;
+use App\Support\RecrutamentoCandidatoFase;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -186,6 +187,8 @@ class PguDashboardApiController extends Controller
                 'pgu' => round((float) ($kpisItens['vagas_em_andamento'] ?? 0), 2),
                 'pos_pgu' => round((float) ($kpisItens['vagas_liberadas'] ?? 0), 2),
             ],
+            /** Distribuição de candidatos aprovados por fase atual (ficha RH) — 7 indicadores para o painel «Avanço de Contratações». */
+            'contratacoes_funil' => $this->buildContratacoesFunil($vagas),
         ];
     }
 
@@ -851,6 +854,70 @@ class PguDashboardApiController extends Controller
             'points' => $out,
             'note' => 'Série mensal por competência com base no avanço das vagas do recrutamento.',
         ];
+    }
+
+    /**
+     * Funil executivo de contratação: uma posição aprovada por bucket, alinhado a {@see RecrutamentoCandidatoFase::faseAtualLabel()}.
+     * Inclui 7 cards (teste prático reservado até haver campo na ficha; permanece 0).
+     *
+     * @return array{total: int, etapas_monitoradas: int, itens: list<array{key: string, label: string, valor: int, icon: string}>}
+     */
+    private function buildContratacoesFunil(Collection $vagas): array
+    {
+        $order = [
+            'envio_oferta' => ['label' => 'ENVIO DE OFERTA PARA O CANDIDATO', 'icon' => 'send'],
+            'triagem' => ['label' => 'TRIAGEM / AVALIAÇÃO RECRUTAMENTO', 'icon' => 'user-search'],
+            'exame' => ['label' => 'EXAME MÉDICO', 'icon' => 'stethoscope'],
+            'teste_pratico' => ['label' => 'TESTE PRÁTICO', 'icon' => 'clipboard-check'],
+            'treinamento' => ['label' => 'TREINAMENTO INTRODUTÓRIO', 'icon' => 'graduation-cap'],
+            'assinatura' => ['label' => 'ASSINATURA DOCUMENTAL', 'icon' => 'file-signature'],
+            'sgc_e_liberacao' => ['label' => 'SGC E LIBERAÇÃO', 'icon' => 'shield-check'],
+        ];
+
+        $counts = array_fill_keys(array_keys($order), 0);
+
+        foreach ($vagas as $vaga) {
+            $state = $vaga->form_state ?? [];
+            foreach ($this->approvedCandidates($vaga) as $c) {
+                $position = (int) $c['position'];
+                $label = RecrutamentoCandidatoFase::faseAtualLabel($state, $position);
+                $bucket = $this->mapFaseCandidatoToContratacaoBucket($label);
+                if (isset($counts[$bucket])) {
+                    $counts[$bucket]++;
+                }
+            }
+        }
+
+        $itens = [];
+        foreach ($order as $key => $meta) {
+            $itens[] = [
+                'key' => $key,
+                'label' => $meta['label'],
+                'valor' => $counts[$key],
+                'icon' => $meta['icon'],
+            ];
+        }
+
+        $total = array_sum($counts);
+
+        return [
+            'total' => $total,
+            'etapas_monitoradas' => count($order),
+            'itens' => $itens,
+        ];
+    }
+
+    private function mapFaseCandidatoToContratacaoBucket(string $label): string
+    {
+        return match ($label) {
+            'Cadastro — aguardando data de aceite' => 'envio_oferta',
+            'Cadastro iniciado' => 'triagem',
+            'Exame médico' => 'exame',
+            'Aguardando treinamentos', 'Em treinamento' => 'treinamento',
+            'Treinamento concluído' => 'assinatura',
+            'SGC / mobilização', 'Liberação', 'Concluído' => 'sgc_e_liberacao',
+            default => 'triagem',
+        };
     }
 
     /**
