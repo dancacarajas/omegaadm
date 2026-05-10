@@ -879,8 +879,7 @@ class PguDashboardApiController extends Controller
             $state = $vaga->form_state ?? [];
             foreach ($this->approvedCandidates($vaga) as $c) {
                 $position = (int) $c['position'];
-                $label = RecrutamentoCandidatoFase::faseAtualLabel($state, $position);
-                $bucket = $this->mapFaseCandidatoToContratacaoBucket($label);
+                $bucket = $this->contratacaoFunilBucket($state, $position);
                 if (isset($counts[$bucket])) {
                     $counts[$bucket]++;
                 }
@@ -906,16 +905,30 @@ class PguDashboardApiController extends Controller
         ];
     }
 
-    private function mapFaseCandidatoToContratacaoBucket(string $label): string
+    /**
+     * Uma vaga aprovada por cartão do funil: escada exclusiva alinhada à ficha RH, com exame
+     * avaliado só por campos de exame (evita que fallback de treino despeje tudo em «Treinamento»).
+     */
+    private function contratacaoFunilBucket(array $state, int $position): string
     {
-        return match ($label) {
-            'Cadastro — aguardando data de aceite', 'Cadastro iniciado' => 'triagem',
-            'Exame médico' => 'exame',
-            'Aguardando treinamentos', 'Em treinamento' => 'treinamento',
-            'Treinamento concluído' => 'assinatura',
-            'SGC / mobilização', 'Liberação', 'Concluído' => 'sgc_e_liberacao',
-            default => 'triagem',
-        };
+        if (blank($state["candidato_{$position}_data_aceite"] ?? null)) {
+            return 'triagem';
+        }
+        if (! RecrutamentoCandidatoFase::etapaExameMedicoConcluidaSemFallbackTreinamentos($state, $position)) {
+            return 'exame';
+        }
+        if (! RecrutamentoCandidatoFase::etapaTreinamentosConcluida($state, $position)) {
+            return 'treinamento';
+        }
+        if (! RecrutamentoCandidatoFase::etapaAssinaturaConcluida($state, $position)) {
+            return 'assinatura';
+        }
+        if (! RecrutamentoCandidatoFase::etapaSgcConcluida($state, $position)
+            || ! RecrutamentoCandidatoFase::etapaLiberacaoConcluida($state, $position)) {
+            return 'sgc_e_liberacao';
+        }
+
+        return 'sgc_e_liberacao';
     }
 
     /**

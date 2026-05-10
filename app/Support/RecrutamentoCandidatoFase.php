@@ -85,6 +85,30 @@ final class RecrutamentoCandidatoFase
             && (filled($scheduledAt) || filled($trainingEnd));
     }
 
+    /**
+     * Mesmo critério de {@see etapaExameMedicoConcluida}, mas só com campos `exameMedico_*`
+     * (sem fallback para datas de treinamentos). Usado no funil PGU «Contratações» para não
+     * concentrar vagas só em «Treinamento» quando o exame ainda não foi registrado explicitamente.
+     */
+    public static function etapaExameMedicoConcluidaSemFallbackTreinamentos(array $state, int $position): bool
+    {
+        $trainingStart = $state["candidato_{$position}_exameMedico_data_inicio"] ?? null;
+        $trainingEnd = $state["candidato_{$position}_exameMedico_data_fim"] ?? null;
+        $trainingConfirmedAt = $state["candidato_{$position}_exameMedico_data_confirmacao"] ?? null;
+        $scheduledAt = $state["candidato_{$position}_exameMedico_data_agendamento"] ?? null;
+
+        if (blank($trainingEnd) && filled($trainingStart)) {
+            try {
+                $trainingEnd = Carbon::parse($trainingStart)->addDays(5)->toDateString();
+            } catch (\Throwable) {
+                $trainingEnd = null;
+            }
+        }
+
+        return filled($trainingStart) && filled($trainingConfirmedAt)
+            && (filled($scheduledAt) || filled($trainingEnd));
+    }
+
     public static function emTreinamentoSoDataInicio(array $state, int $position): bool
     {
         if (self::treinamentosCapacitacaoEfetiva($state, $position)) {
