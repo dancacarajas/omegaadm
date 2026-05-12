@@ -43,6 +43,8 @@
                 @php
                     auth()->user()?->loadMissing('perfil');
                     $podeModulo = fn (string $m) => auth()->user() && auth()->user()->temQualquerPermissaoNoModulo($m);
+                    $podeSecaoSesmt = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoSesmt($secao);
+                    $temAlgumaSecaoSesmt = fn () => auth()->user() && auth()->user()->temAlgumaSecaoSesmt();
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
                     $veiculosOpen = request()->routeIs('veiculos.*');
@@ -134,7 +136,7 @@
                             </div>
                         </div>
                         @endif
-                        @if ($podeModulo('sesmt'))
+                        @if ($podeModulo('sesmt') && $temAlgumaSecaoSesmt())
                         <div data-menu-group="ssma">
                             <button type="button" data-menu-toggle="ssma" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $ssmaOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                 <i data-lucide="hard-hat" class="h-5 w-5"></i>
@@ -143,34 +145,48 @@
                             </button>
 
                             <div data-menu-panel="ssma" class="{{ $ssmaOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                @if ($podeSecaoSesmt('conformidade'))
                                 <a href="{{ route('sesmt.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.index') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="clipboard-check" class="h-4 w-4"></i>
                                     Controle de Conformidade
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('plano_acao'))
                                 <a href="{{ route('sesmt.plano-acao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.plano-acao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="list-todo" class="h-4 w-4"></i>
                                     Plano de Ação
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('gestao_riscos'))
                                 <a href="{{ route('sesmt.riscos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.riscos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="shield-alert" class="h-4 w-4"></i>
                                     Gestão de Riscos
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('epi_epc'))
                                 <a href="{{ route('sesmt.epi-epc.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.epi-epc.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="construction" class="h-4 w-4"></i>
                                     Gestão de EPI/EPC
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('meio_ambiente'))
                                 <a href="{{ route('sesmt.meio-ambiente.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.meio-ambiente.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="leaf" class="h-4 w-4"></i>
                                     Meio Ambiente
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('registro_mensal'))
                                 <a href="{{ route('sesmt.registros.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros.*') && ! request()->routeIs('sesmt.registros.prazos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="calendar-range" class="h-4 w-4"></i>
                                     Registro Mensal
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('prazos_sla'))
                                 <a href="{{ route('sesmt.registros.prazos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros.prazos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="timer" class="h-4 w-4"></i>
                                     Prazos (SLA)
                                 </a>
+                                @endif
                             </div>
                         </div>
                         @endif

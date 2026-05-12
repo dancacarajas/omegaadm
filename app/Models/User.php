@@ -83,13 +83,162 @@ class User extends Authenticatable
             return false;
         }
 
-        foreach ($matriz as $permitido) {
+        foreach ($matriz as $chave => $permitido) {
+            if ($chave === 'secoes') {
+                continue;
+            }
+            if (is_array($permitido)) {
+                continue;
+            }
             if ((bool) $permitido) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Áreas do menu SSMA (chave persistida em permissoes.sesmt.secoes.*).
+     *
+     * @return array<string, string>
+     */
+    public static function sesmtSecoesDefinicao(): array
+    {
+        return [
+            'conformidade' => 'Controle de Conformidade',
+            'plano_acao' => 'Plano de Ação',
+            'gestao_riscos' => 'Gestão de Riscos',
+            'epi_epc' => 'Gestão de EPI/EPC',
+            'meio_ambiente' => 'Meio Ambiente',
+            'registro_mensal' => 'Registro Mensal',
+            'prazos_sla' => 'Prazos (SLA)',
+        ];
+    }
+
+    /** Nome da rota Laravel → chave de {@see sesmtSecoesDefinicao()} ou null. */
+    public static function sesmtSecaoFromRouteName(?string $routeName): ?string
+    {
+        if ($routeName === null || $routeName === '' || ! str_starts_with($routeName, 'sesmt.')) {
+            return null;
+        }
+
+        if ($routeName === 'sesmt.index' || $routeName === 'sesmt.sync' || str_starts_with($routeName, 'sesmt.tarefas.')) {
+            return 'conformidade';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.plano-acao')) {
+            return 'plano_acao';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.riscos')) {
+            return 'gestao_riscos';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.epi-epc')) {
+            return 'epi_epc';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.meio-ambiente')) {
+            return 'meio_ambiente';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.registros.prazos')) {
+            return 'prazos_sla';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.registros')) {
+            return 'registro_mensal';
+        }
+
+        return null;
+    }
+
+    /**
+     * Acesso à área específica do SSMA (exige permissão no módulo sesmt + área marcada no perfil).
+     * Se permissoes.sesmt.secoes não existir (perfis antigos), todas as áreas ficam liberadas.
+     */
+    public function podeSecaoSesmt(string $secao): bool
+    {
+        if (! array_key_exists($secao, self::sesmtSecoesDefinicao())) {
+            return false;
+        }
+
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('sesmt')) {
+            return false;
+        }
+
+        $perfil = $this->relationLoaded('perfil') ? $this->perfil : $this->perfil()->first();
+
+        if (! $perfil || ! $perfil->ativo) {
+            return false;
+        }
+
+        $secoes = data_get($perfil->permissoes, 'sesmt.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(self::sesmtSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
+
+    /** Há pelo menos uma área do SSMA liberada (para exibir o grupo no menu). */
+    public function temAlgumaSecaoSesmt(): bool
+    {
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('sesmt')) {
+            return false;
+        }
+
+        foreach (array_keys(self::sesmtSecoesDefinicao()) as $secao) {
+            if ($this->podeSecaoSesmt($secao)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function primeiraUrlSesmtPermitida(): ?string
+    {
+        $rotas = [
+            'conformidade' => fn () => route('sesmt.index'),
+            'plano_acao' => fn () => route('sesmt.plano-acao.index'),
+            'gestao_riscos' => fn () => route('sesmt.riscos.index'),
+            'epi_epc' => fn () => route('sesmt.epi-epc.index'),
+            'meio_ambiente' => fn () => route('sesmt.meio-ambiente.index'),
+            'registro_mensal' => fn () => route('sesmt.registros.index'),
+            'prazos_sla' => fn () => route('sesmt.registros.prazos.index'),
+        ];
+
+        foreach ($rotas as $secao => $resolver) {
+            if ($this->podeSecaoSesmt($secao)) {
+                return $resolver();
+            }
+        }
+
+        return null;
     }
 
     public function podeAcaoNoModulo(string $modulo, string $acao): bool
@@ -114,7 +263,7 @@ class User extends Authenticatable
             'dashboard' => fn () => route('dashboard'),
             'rh' => fn () => route('rh.dashboard'),
             'veiculos' => fn () => route('veiculos.index'),
-            'sesmt' => fn () => route('sesmt.index'),
+            'sesmt' => fn () => $this->primeiraUrlSesmtPermitida(),
             'contratos' => fn () => route('contratos.index'),
             'patrimonial' => fn () => route('patrimonial.index'),
             'medicao' => fn () => route('medicao.index'),
@@ -123,8 +272,12 @@ class User extends Authenticatable
         ];
 
         foreach ($mapa as $modulo => $resolver) {
-            if ($this->temQualquerPermissaoNoModulo($modulo)) {
-                return $resolver();
+            if (! $this->temQualquerPermissaoNoModulo($modulo)) {
+                continue;
+            }
+            $url = $resolver();
+            if ($url !== null && $url !== '') {
+                return $url;
             }
         }
 

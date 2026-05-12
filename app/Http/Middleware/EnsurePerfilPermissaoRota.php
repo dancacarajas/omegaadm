@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,18 +26,25 @@ class EnsurePerfilPermissaoRota
             return $next($request);
         }
 
-        if ($user->temQualquerPermissaoNoModulo($modulo)) {
-            return $next($request);
+        if (! $user->temQualquerPermissaoNoModulo($modulo)) {
+            if ($routeName === 'dashboard') {
+                $destino = $user->urlInicialAposLogin();
+                if ($destino !== null && $destino !== route('dashboard')) {
+                    return redirect()->to($destino);
+                }
+            }
+
+            abort(403, 'Seu perfil não tem permissão para acessar este módulo.');
         }
 
-        if ($routeName === 'dashboard') {
-            $destino = $user->urlInicialAposLogin();
-            if ($destino !== null && $destino !== route('dashboard')) {
-                return redirect()->to($destino);
+        if ($modulo === 'sesmt') {
+            $secao = User::sesmtSecaoFromRouteName($routeName);
+            if ($secao !== null && ! $user->podeSecaoSesmt($secao)) {
+                abort(403, 'Seu perfil não tem acesso a esta área do SSMA.');
             }
         }
 
-        abort(403, 'Seu perfil não tem permissão para acessar este módulo.');
+        return $next($request);
     }
 
     private function moduloParaNomeRota(?string $name): ?string

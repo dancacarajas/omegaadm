@@ -25,4 +25,35 @@ class Perfil extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Se o JSON do perfil ainda não tem sesmt.secoes, considera todas as áreas liberadas (compatibilidade).
+     */
+    public function permiteSecaoSesmt(string $secao): bool
+    {
+        if (! array_key_exists($secao, User::sesmtSecoesDefinicao())) {
+            return false;
+        }
+
+        $secoes = data_get($this->permissoes, 'sesmt.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(User::sesmtSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
 }

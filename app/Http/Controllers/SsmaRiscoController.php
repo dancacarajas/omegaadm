@@ -213,9 +213,9 @@ class SsmaRiscoController extends Controller
     private function authorizeView(): void
     {
         abort_unless(
-            auth()->user()?->temQualquerPermissaoNoModulo('sesmt'),
+            auth()->user()?->podeSecaoSesmt('gestao_riscos'),
             403,
-            'Seu perfil não tem acesso ao módulo SSMA.'
+            'Seu perfil não tem acesso a esta área do SSMA.'
         );
     }
 

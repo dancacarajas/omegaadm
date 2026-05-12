@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Perfil;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -60,6 +61,8 @@ class PerfilController extends Controller
             'perfil' => new Perfil(['ativo' => true]),
             'modulos' => self::modulos(),
             'acoes' => self::acoes(),
+            'sesmtSecoes' => User::sesmtSecoesDefinicao(),
+            'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario(new Perfil(['ativo' => true])),
         ]);
     }
 
@@ -78,6 +81,7 @@ class PerfilController extends Controller
             'perfil' => $perfi,
             'modulos' => self::modulos(),
             'acoes' => self::acoes(),
+            'sesmtSecoes' => User::sesmtSecoesDefinicao(),
         ]);
     }
 
@@ -87,6 +91,8 @@ class PerfilController extends Controller
             'perfil' => $perfi,
             'modulos' => self::modulos(),
             'acoes' => self::acoes(),
+            'sesmtSecoes' => User::sesmtSecoesDefinicao(),
+            'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario($perfi),
         ]);
     }
 
@@ -133,6 +139,26 @@ class PerfilController extends Controller
             }
         }
 
+        $normalized['sesmt']['secoes'] = [];
+        foreach (array_keys(User::sesmtSecoesDefinicao()) as $key) {
+            $normalized['sesmt']['secoes'][$key] = (bool) data_get($permissoes, "sesmt.secoes.{$key}");
+        }
+
         return $normalized;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function sesmtSecoesValoresFormulario(Perfil $perfil): array
+    {
+        $stored = data_get($perfil->permissoes, 'sesmt.secoes');
+        $legacy = ! is_array($stored);
+        $out = [];
+        foreach (array_keys(User::sesmtSecoesDefinicao()) as $key) {
+            $out[$key] = $legacy ? true : (bool) data_get($stored, $key, false);
+        }
+
+        return $out;
     }
 }

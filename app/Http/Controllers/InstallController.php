@@ -203,6 +203,7 @@ class InstallController extends Controller
         foreach ($modules as $module) {
             $permissoes[$module] = ['visualizar' => true, 'criar' => true, 'editar' => true, 'excluir' => true];
         }
+        $permissoes['sesmt']['secoes'] = array_fill_keys(array_keys(User::sesmtSecoesDefinicao()), true);
 
         return $permissoes;
     }
