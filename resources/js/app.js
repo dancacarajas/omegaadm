@@ -18,20 +18,28 @@ Alpine.start();
 document.addEventListener('DOMContentLoaded', () => {
     initAppLucideIcons();
 
-    document.querySelectorAll('[data-apex-chart]').forEach((element) => {
-        const configElement = document.querySelector(element.getAttribute('data-apex-chart'));
+    const initApexCharts = () => {
+        document.querySelectorAll('[data-apex-chart]').forEach((element) => {
+            const configElement = document.querySelector(element.getAttribute('data-apex-chart'));
 
-        if (!configElement) {
-            return;
-        }
+            if (!configElement) {
+                return;
+            }
 
-        try {
-            const options = JSON.parse(configElement.textContent);
-            const chart = new ApexCharts(element, options);
-            chart.render();
-        } catch (error) {
-            console.error('Erro ao renderizar gráfico ApexCharts', error);
-        }
+            try {
+                const options = JSON.parse(configElement.textContent);
+                const chart = new ApexCharts(element, options);
+                chart.render();
+            } catch (error) {
+                console.error('Erro ao renderizar gráfico ApexCharts', error);
+            }
+        });
+    };
+
+    // Um frame extra: em alguns hosts o primeiro paint ainda não aplica largura do grid/flex
+    // e o Apex mede 0px. requestAnimationFrame adia a montagem até o layout estar estável.
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(initApexCharts);
     });
 
     document.querySelectorAll('[data-menu-toggle]').forEach((toggle) => {

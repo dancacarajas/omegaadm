@@ -14,14 +14,14 @@
     @endphp
 
     <div class="mb-8 overflow-hidden rounded-2xl border border-[#E0E0E0] bg-white shadow-md">
-        <div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
-            <div class="flex min-w-0 flex-1 gap-5">
+        <div class="rh-pe-hero-wrap flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
+            <div class="rh-pe-hero min-w-0 flex-1">
                 <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10">
                     <i data-lucide="users-round" class="h-8 w-8" stroke-width="1.5"></i>
                 </div>
-                <div class="min-w-0 pt-0.5">
+                <div class="rh-pe-hero__text pt-0.5">
                     <h2 class="text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem]">Painel Executivo de RH</h2>
-                    <p class="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">Resumo mensal dos principais indicadores de gestão de pessoas</p>
+                    <p class="mt-2 text-sm leading-relaxed text-zinc-500">Resumo mensal dos principais indicadores de gestão de pessoas</p>
                 </div>
             </div>
             @unless ($semContratosAtivos ?? false)
@@ -94,9 +94,9 @@
             </div>
 
             <div class="px-6 pb-10 pt-8 sm:px-8">
-                <div class="grid gap-10 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] xl:items-start">
+                <div class="rh-pe-main">
                     {{-- Coluna esquerda: gráfico + faixa circular --}}
-                    <div class="flex flex-col gap-8">
+                    <div class="flex min-w-0 flex-col gap-8">
                         @if ($chartResumoPeriodo)
                             <x-rh.chart-card
                                 eyebrow="Movimentação"
@@ -104,7 +104,7 @@
                                 subtitle="Efetivo no fechamento anterior ao período, entradas, saídas e posição ao final do intervalo analisado."
                             >
                                 <div class="rounded-xl bg-zinc-50/80 p-4">
-                                    <div data-apex-chart="#chart-rh-resumo-periodo" class="min-h-[300px]"></div>
+                                    <div data-apex-chart="#chart-rh-resumo-periodo" class="rh-pe-chart-host min-h-[300px]"></div>
                                 </div>
                             </x-rh.chart-card>
                         @endif
@@ -119,8 +119,8 @@
                     </div>
 
                     {{-- Coluna direita: 2x2 + leitura + pontos --}}
-                    <div class="flex flex-col gap-8">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <div class="flex min-w-0 flex-col gap-8">
+                        <div class="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                             @foreach ($kpisRh ?? [] as $kpi)
                                 <x-rh.metric-tile :label="$kpi['title']" :value="$kpi['value']" :icon="$kpi['icon']" />
                             @endforeach
