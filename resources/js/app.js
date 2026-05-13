@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const options = JSON.parse(configElement.textContent);
+
                 const chart = new ApexCharts(element, options);
                 chart.render();
             } catch (error) {

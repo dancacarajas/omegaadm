@@ -56,6 +56,7 @@
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                     $ssmaOpen = request()->routeIs('sesmt.*');
+                    $ssmaIndicadoresMensaisOpen = request()->routeIs('sesmt.indicadores-mensais.*');
                 @endphp
 
                 <nav class="flex-1 px-4 py-5 text-sm">
@@ -200,6 +201,21 @@
                                     <i data-lucide="timer" class="h-4 w-4"></i>
                                     Prazos (SLA)
                                 </a>
+                                @endif
+                                @if ($podeSecaoSesmt('indicadores_mensais'))
+                                <div data-menu-group="ssma-indicadores-mensais">
+                                    <button type="button" data-menu-toggle="ssma-indicadores-mensais" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $ssmaIndicadoresMensaisOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                                        <span class="flex-1 text-left">Indicadores mensais</span>
+                                        <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $ssmaIndicadoresMensaisOpen ? 'rotate-180' : '' }}" data-menu-chevron="ssma-indicadores-mensais"></i>
+                                    </button>
+                                    <div data-menu-panel="ssma-indicadores-mensais" class="{{ $ssmaIndicadoresMensaisOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                        <a href="{{ route('sesmt.indicadores-mensais.painel-executivo') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.indicadores-mensais.painel-executivo') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                                            Painel Executivo de SSMA
+                                        </a>
+                                    </div>
+                                </div>
                                 @endif
                             </div>
                         </div>

@@ -4,12 +4,11 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
-use App\Models\Contrato;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
@@ -113,6 +112,7 @@ class User extends Authenticatable
             'meio_ambiente' => 'Meio Ambiente',
             'registro_mensal' => 'Registro Mensal',
             'prazos_sla' => 'Prazos (SLA)',
+            'indicadores_mensais' => 'Indicadores mensais',
         ];
     }
 
@@ -149,6 +149,10 @@ class User extends Authenticatable
 
         if (str_starts_with($routeName, 'sesmt.registros')) {
             return 'registro_mensal';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.indicadores-mensais')) {
+            return 'indicadores_mensais';
         }
 
         return null;
@@ -197,6 +201,10 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($secao === 'indicadores_mensais' && ! array_key_exists('indicadores_mensais', $secoes)) {
+            return true;
+        }
+
         return (bool) ($secoes[$secao] ?? false);
     }
 
@@ -230,6 +238,7 @@ class User extends Authenticatable
             'meio_ambiente' => fn () => route('sesmt.meio-ambiente.index'),
             'registro_mensal' => fn () => route('sesmt.registros.index'),
             'prazos_sla' => fn () => route('sesmt.registros.prazos.index'),
+            'indicadores_mensais' => fn () => route('sesmt.indicadores-mensais.painel-executivo'),
         ];
 
         foreach ($rotas as $secao => $resolver) {

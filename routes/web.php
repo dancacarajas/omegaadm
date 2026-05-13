@@ -25,6 +25,7 @@ use App\Http\Controllers\Rh\RecrutamentoController;
 use App\Http\Controllers\Rh\RecrutamentoMassUpdateController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\SsmaEpiEpcController;
+use App\Http\Controllers\SsmaIndicadoresMensaisController;
 use App\Http\Controllers\SsmaMeioAmbienteController;
 use App\Http\Controllers\SsmaPlanoAcaoController;
 use App\Http\Controllers\SsmaRegistroMensalController;
@@ -209,6 +210,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::resource('veiculos', VeiculoController::class);
     Route::put('/veiculos/mobilizacao/{mobilizacao}', [VeiculoController::class, 'updateMobilizacao'])->name('veiculos.mobilizacao.update');
     Route::get('/sesmt', [SesmtController::class, 'index'])->name('sesmt.index');
+    Route::get('/sesmt/indicadores-mensais/painel-executivo', [SsmaIndicadoresMensaisController::class, 'painelExecutivo'])
+        ->name('sesmt.indicadores-mensais.painel-executivo');
+    Route::get('/sesmt/indicadores-mensais', [SsmaIndicadoresMensaisController::class, 'index'])->name('sesmt.indicadores-mensais.index');
     Route::get('/sesmt/plano-acao', [SsmaPlanoAcaoController::class, 'index'])->name('sesmt.plano-acao.index');
     Route::get('/sesmt/plano-acao/novo', [SsmaPlanoAcaoController::class, 'create'])->name('sesmt.plano-acao.create');
     Route::post('/sesmt/plano-acao', [SsmaPlanoAcaoController::class, 'store'])->name('sesmt.plano-acao.store');
