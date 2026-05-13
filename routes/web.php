@@ -20,25 +20,27 @@ use App\Http\Controllers\Rh\ColaboradorController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\FrequenciaController;
 use App\Http\Controllers\Rh\HorarioEscalaController;
+use App\Http\Controllers\Rh\IndicadoresMensaisController;
 use App\Http\Controllers\Rh\RecrutamentoController;
 use App\Http\Controllers\Rh\RecrutamentoMassUpdateController;
 use App\Http\Controllers\SesmtController;
-use App\Http\Controllers\SsmaPlanoAcaoController;
 use App\Http\Controllers\SsmaEpiEpcController;
 use App\Http\Controllers\SsmaMeioAmbienteController;
-use App\Http\Controllers\SsmaRiscoController;
+use App\Http\Controllers\SsmaPlanoAcaoController;
 use App\Http\Controllers\SsmaRegistroMensalController;
 use App\Http\Controllers\SsmaRegistroMensalPrazoController;
+use App\Http\Controllers\SsmaRiscoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\VeiculoFrotaController;
 use App\Http\Controllers\VeiculoManutencaoController;
 use App\Http\Controllers\VeiculoTelemetriaController;
 use App\Services\PguPowerPointExportService;
-use Illuminate\Http\Request;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -93,7 +95,7 @@ Route::get('/debug-pgu-last-export-files', function () {
         ]);
     }
 
-    $dirs = collect(\Illuminate\Support\Facades\File::directories($base))
+    $dirs = collect(File::directories($base))
         ->sortByDesc(function (string $dir) {
             return @filemtime($dir) ?: 0;
         })
@@ -107,7 +109,7 @@ Route::get('/debug-pgu-last-export-files', function () {
     }
 
     $latest = $dirs->first();
-    $files = collect(\Illuminate\Support\Facades\File::files($latest))
+    $files = collect(File::files($latest))
         ->map(function ($file) {
             $path = $file->getPathname();
             $dimensions = null;
@@ -146,7 +148,7 @@ Route::get('/debug-pgu-run-export', function (Request $request, PguPowerPointExp
 
     $pptx = $service->export($debugRequest);
     $dir = dirname($pptx);
-    $files = collect(\Illuminate\Support\Facades\File::files($dir))
+    $files = collect(File::files($dir))
         ->map(function ($file) {
             $path = $file->getPathname();
             $isPng = strtolower($file->getExtension()) === 'png';
@@ -293,5 +295,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');
         Route::resource('efetivo', ColaboradorController::class)
             ->parameters(['efetivo' => 'colaborador']);
+        Route::get('indicadores-mensais/painel-executivo', [IndicadoresMensaisController::class, 'painelExecutivo'])->name('indicadores-mensais.painel-executivo');
+        Route::get('indicadores-mensais', [IndicadoresMensaisController::class, 'index'])->name('indicadores-mensais.index');
     });
 });

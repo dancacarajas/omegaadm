@@ -47,6 +47,7 @@
                     $temAlgumaSecaoSesmt = fn () => auth()->user() && auth()->user()->temAlgumaSecaoSesmt();
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
+                    $indicadoresMensaisOpen = request()->routeIs('rh.indicadores-mensais.*');
                     $veiculosOpen = request()->routeIs('veiculos.*');
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
@@ -105,6 +106,19 @@
                                         <a href="{{ route('rh.horarios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.horarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-range" class="h-4 w-4"></i>
                                             Cadastro de horários
+                                        </a>
+                                    </div>
+                                </div>
+                                <div data-menu-group="indicadores-mensais">
+                                    <button type="button" data-menu-toggle="indicadores-mensais" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $indicadoresMensaisOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                                        <span class="flex-1 text-left">Indicadores mensais</span>
+                                        <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $indicadoresMensaisOpen ? 'rotate-180' : '' }}" data-menu-chevron="indicadores-mensais"></i>
+                                    </button>
+                                    <div data-menu-panel="indicadores-mensais" class="{{ $indicadoresMensaisOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                        <a href="{{ route('rh.indicadores-mensais.painel-executivo') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.indicadores-mensais.painel-executivo') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                                            Painel Executivo de RH
                                         </a>
                                     </div>
                                 </div>

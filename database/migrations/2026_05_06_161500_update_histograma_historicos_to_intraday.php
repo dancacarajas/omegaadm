@@ -13,10 +13,14 @@ return new class extends Migration
             $table->dateTime('snapshot_at')->nullable()->after('snapshot_date');
         });
 
+        $snapshotExpr = Schema::getConnection()->getDriverName() === 'sqlite'
+            ? "snapshot_date || ' 12:00:00'"
+            : "CONCAT(snapshot_date, ' 12:00:00')";
+
         DB::table('contrato_histograma_historicos')
             ->whereNull('snapshot_at')
             ->update([
-                'snapshot_at' => DB::raw("CONCAT(snapshot_date, ' 12:00:00')"),
+                'snapshot_at' => DB::raw($snapshotExpr),
             ]);
 
         Schema::table('contrato_histograma_historicos', function (Blueprint $table) {

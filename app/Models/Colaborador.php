@@ -4,7 +4,9 @@ namespace App\Models;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+
 class Colaborador extends Model
 {
     protected $table = 'colaboradores';
@@ -107,6 +109,11 @@ class Colaborador extends Model
     public function horarioEscala()
     {
         return $this->belongsTo(HorarioEscala::class, 'horario_escala_id');
+    }
+
+    public function recrutamentoVaga(): BelongsTo
+    {
+        return $this->belongsTo(RecrutamentoVaga::class, 'recrutamento_vaga_id');
     }
 
     /**
