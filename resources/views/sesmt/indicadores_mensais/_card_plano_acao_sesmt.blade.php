@@ -7,11 +7,11 @@
     $pontosPlanoAcao = $card['pontosPlanoAcao'] ?? [];
 @endphp
 
-<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
-    <div class="min-w-0 flex-1">
+<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+    <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,18rem)]">
         <div class="flex flex-wrap items-start gap-4 sm:gap-6">
             <div class="shrink-0 text-5xl font-black tabular-nums leading-none text-[#600020] sm:text-6xl" aria-hidden="true">{{ $numeroDestaque }}</div>
-            <div class="min-w-0 flex-1 pt-1">
+            <div class="min-w-0 max-w-2xl flex-1 basis-[min(100%,20rem)] pt-1 sm:basis-auto">
                 <div class="flex gap-4">
                     <div class="relative hidden h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10 sm:flex">
                         <i data-lucide="list-todo" class="h-7 w-7" stroke-width="1.5"></i>
@@ -19,9 +19,9 @@
                             <i data-lucide="shield-check" class="h-3.5 w-3.5 text-[#600020]" stroke-width="2"></i>
                         </span>
                     </div>
-                    <div class="min-w-0">
-                        <h2 class="text-xl font-bold uppercase tracking-tight text-[#600020] sm:text-2xl">Plano de ação de SESMT</h2>
-                        <p class="mt-2 text-sm leading-relaxed text-zinc-500">Acompanhamento das ações definidas para garantir melhorias contínuas em segurança, saúde e meio ambiente.</p>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-balance text-xl font-bold uppercase tracking-tight text-[#600020] sm:text-2xl">Plano de ação de SESMT</h2>
+                        <p class="mt-2 max-w-prose text-sm leading-relaxed text-zinc-500">Acompanhamento das ações definidas para garantir melhorias contínuas em segurança, saúde e meio ambiente.</p>
                         <div class="mt-3 flex max-w-md items-center gap-2">
                             <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#600020]" aria-hidden="true"></span>
                             <div class="h-px min-w-0 flex-1 bg-[#600020]"></div>
@@ -31,7 +31,7 @@
             </div>
         </div>
     </div>
-    <div class="grid w-full shrink-0 grid-cols-2 gap-3 lg:max-w-[560px] lg:grid-cols-4">
+    <div class="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-[560px]">
         <div class="rounded-xl border border-[#E0E0E0] bg-white px-3 py-3 shadow-sm">
             <div class="flex items-center gap-2">
                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>
@@ -72,7 +72,7 @@
 </div>
 
 <div class="px-6 py-8 sm:px-8 sm:py-10">
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9">
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-9">
         @foreach ($metricas as $m)
             @if (! empty($m['highlight']))
                 <div class="flex min-h-[7.5rem] flex-col items-center justify-center gap-1 rounded-xl bg-[#600020] px-2 py-4 text-center text-white shadow-md sm:min-h-[8rem]">

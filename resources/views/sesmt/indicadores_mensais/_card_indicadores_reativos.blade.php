@@ -9,15 +9,15 @@
     $pontosReativos = $card['pontosReativos'] ?? [];
 @endphp
 
-<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
-    <div class="min-w-0 flex-1">
+<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+    <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,18rem)]">
         <div class="flex gap-5">
             <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10">
                 <i data-lucide="shield-alert" class="h-9 w-9" stroke-width="1.5"></i>
             </div>
-            <div class="min-w-0 pt-0.5">
-                <h2 class="text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem]">Indicadores Reativos de Segurança</h2>
-                <p class="mt-2 text-sm leading-relaxed text-zinc-500">Ocorrências registradas e impactos de segurança no período.</p>
+            <div class="min-w-0 max-w-2xl flex-1 pt-0.5">
+                <h2 class="text-balance text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem]">Indicadores Reativos de Segurança</h2>
+                <p class="mt-2 max-w-prose text-sm leading-relaxed text-zinc-500">Ocorrências registradas e impactos de segurança no período.</p>
                 <div class="mt-3 flex max-w-md items-center gap-2">
                     <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#600020]" aria-hidden="true"></span>
                     <div class="h-px min-w-0 flex-1 bg-[#600020]"></div>
@@ -25,7 +25,7 @@
             </div>
         </div>
     </div>
-    <div class="grid w-full shrink-0 grid-cols-2 gap-3 lg:max-w-[560px] lg:grid-cols-4">
+    <div class="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-[560px]">
         <div class="rounded-xl border border-[#E0E0E0] bg-white px-3 py-3 shadow-sm">
             <div class="flex items-center gap-2">
                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>

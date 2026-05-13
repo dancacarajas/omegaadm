@@ -21,8 +21,8 @@
 
     <div class="mb-8 rounded-2xl bg-zinc-100/95 p-3 shadow-sm sm:p-4">
         <div id="sesmt-card-painel-executivo" class="overflow-hidden rounded-2xl border border-[#E0E0E0] bg-white shadow-md">
-            <div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0 flex-1">
+            <div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+                <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,22rem)]">
                     <div class="flex gap-5">
                         <div class="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10">
                             <i data-lucide="hard-hat" class="h-9 w-9" stroke-width="1.5"></i>
@@ -30,14 +30,14 @@
                                 <i data-lucide="cross" class="h-3.5 w-3.5 text-[#600020]" stroke-width="2.5"></i>
                             </span>
                         </div>
-                        <div class="min-w-0 pt-0.5">
-                            <h2 class="text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem]">Painel Executivo de SESMT</h2>
-                            <p class="mt-2 text-sm leading-relaxed text-zinc-500">Resumo mensal dos principais indicadores de saúde, segurança e conformidade.</p>
+                        <div class="min-w-0 max-w-2xl flex-1 pt-0.5">
+                            <h2 class="text-balance text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem]">Painel Executivo <span class="whitespace-nowrap">de SESMT</span></h2>
+                            <p class="mt-2 max-w-prose text-sm leading-relaxed text-zinc-500">Resumo mensal dos principais indicadores de saúde, segurança e conformidade.</p>
                         </div>
                     </div>
                 </div>
                 @unless ($semContratosAtivos ?? false)
-                    <div class="w-full shrink-0 rounded-xl border border-[#E0E0E0] bg-white shadow-sm lg:max-w-[540px]">
+                    <div class="w-full shrink-0 rounded-xl border border-[#E0E0E0] bg-white shadow-sm xl:max-w-[540px]">
                         <div class="grid grid-cols-2 divide-x divide-[#E0E0E0] sm:grid-cols-4 sm:divide-y-0">
                             <div class="flex items-center gap-3 px-4 py-3.5">
                                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>
@@ -176,13 +176,13 @@
                         </aside>
 
                         <div class="min-w-0 flex-1">
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+                            <div class="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
                                 @foreach ($cartoesPainel as $card)
                                     <x-sesmt.painel-metric-card
                                         :icon="$card['icon']"
                                         :value="$card['value']"
                                         :label="$card['label']"
-                                        class="min-h-[10.25rem] sm:min-h-[10.75rem]"
+                                        class="min-h-[10.25rem] min-w-0 sm:min-h-[10.75rem]"
                                     />
                                 @endforeach
                             </div>
