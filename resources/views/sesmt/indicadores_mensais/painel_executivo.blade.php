@@ -19,11 +19,11 @@
         $pontosAtencao = $pontosAtencao ?? [];
     @endphp
 
-    <div class="mb-8 rounded-2xl bg-zinc-100/95 p-3 shadow-sm sm:p-4">
-        <div id="sesmt-card-painel-executivo" class="overflow-hidden rounded-2xl border border-[#E0E0E0] bg-white shadow-md">
-            <div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
-                <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,22rem)]">
-                    <div class="flex gap-5">
+    <div class="mb-8 max-w-full rounded-2xl bg-zinc-100/95 p-3 shadow-sm sm:p-4">
+        <div id="sesmt-card-painel-executivo" class="max-w-full overflow-hidden rounded-2xl border border-[#E0E0E0] bg-white shadow-md">
+            <div class="flex min-w-0 flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+                <div class="min-w-0 flex-1 basis-0">
+                    <div class="flex min-w-0 w-full gap-5">
                         <div class="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10">
                             <i data-lucide="hard-hat" class="h-9 w-9" stroke-width="1.5"></i>
                             <span class="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ring-2 ring-white">
@@ -37,7 +37,7 @@
                     </div>
                 </div>
                 @unless ($semContratosAtivos ?? false)
-                    <div class="w-full shrink-0 rounded-xl border border-[#E0E0E0] bg-white shadow-sm xl:max-w-[540px]">
+                    <div class="w-full max-w-full shrink-0 rounded-xl border border-[#E0E0E0] bg-white shadow-sm xl:w-auto xl:max-w-[min(100%,540px)]">
                         <div class="grid grid-cols-2 divide-x divide-[#E0E0E0] sm:grid-cols-4 sm:divide-y-0">
                             <div class="flex items-center gap-3 px-4 py-3.5">
                                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>
@@ -103,8 +103,8 @@
                 </form>
 
                 <div class="px-6 py-8 sm:px-8 sm:py-10">
-                    <div class="flex flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
-                        <aside class="w-full shrink-0 rounded-[14px] border border-[#E0E0E0] bg-white p-5 shadow-sm xl:max-w-[20rem] xl:p-6">
+                    <div class="flex min-w-0 flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
+                        <aside class="w-full max-w-full shrink-0 rounded-[14px] border border-[#E0E0E0] bg-white p-5 shadow-sm xl:w-auto xl:max-w-[20rem] xl:p-6">
                             <div class="flex items-start gap-3">
                                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-sm">
                                     <i data-lucide="chart-column-increasing" class="h-5 w-5" stroke-width="1.5"></i>
@@ -175,7 +175,7 @@
                             </div>
                         </aside>
 
-                        <div class="min-w-0 flex-1">
+                        <div class="min-w-0 flex-1 basis-0">
                             <div class="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
                                 @foreach ($cartoesPainel as $card)
                                     <x-sesmt.painel-metric-card

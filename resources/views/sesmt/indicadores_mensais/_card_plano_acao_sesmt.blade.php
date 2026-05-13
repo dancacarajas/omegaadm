@@ -7,9 +7,9 @@
     $pontosPlanoAcao = $card['pontosPlanoAcao'] ?? [];
 @endphp
 
-<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
-    <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,18rem)]">
-        <div class="flex flex-wrap items-start gap-4 sm:gap-6">
+<div class="flex min-w-0 flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+    <div class="min-w-0 flex-1 basis-0">
+        <div class="flex min-w-0 w-full flex-wrap items-start gap-4 sm:gap-6">
             <div class="shrink-0 text-5xl font-black tabular-nums leading-none text-[#600020] sm:text-6xl" aria-hidden="true">{{ $numeroDestaque }}</div>
             <div class="min-w-0 max-w-2xl flex-1 basis-[min(100%,20rem)] pt-1 sm:basis-auto">
                 <div class="flex gap-4">
@@ -31,7 +31,7 @@
             </div>
         </div>
     </div>
-    <div class="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-[560px]">
+    <div class="grid w-full max-w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:w-auto xl:max-w-[560px]">
         <div class="rounded-xl border border-[#E0E0E0] bg-white px-3 py-3 shadow-sm">
             <div class="flex items-center gap-2">
                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>

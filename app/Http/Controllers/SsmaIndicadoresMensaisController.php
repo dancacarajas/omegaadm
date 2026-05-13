@@ -2058,6 +2058,13 @@ class SsmaIndicadoresMensaisController extends Controller
             ->whereYear('competencia', $compCarbon->year)
             ->whereMonth('competencia', $compCarbon->month)
             ->where(function (Builder $w) use ($tokens) {
+                // Há no máximo um registro por competência no fluxo atual; linhas provisionadas
+                // ou antigas podem vir sem «contrato». Sem este ramo, o painel ignora Kaizen/treinos
+                // ao filtrar só por tokens do contrato selecionado.
+                $w->where(function (Builder $semContrato) {
+                    $semContrato->whereNull('contrato')
+                        ->orWhereRaw("TRIM(COALESCE(contrato, '')) = ''");
+                });
                 foreach ($tokens as $t) {
                     $w->orWhere(function (Builder $x) use ($t) {
                         $x->whereRaw('TRIM(COALESCE(contrato, \'\')) = ?', [$t])

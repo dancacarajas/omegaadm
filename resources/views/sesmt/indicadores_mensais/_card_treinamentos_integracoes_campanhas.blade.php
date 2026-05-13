@@ -13,9 +13,9 @@
     $pontosTreinos = $card['pontosTreinos'] ?? [];
 @endphp
 
-<div class="flex flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
-    <div class="min-w-0 w-full flex-1 xl:min-w-[min(100%,18rem)]">
-        <div class="flex gap-5">
+<div class="flex min-w-0 flex-col gap-8 border-b border-zinc-100 bg-gradient-to-br from-white to-zinc-50/60 px-6 py-8 sm:px-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+    <div class="min-w-0 flex-1 basis-0">
+        <div class="flex min-w-0 w-full gap-5">
             <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#600020] text-white shadow-md ring-4 ring-[#600020]/10">
                 <i data-lucide="graduation-cap" class="h-9 w-9" stroke-width="1.5"></i>
             </div>
@@ -29,7 +29,7 @@
             </div>
         </div>
     </div>
-    <div class="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-[560px]">
+    <div class="grid w-full max-w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-4 xl:w-auto xl:max-w-[560px]">
         <div class="rounded-xl border border-[#E0E0E0] bg-white px-3 py-3 shadow-sm">
             <div class="flex items-center gap-2">
                 <i data-lucide="file-text" class="h-4 w-4 shrink-0 text-[#600020]" stroke-width="1.5"></i>

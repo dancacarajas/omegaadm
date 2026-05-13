@@ -373,7 +373,7 @@
                     </div>
                 </header>
 
-                <main class="px-4 py-6 sm:px-6 lg:px-8">
+                <main class="min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
                     @if (session('success'))
                         <div class="mb-5 flex items-center gap-3 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-3 text-sm font-semibold text-brand-burgundy shadow-sm">
                             <i data-lucide="circle-check" class="h-5 w-5"></i>
