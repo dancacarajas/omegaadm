@@ -229,9 +229,21 @@
                             <td class="max-w-xs truncate px-5 py-3 text-brand-gray" title="{{ $registro->descricao }}">{{ Str::limit($registro->descricao, 60) }}</td>
                             <td class="whitespace-nowrap px-5 py-3 text-brand-gray">{{ $registro->created_at->format('d/m/Y H:i') }}</td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('sesmt.registros-tst.registros.show', $registro) }}" class="inline-flex h-9 items-center rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                                    Ver
-                                </a>
+                                <div class="inline-flex items-center justify-end gap-1">
+                                    <a href="{{ route('sesmt.registros-tst.registros.show', $registro) }}" class="inline-flex h-9 items-center rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black transition hover:border-brand-burgundy hover:text-brand-burgundy">
+                                        Ver
+                                    </a>
+                                    @if ($podeEditar)
+                                        <form method="POST" action="{{ route('sesmt.registros-tst.registros.destroy', $registro) }}" class="inline" onsubmit="return confirm('Excluir este registro permanentemente?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-800 transition hover:bg-red-100" title="Excluir registro">
+                                                <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+                                                Excluir
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
