@@ -1,13 +1,11 @@
 @php
-    use Illuminate\Support\Facades\Storage;
-
     $dataVal = old('data', $registro->data?->format('Y-m-d') ?? now()->format('Y-m-d'));
     $atividadeId = old('ssma_tst_atividade_id', $registro->ssma_tst_atividade_id);
     $colaboradorId = old('colaborador_id', $registro->colaborador_id);
     $descricaoVal = old('descricao', $registro->descricao);
     $fotosExistentes = $registro->exists ? $registro->fotos->count() : 0;
     $fotosExistentesUrls = $registro->exists
-        ? $registro->fotos->map(fn ($f) => Storage::disk('public')->url($f->arquivo_path))->all()
+        ? $registro->fotos->map(fn ($f) => $f->urlPublica())->filter()->values()->all()
         : [];
 @endphp
 

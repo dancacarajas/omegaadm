@@ -33,7 +33,7 @@ class SsmaTstRegistroFoto extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->arquivo_path);
+        return asset('storage/'.ltrim($this->arquivo_path, '/'));
     }
 
     public function removerArquivo(): void

@@ -64,14 +64,15 @@ final class SsmaTstRegistroIndicadores
     }
 
     /**
-     * Últimos N meses com contagem de registros (respeita filtros exceto data).
+     * Janeiro a dezembro do ano informado (respeita filtros da query, exceto data).
      *
      * @return list<array{rotulo: string, competencia: string, total: int}>
      */
-    public function serieMensal(int $meses = 12): array
+    public function serieMensal(?int $ano = null): array
     {
-        $fim = now()->endOfMonth();
-        $inicio = $fim->copy()->subMonths($meses - 1)->startOfMonth();
+        $ano ??= (int) now()->format('Y');
+        $inicio = Carbon::create($ano, 1, 1)->startOfMonth();
+        $fim = Carbon::create($ano, 12, 31)->endOfMonth();
 
         $driver = DB::connection()->getDriverName();
         $exprCompetencia = $driver === 'sqlite'

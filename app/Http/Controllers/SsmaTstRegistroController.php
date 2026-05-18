@@ -33,7 +33,7 @@ class SsmaTstRegistroController extends Controller
             ->withQueryString();
 
         $cartoes = $indicadores->cartoes();
-        $serieMensal = $indicadores->serieMensal(12);
+        $serieMensal = $indicadores->serieMensal(2026);
         $porAtividade = $indicadores->porAtividade();
         $topColaboradores = $indicadores->topColaboradores();
 

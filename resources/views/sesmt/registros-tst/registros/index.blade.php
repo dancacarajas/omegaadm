@@ -29,7 +29,7 @@
         @if ($filtrosAtivos)
             Os indicadores e gráficos abaixo refletem os <strong class="text-brand-black">filtros aplicados</strong>.
         @else
-            Indicadores consolidados e tendência dos últimos 12 meses.
+            Indicadores consolidados e evolução mensal de 2026.
         @endif
     </p>
 
@@ -94,7 +94,7 @@
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h2 class="text-sm font-bold uppercase tracking-wide text-brand-gray">Evolução mensal</h2>
-                    <p class="mt-1 text-xs text-brand-gray">Registros por competência — últimos 12 meses{{ $filtrosAtivos ? ' (demais filtros aplicados)' : '' }}.</p>
+                    <p class="mt-1 text-xs text-brand-gray">Registros por competência — janeiro a dezembro de 2026{{ $filtrosAtivos ? ' (demais filtros aplicados)' : '' }}.</p>
                 </div>
             </div>
             <div class="mt-6 flex h-52 items-end gap-1 overflow-x-auto pb-6 sm:gap-2">
