@@ -12,11 +12,13 @@ class SsmaTstAtividade extends Model
     protected $fillable = [
         'nome',
         'ativo',
+        'exibir_no_app',
         'ordem',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
+        'exibir_no_app' => 'boolean',
         'ordem' => 'integer',
     ];
 
@@ -28,6 +30,12 @@ class SsmaTstAtividade extends Model
     public function scopeAtivas($query)
     {
         return $query->where('ativo', true);
+    }
+
+    /** Atividades visíveis no app /registro-tst para colaboradores. */
+    public function scopeParaAppColaborador($query)
+    {
+        return $query->where('ativo', true)->where('exibir_no_app', true);
     }
 
     public function scopeOrdenadas($query)

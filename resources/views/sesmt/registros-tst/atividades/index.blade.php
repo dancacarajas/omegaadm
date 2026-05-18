@@ -28,8 +28,9 @@
     @endif
 
     <p class="mb-5 max-w-3xl text-sm text-brand-gray">
-        Tipos de atividade exibidos no formulário de campo dos colaboradores (substitui a lista fixa do Google Forms).
-        Mantenha apenas atividades <strong class="text-brand-black">ativas</strong> visíveis no celular.
+        Cadastre os tipos de atividade do formulário TST. No <strong class="text-brand-black">painel SSMA</strong>, todas as atividades <strong class="text-brand-black">ativas</strong> ficam disponíveis.
+        Marque <strong class="text-brand-black">Exibir no app</strong> para cada atividade que deve aparecer em
+        <a href="{{ route('tst-campo.identificar') }}" target="_blank" rel="noopener" class="font-semibold text-brand-burgundy hover:underline">/registro-tst</a> para os colaboradores.
     </p>
 
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -62,6 +63,7 @@
                         <th class="px-5 py-3">Nome</th>
                         <th class="px-5 py-3">Ordem</th>
                         <th class="px-5 py-3">Status</th>
+                        <th class="px-5 py-3">App colaborador</th>
                         <th class="px-5 py-3">Registros</th>
                         @if ($podeEditar)
                             <th class="px-5 py-3 text-right">Ações</th>
@@ -78,6 +80,16 @@
                                     <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Ativa</span>
                                 @else
                                     <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600">Inativa</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3">
+                                @if ($atividade->ativo && $atividade->exibir_no_app)
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-900">
+                                        <i data-lucide="smartphone" class="h-3 w-3"></i>
+                                        Sim
+                                    </span>
+                                @else
+                                    <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600">Não</span>
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-brand-gray">{{ $atividade->registros_count }}</td>
@@ -100,7 +112,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $podeEditar ? 5 : 4 }}" class="px-5 py-10 text-center text-sm text-brand-gray">
+                            <td colspan="{{ $podeEditar ? 6 : 5 }}" class="px-5 py-10 text-center text-sm text-brand-gray">
                                 Nenhuma atividade cadastrada.
                                 @if ($podeEditar)
                                     <a href="{{ route('sesmt.registros-tst.atividades.create') }}" class="font-semibold text-brand-burgundy hover:underline">Cadastrar a primeira</a>

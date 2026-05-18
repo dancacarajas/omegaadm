@@ -32,7 +32,7 @@ class SsmaTstAtividadeController extends Controller
         $this->authorizeEdit();
 
         return view('sesmt.registros-tst.atividades.create', [
-            'atividade' => new SsmaTstAtividade(['ativo' => true]),
+            'atividade' => new SsmaTstAtividade(['ativo' => true, 'exibir_no_app' => true]),
         ]);
     }
 
@@ -92,14 +92,22 @@ class SsmaTstAtividadeController extends Controller
             $unique .= ','.$atividade->id;
         }
 
-        return $request->validate([
+        $data = $request->validate([
             'nome' => ['required', 'string', 'max:255', $unique],
             'ativo' => ['sometimes', 'boolean'],
+            'exibir_no_app' => ['sometimes', 'boolean'],
             'ordem' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ], [], [
             'nome' => 'nome da atividade',
-        ]) + [
-            'ativo' => $request->boolean('ativo'),
+            'exibir_no_app' => 'exibir no app do colaborador',
+        ]);
+
+        $ativo = $request->boolean('ativo');
+        $exibirNoApp = $request->boolean('exibir_no_app');
+
+        return $data + [
+            'ativo' => $ativo,
+            'exibir_no_app' => $ativo ? $exibirNoApp : false,
             'ordem' => (int) $request->input('ordem', $atividade?->ordem ?? 0),
         ];
     }

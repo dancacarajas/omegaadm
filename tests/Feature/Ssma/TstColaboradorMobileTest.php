@@ -51,6 +51,7 @@ class TstColaboradorMobileTest extends TestCase
         $atividade = SsmaTstAtividade::query()->create([
             'nome' => 'Inspeção',
             'ativo' => true,
+            'exibir_no_app' => true,
         ]);
 
         $this->withSession(['tst_colaborador_id' => $colaborador->id])

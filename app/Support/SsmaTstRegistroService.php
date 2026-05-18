@@ -6,6 +6,7 @@ use App\Models\SsmaTstRegistro;
 use App\Models\SsmaTstRegistroFoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\ValidationException;
 
@@ -24,8 +25,18 @@ class SsmaTstRegistroService
      */
     public function validar(Request $request, bool $fotosObrigatorias, ?int $colaboradorIdFixo = null, int $fotosExistentes = 0): array
     {
+        $regraAtividade = ['nullable', 'integer'];
+
+        if ($colaboradorIdFixo !== null) {
+            $regraAtividade[] = Rule::exists('ssma_tst_atividades', 'id')->where(
+                fn ($q) => $q->where('ativo', true)->where('exibir_no_app', true),
+            );
+        } else {
+            $regraAtividade[] = Rule::exists('ssma_tst_atividades', 'id')->where('ativo', true);
+        }
+
         $rules = [
-            'ssma_tst_atividade_id' => ['nullable', 'exists:ssma_tst_atividades,id'],
+            'ssma_tst_atividade_id' => $regraAtividade,
             'data' => ['required', 'date'],
             'descricao' => ['required', 'string', 'max:20000'],
         ];

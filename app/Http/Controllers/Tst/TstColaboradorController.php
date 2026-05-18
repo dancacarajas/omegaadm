@@ -57,7 +57,7 @@ class TstColaboradorController extends Controller
         /** @var \App\Models\Colaborador $colaborador */
         $colaborador = $request->attributes->get('colaborador_tst');
 
-        $atividades = SsmaTstAtividade::query()->ativas()->ordenadas()->get(['id', 'nome']);
+        $atividades = SsmaTstAtividade::query()->paraAppColaborador()->ordenadas()->get(['id', 'nome']);
 
         $recentes = SsmaTstRegistro::query()
             ->with('atividade')
