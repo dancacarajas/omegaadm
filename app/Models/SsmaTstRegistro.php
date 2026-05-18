@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class SsmaTstRegistro extends Model
 {
@@ -59,18 +61,23 @@ class SsmaTstRegistro extends Model
 
     public function removerTodosArquivos(): void
     {
-        $this->loadMissing('fotos');
+        $pathsRemovidos = [];
 
-        foreach ($this->fotos as $foto) {
-            $foto->removerArquivo();
-            $foto->delete();
+        if (Schema::hasTable('ssma_tst_registro_fotos')) {
+            $this->loadMissing('fotos');
+
+            foreach ($this->fotos as $foto) {
+                if ($foto->arquivo_path) {
+                    $pathsRemovidos[$foto->arquivo_path] = true;
+                    Storage::disk('public')->delete($foto->arquivo_path);
+                }
+                $foto->delete();
+            }
         }
 
-        $this->forceFill([
-            'arquivo_path' => null,
-            'arquivo_nome' => null,
-            'arquivo_mime' => null,
-        ])->saveQuietly();
+        if ($this->arquivo_path && ! isset($pathsRemovidos[$this->arquivo_path])) {
+            Storage::disk('public')->delete($this->arquivo_path);
+        }
     }
 
     public function scopeFiltrar(
