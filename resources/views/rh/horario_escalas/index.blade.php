@@ -33,14 +33,27 @@
                     @forelse ($escalas as $escala)
                         <tr class="transition hover:bg-brand-gray-soft/40">
                             <td class="px-5 py-4 font-semibold text-brand-black">{{ $escala->nome }}</td>
-                            <td class="px-4 py-4 text-brand-gray">{{ $escala->tipo === 'rotativa' ? 'Rotativa' : 'Semanal' }}</td>
+                            <td class="px-4 py-4 text-brand-gray">
+                                @switch($escala->tipo)
+                                    @case('rotativa_semanal')
+                                        Rotativa semanal
+                                        @break
+                                    @case('rotativa')
+                                        Rotativa
+                                        @break
+                                    @default
+                                        Semanal
+                                @endswitch
+                            </td>
                             <td class="px-4 py-4">
                                 <span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $escala->status === 'ativo' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-brand-gray-soft text-brand-gray' }}">
                                     {{ $escala->status === 'ativo' ? 'Ativo' : 'Inativo' }}
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-brand-gray">
-                                @if ($escala->tipo === 'rotativa')
+                                @if ($escala->tipo === 'rotativa_semanal')
+                                    Revezamento semanal
+                                @elseif ($escala->tipo === 'rotativa')
                                     {{ $escala->ciclo_dias ?? $escala->dias_count }} dias/ciclo
                                 @else
                                     {{ $escala->dias_count }} / 7

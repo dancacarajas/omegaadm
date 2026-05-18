@@ -17,53 +17,69 @@
     <h2 class="text-lg font-bold text-brand-black">Colaboradores nesta escala</h2>
     <p class="mt-1 text-sm text-brand-gray">
         Marque quem participa da escala.
-        @if ($mostraGrupo)
-            Em seguida escolha o <strong>grupo 0 ou 1</strong> no campo destacado em cada linha.
-        @endif
+        <span data-escala-grupo-ajuda class="{{ $mostraGrupo ? '' : 'hidden' }}">
+            Depois defina o <strong>grupo 0 ou 1</strong> na coluna à direita.
+        </span>
     </p>
 
-    @if ($mostraGrupo)
-        <div class="mt-4 grid gap-2 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/30 p-3 text-xs text-brand-black sm:grid-cols-2">
-            <p><span class="font-bold">Grupo 0</span> — Semana 1: seg, qua, sex · Semana 2: ter, qui</p>
-            <p><span class="font-bold">Grupo 1</span> — Semana 1: ter, qui · Semana 2: seg, qua, sex</p>
-        </div>
-    @endif
+    <div data-escala-grupo-legenda class="mt-4 grid gap-2 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/30 p-3 text-xs text-brand-black sm:grid-cols-2 {{ $mostraGrupo ? '' : 'hidden' }}">
+        <p><span class="font-bold">Grupo 0</span> — Sem. 1: seg, qua, sex · Sem. 2: ter, qui</p>
+        <p><span class="font-bold">Grupo 1</span> — Sem. 1: ter, qui · Sem. 2: seg, qua, sex</p>
+    </div>
 
     @if ($colaboradoresDisponiveis->isEmpty())
         <p class="mt-4 text-sm text-brand-gray">Nenhum colaborador ativo disponível para vincular.</p>
     @else
-        <div class="mt-5 space-y-3">
-            @foreach ($colaboradoresDisponiveis as $idx => $colab)
-                @php
-                    $naEscala = in_array($colab->id, $idsNaEscala, true);
-                    $offset = (int) old("escala_colaboradores.$idx.ciclo_offset", $colab->horario_escala_ciclo_offset ?? 0);
-                @endphp
-                <div class="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4" data-escala-colab-row>
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-                        <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 lg:pt-8">
-                            <input type="checkbox" value="1" data-escala-colab-check class="h-4 w-4 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($naEscala)>
-                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Incluir</span>
-                        </label>
-                        <input type="hidden" name="escala_colaboradores[{{ $idx }}][colaborador_id]" value="{{ $colab->id }}" data-escala-colab-id disabled @disabled(! $naEscala)>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-brand-black">{{ $colab->nome }}</p>
-                            <p class="text-xs text-brand-gray">{{ $colab->matricula ?: 'Sem matrícula' }}</p>
-                        </div>
-                        @if ($mostraGrupo)
-                            <div class="w-full lg:w-72" data-escala-col-fase>
-                                <label class="block text-xs font-bold uppercase tracking-wide text-brand-burgundy">Grupo na rotatividade</label>
-                                <select name="escala_colaboradores[{{ $idx }}][ciclo_offset]" class="mt-1.5 w-full rounded-lg border-2 border-brand-burgundy/40 bg-white px-3 py-2.5 text-sm font-semibold text-brand-black shadow-sm" @disabled(! $naEscala) data-escala-colab-offset>
-                                    <option value="0" @selected($offset === 0)>Grupo 0 — sem.1: seg, qua, sex</option>
-                                    <option value="1" @selected($offset === 1)>Grupo 1 — sem.1: ter, qui</option>
-                                </select>
+        <div class="mt-5 overflow-x-auto rounded-lg border border-zinc-200">
+            <table class="w-full min-w-[720px] border-collapse text-left text-sm">
+                <thead class="border-b border-zinc-200 bg-zinc-50 text-xs font-bold uppercase tracking-wide text-brand-gray">
+                    <tr>
+                        <th class="w-24 px-3 py-3">Incluir</th>
+                        <th class="px-3 py-3">Colaborador</th>
+                        <th data-escala-col-fase-header class="w-[min(280px,40%)] px-3 py-3 text-brand-burgundy {{ $mostraGrupo ? '' : 'hidden' }}">
+                            Grupo na rotatividade
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100">
+                    @foreach ($colaboradoresDisponiveis as $idx => $colab)
+                        @php
+                            $naEscala = in_array($colab->id, $idsNaEscala, true);
+                            $offset = (int) old("escala_colaboradores.$idx.ciclo_offset", $colab->horario_escala_ciclo_offset ?? 0);
+                        @endphp
+                        <tr class="bg-white" data-escala-colab-row>
+                            <td class="align-top px-3 py-3">
+                                <label class="inline-flex cursor-pointer items-center gap-2">
+                                    <input type="checkbox" value="1" data-escala-colab-check class="h-4 w-4 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($naEscala)>
+                                    <span class="sr-only">Incluir {{ $colab->nome }}</span>
+                                </label>
+                                <input type="hidden" name="escala_colaboradores[{{ $idx }}][colaborador_id]" value="{{ $colab->id }}" data-escala-colab-id @disabled(! $naEscala)>
+                            </td>
+                            <td class="align-top px-3 py-3">
+                                <p class="font-semibold leading-snug text-brand-black">{{ $colab->nome }}</p>
+                                <p class="mt-0.5 text-xs text-brand-gray">{{ $colab->matricula ?: 'Sem matrícula' }}</p>
+                            </td>
+                            <td data-escala-col-fase class="align-top px-3 py-3 {{ $mostraGrupo ? '' : 'hidden' }}">
+                                <label class="block">
+                                    <span class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-burgundy lg:sr-only">Grupo</span>
+                                    <select
+                                        name="escala_colaboradores[{{ $idx }}][ciclo_offset]"
+                                        class="w-full max-w-full rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 disabled:bg-zinc-100 disabled:text-zinc-400"
+                                        @disabled(! $naEscala)
+                                        data-escala-colab-offset
+                                    >
+                                        <option value="0" @selected($offset === 0)>Grupo 0 — seg, qua, sex</option>
+                                        <option value="1" @selected($offset === 1)>Grupo 1 — ter, qui</option>
+                                    </select>
+                                </label>
                                 @if (! $naEscala)
-                                    <p class="mt-1 text-xs text-amber-800">Marque «Incluir» para habilitar.</p>
+                                    <p class="mt-1.5 text-[11px] text-amber-800">Marque «Incluir» para habilitar.</p>
                                 @endif
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endforeach
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     @endif
     @error('escala_colaboradores')
@@ -167,15 +183,25 @@
     <script>
         (function () {
             const tipoSel = document.querySelector('[data-horario-tipo]');
-            const faseCols = document.querySelectorAll('[data-escala-col-fase]');
+            const faseCells = document.querySelectorAll('[data-escala-col-fase]');
+            const faseHeader = document.querySelector('[data-escala-col-fase-header]');
+            const legenda = document.querySelector('[data-escala-grupo-legenda]');
+            const ajuda = document.querySelector('[data-escala-grupo-ajuda]');
+
+            function tipoMostraGrupo() {
+                const v = tipoSel?.value || '';
+                return v === 'rotativa' || v === 'rotativa_semanal';
+            }
 
             function syncTipoColab() {
-                const rot = tipoSel?.value === 'rotativa' || tipoSel?.value === 'rotativa_semanal';
-                faseCols.forEach((el) => {
-                    el.classList.toggle('hidden', !rot);
-                    if (rot) {
-                        el.removeAttribute('hidden');
+                const show = tipoMostraGrupo();
+                [faseHeader, legenda, ajuda].forEach((el) => {
+                    if (el) {
+                        el.classList.toggle('hidden', !show);
                     }
+                });
+                faseCells.forEach((el) => {
+                    el.classList.toggle('hidden', !show);
                 });
             }
 
