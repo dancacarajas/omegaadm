@@ -57,6 +57,7 @@
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                     $ssmaOpen = request()->routeIs('sesmt.*');
                     $ssmaIndicadoresMensaisOpen = request()->routeIs('sesmt.indicadores-mensais.*');
+                    $ssmaRegistrosTstOpen = request()->routeIs('sesmt.registros-tst.*');
                 @endphp
 
                 <nav class="flex-1 px-4 py-5 text-sm">
@@ -213,6 +214,25 @@
                                         <a href="{{ route('sesmt.indicadores-mensais.painel-executivo') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.indicadores-mensais.painel-executivo') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
                                             Painel Executivo de SSMA
+                                        </a>
+                                    </div>
+                                </div>
+                                @endif
+                                @if ($podeSecaoSesmt('registros_tst'))
+                                <div data-menu-group="ssma-registros-tst">
+                                    <button type="button" data-menu-toggle="ssma-registros-tst" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $ssmaRegistrosTstOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        <i data-lucide="clipboard-check" class="h-4 w-4"></i>
+                                        <span class="flex-1 text-left">Registros TST</span>
+                                        <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $ssmaRegistrosTstOpen ? 'rotate-180' : '' }}" data-menu-chevron="ssma-registros-tst"></i>
+                                    </button>
+                                    <div data-menu-panel="ssma-registros-tst" class="{{ $ssmaRegistrosTstOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                        <a href="{{ route('sesmt.registros-tst.registros.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros-tst.registros.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+                                            Registros de campo
+                                        </a>
+                                        <a href="{{ route('sesmt.registros-tst.atividades.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('sesmt.registros-tst.atividades.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="list" class="h-4 w-4"></i>
+                                            Cadastro de Atividades
                                         </a>
                                     </div>
                                 </div>

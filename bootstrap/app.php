@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'installed' => EnsureInstalled::class,
             'perfil.rota' => EnsurePerfilPermissaoRota::class,
             'ponto.colaborador' => \App\Http\Middleware\EnsureColaboradorPonto::class,
+            'tst.colaborador' => \App\Http\Middleware\EnsureColaboradorTst::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

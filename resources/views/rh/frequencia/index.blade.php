@@ -27,12 +27,6 @@
         </div>
     @endif
 
-    @if (session('error'))
-        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <section class="mb-5 grid gap-4 md:grid-cols-4">
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">
@@ -64,24 +58,65 @@
         </article>
     </section>
 
+    @php
+        $exportInicio = request('data_inicio', $data ?? ($absenteismo['inicio'] ?? now()->startOfMonth()->toDateString()));
+        $exportFim = request('data_fim', $data ?? ($absenteismo['fim'] ?? now()->endOfMonth()->toDateString()));
+    @endphp
+
     <section class="mb-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
         <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
             <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
-                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Importação AFD</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Importar relógio de ponto</h2>
-                <p class="mt-1 text-sm text-brand-gray">Envie o arquivo AFD do relógio para importar marcações em lote. <strong>Sem AFD</strong>, a grade do dia é criada automaticamente para o efetivo ativo: use os horários manuais na tabela abaixo e registre atestados, abonos ou justificativas por linha.</p>
+                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Arquivo AFD</p>
+                <h2 class="mt-1 text-xl font-bold text-brand-black">Importar e exportar marcações</h2>
+                <p class="mt-1 text-sm text-brand-gray">Importe batidas do relógio ou exporte as marcações do sistema (app, manual e importações) no formato AFD para outros programas de ponto.</p>
             </div>
-            <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="grid gap-3 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
-                @csrf
-                <label class="space-y-2">
-                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo AFD</span>
-                    <input type="file" name="arquivo" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
-                </label>
-                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                    <i data-lucide="upload-cloud" class="h-4 w-4"></i>
-                    Importar AFD
-                </button>
-            </form>
+
+            <div class="space-y-6 p-5">
+                <div>
+                    <h3 class="text-sm font-bold text-brand-black">Importar AFD</h3>
+                    <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                        @csrf
+                        <label class="space-y-2">
+                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo AFD</span>
+                            <input type="file" name="arquivo" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
+                        </label>
+                        <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                            <i data-lucide="upload-cloud" class="h-4 w-4"></i>
+                            Importar
+                        </button>
+                    </form>
+                </div>
+
+                <div class="border-t border-zinc-100 pt-5">
+                    <h3 class="text-sm font-bold text-brand-black">Exportar AFD</h3>
+                    <p class="mt-1 text-xs text-brand-gray">Gera um arquivo <code class="rounded bg-zinc-100 px-1">.txt</code> com registro tipo 3 (Portaria 1510). Usa PIS, ou matrícula/CPF se o PIS não estiver cadastrado.</p>
+                    <form method="GET" action="{{ route('rh.frequencia.exportar-afd') }}" class="mt-3 space-y-3">
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
+                                <input type="date" name="data_inicio" value="{{ $exportInicio }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            </label>
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
+                                <input type="date" name="data_fim" value="{{ $exportFim }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            </label>
+                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-5 text-sm font-bold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white">
+                                <i data-lucide="download" class="h-4 w-4"></i>
+                                Exportar AFD
+                            </button>
+                        </div>
+                        <input type="hidden" name="data" value="{{ $data }}">
+                        <input type="hidden" name="mes" value="{{ $mes }}">
+                        @if (request('busca'))
+                            <label class="flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-gray">
+                                <input type="checkbox" name="filtrar_busca" value="1" checked class="rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20">
+                                <span>Aplicar busca da listagem: «{{ request('busca') }}»</span>
+                            </label>
+                            <input type="hidden" name="busca" value="{{ request('busca') }}">
+                        @endif
+                    </form>
+                </div>
+            </div>
         </div>
 
         <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -106,6 +141,7 @@
         </div>
     </section>
 
+    @include('rh.frequencia._cartao_ponto')
     <section class="mb-5 grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
         <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
             <div class="border-b border-zinc-200 p-5">

@@ -134,6 +134,16 @@ class FrequenciaCalculo
         return sprintf('%dh %02dmin', $h, $m);
     }
 
+    /** Formato relógio para cartão de ponto (ex.: 09:00). */
+    public static function formatarMinutosRelogio(int $minutos): string
+    {
+        if ($minutos <= 0) {
+            return '00:00';
+        }
+
+        return sprintf('%02d:%02d', intdiv($minutos, 60), $minutos % 60);
+    }
+
     private static function minutosPrevistosEscalaDia(string $diaYmd, HorarioEscalaDia $dia): int
     {
         return self::segmentoMinutos($diaYmd, $dia->entrada_1, $dia->saida_1)

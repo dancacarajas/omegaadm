@@ -14,6 +14,7 @@ use App\Http\Controllers\PatrimonialHistogramaController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PguDashboardController;
 use App\Http\Controllers\RdoController;
+use App\Http\Controllers\Rh\CartaoPontoController;
 use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\ColaboradorController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\IndicadoresMensaisController;
 use App\Http\Controllers\Rh\RecrutamentoController;
 use App\Http\Controllers\Ponto\PontoColaboradorController;
+use App\Http\Controllers\Tst\TstColaboradorController;
 use App\Http\Controllers\Rh\RecrutamentoMassUpdateController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\SsmaEpiEpcController;
@@ -32,6 +34,8 @@ use App\Http\Controllers\SsmaPlanoAcaoController;
 use App\Http\Controllers\SsmaRegistroMensalController;
 use App\Http\Controllers\SsmaRegistroMensalPrazoController;
 use App\Http\Controllers\SsmaRiscoController;
+use App\Http\Controllers\SsmaTstAtividadeController;
+use App\Http\Controllers\SsmaTstRegistroController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\VeiculoFrotaController;
@@ -67,6 +71,18 @@ Route::middleware(['installed'])->prefix('ponto')->name('ponto.')->group(functio
         Route::get('/app', [PontoColaboradorController::class, 'index'])->name('index');
         Route::post('/registrar', [PontoColaboradorController::class, 'registrar'])->name('registrar');
         Route::post('/sair', [PontoColaboradorController::class, 'sair'])->name('sair');
+    });
+});
+
+Route::middleware(['installed'])->prefix('registro-tst')->name('tst-campo.')->group(function () {
+    Route::get('/', fn () => redirect()->route('tst-campo.identificar'))->name('home');
+    Route::get('/identificar', [TstColaboradorController::class, 'showIdentificar'])->name('identificar');
+    Route::post('/identificar', [TstColaboradorController::class, 'identificar'])->name('identificar.store');
+
+    Route::middleware('tst.colaborador')->group(function () {
+        Route::get('/app', [TstColaboradorController::class, 'index'])->name('index');
+        Route::post('/registrar', [TstColaboradorController::class, 'store'])->name('store');
+        Route::post('/sair', [TstColaboradorController::class, 'sair'])->name('sair');
     });
 });
 
@@ -249,6 +265,19 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/sesmt/epi-epc/epc/{epc}/editar', [SsmaEpiEpcController::class, 'editEpc'])->name('sesmt.epi-epc.epc.edit');
     Route::put('/sesmt/epi-epc/epc/{epc}', [SsmaEpiEpcController::class, 'updateEpc'])->name('sesmt.epi-epc.epc.update');
     Route::delete('/sesmt/epi-epc/epc/{epc}', [SsmaEpiEpcController::class, 'destroyEpc'])->name('sesmt.epi-epc.epc.destroy');
+    Route::get('/sesmt/registros-tst/atividades', [SsmaTstAtividadeController::class, 'index'])->name('sesmt.registros-tst.atividades.index');
+    Route::get('/sesmt/registros-tst/atividades/novo', [SsmaTstAtividadeController::class, 'create'])->name('sesmt.registros-tst.atividades.create');
+    Route::post('/sesmt/registros-tst/atividades', [SsmaTstAtividadeController::class, 'store'])->name('sesmt.registros-tst.atividades.store');
+    Route::get('/sesmt/registros-tst/atividades/{atividade}/editar', [SsmaTstAtividadeController::class, 'edit'])->name('sesmt.registros-tst.atividades.edit');
+    Route::put('/sesmt/registros-tst/atividades/{atividade}', [SsmaTstAtividadeController::class, 'update'])->name('sesmt.registros-tst.atividades.update');
+    Route::delete('/sesmt/registros-tst/atividades/{atividade}', [SsmaTstAtividadeController::class, 'destroy'])->name('sesmt.registros-tst.atividades.destroy');
+    Route::get('/sesmt/registros-tst', [SsmaTstRegistroController::class, 'index'])->name('sesmt.registros-tst.registros.index');
+    Route::get('/sesmt/registros-tst/novo', [SsmaTstRegistroController::class, 'create'])->name('sesmt.registros-tst.registros.create');
+    Route::post('/sesmt/registros-tst', [SsmaTstRegistroController::class, 'store'])->name('sesmt.registros-tst.registros.store');
+    Route::get('/sesmt/registros-tst/{registro}', [SsmaTstRegistroController::class, 'show'])->name('sesmt.registros-tst.registros.show');
+    Route::get('/sesmt/registros-tst/{registro}/editar', [SsmaTstRegistroController::class, 'edit'])->name('sesmt.registros-tst.registros.edit');
+    Route::put('/sesmt/registros-tst/{registro}', [SsmaTstRegistroController::class, 'update'])->name('sesmt.registros-tst.registros.update');
+    Route::delete('/sesmt/registros-tst/{registro}', [SsmaTstRegistroController::class, 'destroy'])->name('sesmt.registros-tst.registros.destroy');
     Route::get('/sesmt/meio-ambiente', [SsmaMeioAmbienteController::class, 'index'])->name('sesmt.meio-ambiente.index');
     Route::get('/sesmt/meio-ambiente/novo', [SsmaMeioAmbienteController::class, 'create'])->name('sesmt.meio-ambiente.create');
     Route::post('/sesmt/meio-ambiente', [SsmaMeioAmbienteController::class, 'store'])->name('sesmt.meio-ambiente.store');
@@ -290,6 +319,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::post('frequencia/importar-afd', [FrequenciaController::class, 'importarAfd'])->name('frequencia.importar-afd');
+        Route::get('frequencia/exportar-afd', [FrequenciaController::class, 'exportarAfd'])->name('frequencia.exportar-afd');
+        Route::get('frequencia/cartao-ponto/colaboradores', [CartaoPontoController::class, 'colaboradores'])->name('frequencia.cartao-ponto.colaboradores');
+        Route::get('frequencia/cartao-ponto/pdf', [CartaoPontoController::class, 'pdf'])->name('frequencia.cartao-ponto.pdf');
         Route::post('frequencia/{registro}/marcacao', [FrequenciaController::class, 'marcacaoManual'])->name('frequencia.marcacao');
         Route::post('frequencia/{registro}/limpar-marcacoes', [FrequenciaController::class, 'limparMarcacoes'])->name('frequencia.limpar-marcacoes');
         Route::post('frequencia/{registro}/justificar', [FrequenciaController::class, 'justificar'])->name('frequencia.justificar');

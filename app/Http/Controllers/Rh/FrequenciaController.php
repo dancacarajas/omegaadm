@@ -4,9 +4,14 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
+use App\Models\Contrato;
 use App\Models\FrequenciaRegistro;
+use App\Support\ContratoAccess;
+use App\Support\Rh\CartaoPontoPeriodo;
+use App\Support\AfdExport;
 use App\Support\EscalaPontoRegras;
 use Carbon\Carbon;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -83,7 +88,24 @@ class FrequenciaController extends Controller
             ->limit(5)
             ->get();
 
-        return view('rh.frequencia.index', compact('registros', 'indicadores', 'ranking', 'absenteismo', 'data', 'mes'));
+        $contratosAtivos = ContratoAccess::applyContratoModel(Contrato::query())
+            ->where('status', 'ativo')
+            ->orderBy('centro_custo')
+            ->orderBy('nome')
+            ->get(['id', 'centro_custo', 'numero', 'nome']);
+
+        $cartaoPeriodo = CartaoPontoPeriodo::competenciaPorMes($mes);
+
+        return view('rh.frequencia.index', compact(
+            'registros',
+            'indicadores',
+            'ranking',
+            'absenteismo',
+            'data',
+            'mes',
+            'contratosAtivos',
+            'cartaoPeriodo'
+        ));
     }
 
     public function importarAfd(Request $request)
@@ -164,6 +186,57 @@ class FrequenciaController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    public function exportarAfd(Request $request): Response
+    {
+        $mes = $request->input('mes') ?: now()->format('Y-m');
+        $inicioMes = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
+        $fimMes = $inicioMes->copy()->endOfMonth();
+
+        $validated = $request->validate([
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'busca' => ['nullable', 'string', 'max:120'],
+            'filtrar_busca' => ['nullable', 'boolean'],
+        ]);
+
+        $dataDia = $request->filled('data')
+            ? Carbon::parse($request->input('data'))->toDateString()
+            : null;
+
+        $dataInicio = $validated['data_inicio'] ?? $dataDia ?? $inicioMes->toDateString();
+        $dataFim = $validated['data_fim'] ?? $dataDia ?? $fimMes->toDateString();
+
+        $busca = $request->boolean('filtrar_busca')
+            ? trim((string) ($validated['busca'] ?? $request->input('busca', '')))
+            : null;
+        $busca = $busca !== '' ? $busca : null;
+
+        $resultado = app(AfdExport::class)->gerar($dataInicio, $dataFim, $busca);
+
+        if ($resultado['total_marcacoes'] === 0) {
+            if ($resultado['registros_com_horario'] > 0 && $resultado['colaboradores_sem_identificador'] > 0) {
+                return back()->with(
+                    'error',
+                    'Há batidas no período, mas '.$resultado['colaboradores_sem_identificador'].' colaborador(es) sem PIS, CPF ou matrícula. Cadastre o identificador na ficha do efetivo e tente novamente.'
+                );
+            }
+
+            if ($busca !== null) {
+                return back()->with(
+                    'error',
+                    'Nenhuma marcação encontrada no período com o filtro de busca aplicado. Desmarque «Aplicar busca da listagem» ou amplie o período.'
+                );
+            }
+
+            return back()->with('error', 'Nenhuma marcação com horário encontrada no período selecionado.');
+        }
+
+        return response($resultado['conteudo'], 200, [
+            'Content-Type' => 'text/plain; charset=ISO-8859-1',
+            'Content-Disposition' => 'attachment; filename="'.$resultado['nome_arquivo'].'"',
+        ]);
     }
 
     public function marcacaoManual(Request $request, FrequenciaRegistro $registro)

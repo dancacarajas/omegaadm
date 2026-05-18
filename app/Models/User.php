@@ -113,6 +113,7 @@ class User extends Authenticatable
             'registro_mensal' => 'Registro Mensal',
             'prazos_sla' => 'Prazos (SLA)',
             'indicadores_mensais' => 'Indicadores mensais',
+            'registros_tst' => 'Registros TST',
         ];
     }
 
@@ -153,6 +154,10 @@ class User extends Authenticatable
 
         if (str_starts_with($routeName, 'sesmt.indicadores-mensais')) {
             return 'indicadores_mensais';
+        }
+
+        if (str_starts_with($routeName, 'sesmt.registros-tst')) {
+            return 'registros_tst';
         }
 
         return null;
@@ -239,6 +244,7 @@ class User extends Authenticatable
             'registro_mensal' => fn () => route('sesmt.registros.index'),
             'prazos_sla' => fn () => route('sesmt.registros.prazos.index'),
             'indicadores_mensais' => fn () => route('sesmt.indicadores-mensais.painel-executivo'),
+            'registros_tst' => fn () => route('sesmt.registros-tst.registros.index'),
         ];
 
         foreach ($rotas as $secao => $resolver) {
