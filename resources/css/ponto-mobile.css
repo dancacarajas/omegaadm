@@ -1,0 +1,491 @@
+/* Ponto colaborador — estilos fixos (não dependem só do purge do Tailwind em produção) */
+
+.ponto-shell {
+    min-height: 100dvh;
+    background-color: #ebebed;
+}
+
+.ponto-frame {
+    display: flex;
+    min-height: 100dvh;
+    max-width: 32rem;
+    margin-left: auto;
+    margin-right: auto;
+    flex-direction: column;
+    background-color: #f4f4f5;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.2);
+    outline: 1px solid rgb(0 0 0 / 0.05);
+}
+
+.ponto-header {
+    position: relative;
+    overflow: hidden;
+    padding: max(0.75rem, env(safe-area-inset-top)) 1.25rem 1.5rem;
+    color: #fff;
+    background:
+        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(255, 255, 255, 0.18), transparent),
+        linear-gradient(145deg, #6f1731 0%, #4a0f21 55%, #3a0c1a 100%);
+}
+
+.ponto-header::before,
+.ponto-header::after {
+    content: '';
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+}
+
+.ponto-header::before {
+    top: -4rem;
+    right: -4rem;
+    width: 12rem;
+    height: 12rem;
+    background: rgb(255 255 255 / 0.05);
+}
+
+.ponto-header::after {
+    bottom: -5rem;
+    left: -3rem;
+    width: 10rem;
+    height: 10rem;
+    background: rgb(0 0 0 / 0.1);
+}
+
+.ponto-header-top {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.ponto-logo {
+    display: block;
+    height: 2.25rem;
+    width: auto;
+    max-width: 165px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.ponto-btn-sair {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background: rgb(255 255 255 / 0.1);
+    color: #fff;
+}
+
+.ponto-user {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.ponto-user-avatar {
+    display: flex;
+    height: 3rem;
+    width: 3rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.15);
+    font-size: 1.125rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.2);
+}
+
+.ponto-user-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.ponto-user-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.6);
+}
+
+.ponto-user-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.ponto-user-matricula {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.ponto-clock-card {
+    position: relative;
+    margin-top: 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background: rgb(255 255 255 / 0.1);
+    padding: 1rem;
+    text-align: center;
+    backdrop-filter: blur(8px);
+}
+
+.ponto-clock-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.55);
+}
+
+.ponto-clock-time {
+    margin-top: 0.25rem;
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.ponto-clock-date {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(255 255 255 / 0.9);
+}
+
+.ponto-clock-tz {
+    margin-top: 0.125rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: rgb(255 255 255 / 0.5);
+}
+
+.ponto-main {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.875rem;
+    margin-top: -1rem;
+    border-radius: 1.75rem 1.75rem 0 0;
+    background: linear-gradient(to bottom, #fafafa, #f4f4f5);
+    padding: 1.25rem 1rem max(1.25rem, env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 40px rgb(17 17 17 / 0.08);
+}
+
+.ponto-card {
+    display: flex;
+    gap: 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(228 228 231 / 0.9);
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.ponto-card-icon {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+}
+
+.ponto-card-icon--warn {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.ponto-card-icon--ok {
+    background: #f7e9ee;
+    color: #6f1731;
+}
+
+.ponto-card-icon--success {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.ponto-card-icon--error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.ponto-card-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.ponto-card-title {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.ponto-card-title--warn {
+    color: #92400e;
+}
+
+.ponto-card-text {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.ponto-section {
+    border-radius: 1rem;
+    border: 1px solid rgb(228 228 231 / 0.9);
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.ponto-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.ponto-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b6f76;
+}
+
+.ponto-badge {
+    border-radius: 9999px;
+    background: #f4f4f5;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #6b6f76;
+}
+
+.ponto-batida-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+}
+
+.ponto-batida {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid #f4f4f5;
+    padding: 0.75rem;
+    background: rgb(250 250 250 / 0.8);
+}
+
+.ponto-batida--done {
+    border-color: rgb(167 243 208 / 0.8);
+    background: rgb(236 253 245 / 0.8);
+}
+
+.ponto-batida-left {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ponto-batida-icon {
+    display: flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #fff;
+    color: #a1a1aa;
+    box-shadow: 0 0 0 1px #e4e4e7;
+}
+
+.ponto-batida-icon--done {
+    background: #059669;
+    color: #fff;
+    box-shadow: 0 2px 8px rgb(5 150 105 / 0.3);
+}
+
+.ponto-batida-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111;
+}
+
+.ponto-batida-sublabel {
+    display: block;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: #6b6f76;
+}
+
+.ponto-batida-hora {
+    flex-shrink: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #a1a1aa;
+}
+
+.ponto-batida-hora--done {
+    color: #065f46;
+}
+
+.ponto-actions {
+    margin-top: auto;
+    padding-top: 0.25rem;
+}
+
+.ponto-btn-primary {
+    display: flex;
+    min-height: 4.25rem;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    border: none;
+    border-radius: 1rem;
+    background: #6f1731;
+    padding: 1rem 1.5rem;
+    color: #fff;
+    box-shadow: 0 10px 25px rgb(111 23 49 / 0.3);
+    font-weight: 800;
+}
+
+.ponto-btn-primary:active {
+    transform: scale(0.98);
+}
+
+.ponto-btn-primary-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+}
+
+.ponto-btn-primary-icon {
+    display: flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.15);
+}
+
+.ponto-btn-primary-hint {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.ponto-btn-disabled {
+    display: flex;
+    min-height: 4.25rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    border-radius: 1rem;
+    border: 1px solid #e4e4e7;
+    background: #fff;
+    color: #71717a;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.ponto-identify-hero {
+    position: relative;
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.ponto-identify-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background: rgb(255 255 255 / 0.1);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.8);
+}
+
+.ponto-identify-title {
+    margin-top: 1rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.ponto-identify-sub {
+    margin: 0.5rem auto 0;
+    max-width: 20rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.ponto-field-card {
+    border-radius: 1rem;
+    border: 1px solid rgb(228 228 231 / 0.9);
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.ponto-input {
+    display: block;
+    width: 100%;
+    height: 3.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e4e4e7;
+    background: rgb(250 250 250 / 0.8);
+    padding: 0 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111;
+}
+
+.ponto-input:focus {
+    outline: none;
+    border-color: #6f1731;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgb(111 23 49 / 0.15);
+}
+
+.ponto-text-burgundy {
+    color: #6f1731;
+    font-weight: 600;
+}
