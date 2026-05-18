@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Colaborador;
 use App\Models\SsmaTstRegistro;
 use App\Models\SsmaTstRegistroFoto;
+use App\Support\TstColaboradorAcesso;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
@@ -28,8 +30,16 @@ class SsmaTstRegistroService
         $regraAtividade = ['nullable', 'integer'];
 
         if ($colaboradorIdFixo !== null) {
+            $colaborador = Colaborador::query()->find($colaboradorIdFixo);
+            $todasAtividades = $colaborador && TstColaboradorAcesso::veTodasAtividadesNoApp($colaborador);
+
             $regraAtividade[] = Rule::exists('ssma_tst_atividades', 'id')->where(
-                fn ($q) => $q->where('ativo', true)->where('exibir_no_app', true),
+                function ($q) use ($todasAtividades) {
+                    $q->where('ativo', true);
+                    if (! $todasAtividades) {
+                        $q->where('exibir_no_app', true);
+                    }
+                },
             );
         } else {
             $regraAtividade[] = Rule::exists('ssma_tst_atividades', 'id')->where('ativo', true);

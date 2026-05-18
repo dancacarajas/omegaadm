@@ -7,6 +7,7 @@ use App\Models\SsmaTstAtividade;
 use App\Models\SsmaTstRegistro;
 use App\Support\PontoColaboradorService;
 use App\Support\SsmaTstRegistroService;
+use App\Support\TstColaboradorAcesso;
 use Illuminate\Http\Request;
 
 class TstColaboradorController extends Controller
@@ -57,7 +58,10 @@ class TstColaboradorController extends Controller
         /** @var \App\Models\Colaborador $colaborador */
         $colaborador = $request->attributes->get('colaborador_tst');
 
-        $atividades = SsmaTstAtividade::query()->paraAppColaborador()->ordenadas()->get(['id', 'nome']);
+        $atividades = SsmaTstAtividade::query()
+            ->paraAppDoColaborador($colaborador)
+            ->ordenadas()
+            ->get(['id', 'nome']);
 
         $recentes = SsmaTstRegistro::query()
             ->with('atividade')
@@ -71,6 +75,7 @@ class TstColaboradorController extends Controller
         return view('tst-campo.index', [
             'colaborador' => $colaborador,
             'atividades' => $atividades,
+            'todasAtividadesApp' => TstColaboradorAcesso::veTodasAtividadesNoApp($colaborador),
             'recentes' => $recentes,
             'dataHoje' => now()->toDateString(),
         ]);

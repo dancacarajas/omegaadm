@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TstColaboradorAcesso;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -32,10 +33,20 @@ class SsmaTstAtividade extends Model
         return $query->where('ativo', true);
     }
 
-    /** Atividades visíveis no app /registro-tst para colaboradores. */
+    /** Atividades visíveis no app /registro-tst para colaboradores sem perfil SSMA/Administrador. */
     public function scopeParaAppColaborador($query)
     {
         return $query->where('ativo', true)->where('exibir_no_app', true);
+    }
+
+    /** Lista do app conforme o colaborador: SSMA/Admin veem todas ativas; demais só com "exibir no app". */
+    public function scopeParaAppDoColaborador($query, Colaborador $colaborador)
+    {
+        if (TstColaboradorAcesso::veTodasAtividadesNoApp($colaborador)) {
+            return $query->ativas();
+        }
+
+        return $query->paraAppColaborador();
     }
 
     public function scopeOrdenadas($query)

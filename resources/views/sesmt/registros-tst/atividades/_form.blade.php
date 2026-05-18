@@ -37,7 +37,7 @@
         <input type="checkbox" name="exibir_no_app" value="1" class="mt-0.5 h-5 w-5 shrink-0 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($exibirAppVal && $ativoVal) id="atividade-exibir-app" @disabled(! $ativoVal)>
         <span class="text-sm">
             <span class="font-semibold text-brand-black">Exibir no app do colaborador</span>
-            <span class="mt-0.5 block text-xs font-normal text-brand-gray">Lista em <strong class="font-semibold text-brand-black">/registro-tst</strong> para colaboradores registrarem em campo. No painel SSMA continuam visíveis todas as atividades ativas.</span>
+            <span class="mt-0.5 block text-xs font-normal text-brand-gray">Lista em <strong class="font-semibold text-brand-black">/registro-tst</strong> para colaboradores em geral. Usuários com perfil <strong class="font-semibold text-brand-black">SSMA</strong> ou <strong class="font-semibold text-brand-black">Administrador</strong> (vinculados ao efetivo) veem todas as atividades ativas no app.</span>
         </span>
     </label>
 </div>

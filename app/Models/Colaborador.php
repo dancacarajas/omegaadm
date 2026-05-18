@@ -117,6 +117,11 @@ class Colaborador extends Model
         return $this->belongsTo(RecrutamentoVaga::class, 'recrutamento_vaga_id');
     }
 
+    public function usuarioSistema(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(User::class, 'colaborador_id');
+    }
+
     /**
      * Caminho público da foto (requer `php artisan storage:link`).
      * Usa URL relativa ao host atual para evitar divergência de porta com APP_URL.
