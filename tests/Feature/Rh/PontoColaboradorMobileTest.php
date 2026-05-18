@@ -218,4 +218,103 @@ class PontoColaboradorMobileTest extends TestCase
             ->assertOk()
             ->assertSee('Marcação de ponto');
     }
+
+    public function test_saida_final_apos_horario_da_escala_aceita_batida_e_conta_hora_extra(): void
+    {
+        config(['app.timezone' => 'America/Sao_Paulo']);
+
+        $segunda = Carbon::parse('2026-05-18', 'America/Sao_Paulo');
+        $escala = HorarioEscala::create([
+            'nome' => 'Motoristas',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+
+        HorarioEscalaDia::create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'Motorista HE',
+            'matricula' => 'MOT-HE',
+            'cpf' => '12312312312',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+
+        FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colaborador->id,
+            'data' => $segunda->toDateString(),
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+            'status' => 'presente',
+            'origem' => 'grade',
+        ]);
+
+        $this->travelTo($segunda->copy()->setTime(18, 15, 0));
+
+        $this->withSession(['ponto_colaborador_id' => $colaborador->id])
+            ->post(route('ponto.registrar'))
+            ->assertRedirect(route('ponto.index'))
+            ->assertSessionHas('success');
+
+        $registro = FrequenciaRegistro::query()->where('colaborador_id', $colaborador->id)->first();
+        $this->assertSame('18:15:00', $registro->saida_2);
+
+        $resumo = \App\Support\FrequenciaCalculo::resumo($registro->fresh(['colaborador.horarioEscala.dias']));
+        $this->assertGreaterThan(0, $resumo['extras']);
+
+        $this->travelBack();
+    }
+
+    public function test_entrada_antes_do_horario_da_escala_conta_hora_extra(): void
+    {
+        config(['app.timezone' => 'America/Sao_Paulo']);
+
+        $segunda = Carbon::parse('2026-05-18', 'America/Sao_Paulo');
+        $escala = HorarioEscala::create([
+            'nome' => 'Motoristas',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+
+        HorarioEscalaDia::create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'Motorista cedo',
+            'matricula' => 'MOT-CE',
+            'cpf' => '32132132100',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+
+        $this->travelTo($segunda->copy()->setTime(3, 45, 0));
+
+        $this->withSession(['ponto_colaborador_id' => $colaborador->id])
+            ->post(route('ponto.registrar'))
+            ->assertRedirect(route('ponto.index'))
+            ->assertSessionHas('success');
+
+        $registro = FrequenciaRegistro::query()->where('colaborador_id', $colaborador->id)->first();
+        $this->assertSame('03:45:00', $registro->entrada_1);
+
+        $resumo = \App\Support\FrequenciaCalculo::resumo($registro->fresh(['colaborador.horarioEscala.dias']));
+        $this->assertGreaterThanOrEqual(15, $resumo['extras']);
+
+        $this->travelBack();
+    }
 }

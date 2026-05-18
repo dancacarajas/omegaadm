@@ -403,7 +403,7 @@ class FrequenciaController extends Controller
 
     /**
      * Garante uma linha por colaborador ativo na data, para permitir ponto manual e justificativas sem AFD.
-     * Preenche horários vazios com a escala vinculada (incl. almoço: saída 1 e retorno / entrada 2).
+     * Preenche apenas intervalo (saída 1 / entrada 2) com a escala — entrada e saída final vêm das batidas reais.
      */
     private function garantirRegistrosDoDia(string $data): void
     {
@@ -450,7 +450,7 @@ class FrequenciaController extends Controller
             return;
         }
 
-        $campos = ['entrada_1', 'saida_1', 'entrada_2', 'saida_2'];
+        $campos = ['saida_1', 'entrada_2'];
         $alterou = false;
 
         foreach ($campos as $campo) {

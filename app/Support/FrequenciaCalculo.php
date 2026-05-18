@@ -93,7 +93,7 @@ class FrequenciaCalculo
         $status = $registro->status ?? 'falta';
 
         if ($status === 'justificado') {
-            $extras = max(0, $trabalhadas - $jornada);
+            $extras = self::minutosExtras($registro, $trabalhadas, $jornada);
 
             return [
                 'trabalhadas' => $trabalhadas,
@@ -108,7 +108,7 @@ class FrequenciaCalculo
         }
 
         $falta = max(0, $jornada - $trabalhadas);
-        $extras = max(0, $trabalhadas - $jornada);
+        $extras = self::minutosExtras($registro, $trabalhadas, $jornada);
 
         return [
             'trabalhadas' => $trabalhadas,
@@ -142,6 +142,71 @@ class FrequenciaCalculo
         }
 
         return sprintf('%02d:%02d', intdiv($minutos, 60), $minutos % 60);
+    }
+
+    /**
+     * Horas extras: saldo acima da jornada prevista + minutos fora da escala (entrada antes / saída depois).
+     */
+    public static function minutosExtras(FrequenciaRegistro $registro, ?int $trabalhadas = null, ?int $jornada = null): int
+    {
+        $trabalhadas ??= self::minutosTrabalhados($registro);
+        $jornada ??= self::jornadaMinutosParaRegistro($registro);
+        $saldo = max(0, $trabalhadas - $jornada);
+        $foraEscala = self::minutosExtrasForaDaEscala($registro);
+
+        return max($saldo, $foraEscala);
+    }
+
+    /**
+     * Minutos de entrada antes do previsto ou saída final após o previsto (batida real vs. escala).
+     */
+    public static function minutosExtrasForaDaEscala(FrequenciaRegistro $registro): int
+    {
+        $colaborador = $registro->colaborador;
+        if (! $colaborador) {
+            return 0;
+        }
+
+        $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
+        if (! $diaEscala) {
+            return 0;
+        }
+
+        $ymd = $registro->data instanceof CarbonInterface
+            ? $registro->data->format('Y-m-d')
+            : Carbon::parse($registro->data)->format('Y-m-d');
+
+        $extras = 0;
+
+        $previstoEntrada = self::normalizarHorarioBanco($diaEscala->entrada_1);
+        $realEntrada = self::normalizarHorarioBanco($registro->entrada_1);
+        if ($previstoEntrada !== null && $realEntrada !== null) {
+            try {
+                $a = Carbon::parse("{$ymd} {$previstoEntrada}");
+                $b = Carbon::parse("{$ymd} {$realEntrada}");
+                if ($b->lt($a)) {
+                    $extras += (int) $b->diffInMinutes($a);
+                }
+            } catch (\Throwable) {
+                // ignora horário inválido
+            }
+        }
+
+        $previstoSaida = self::normalizarHorarioBanco($diaEscala->saida_2);
+        $realSaida = self::normalizarHorarioBanco($registro->saida_2);
+        if ($previstoSaida !== null && $realSaida !== null) {
+            try {
+                $a = Carbon::parse("{$ymd} {$previstoSaida}");
+                $b = Carbon::parse("{$ymd} {$realSaida}");
+                if ($b->gt($a)) {
+                    $extras += (int) $a->diffInMinutes($b);
+                }
+            } catch (\Throwable) {
+                // ignora horário inválido
+            }
+        }
+
+        return $extras;
     }
 
     private static function minutosPrevistosEscalaDia(string $diaYmd, HorarioEscalaDia $dia): int

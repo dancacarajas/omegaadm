@@ -22,6 +22,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'perfil_id',
+        'colaborador_id',
         'todos_contratos',
         'name',
         'email',
@@ -60,6 +61,11 @@ class User extends Authenticatable
     public function perfil(): BelongsTo
     {
         return $this->belongsTo(Perfil::class);
+    }
+
+    public function colaborador(): BelongsTo
+    {
+        return $this->belongsTo(Colaborador::class);
     }
 
     /**

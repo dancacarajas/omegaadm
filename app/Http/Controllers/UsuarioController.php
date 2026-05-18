@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Perfil;
+use App\Models\Colaborador;
 use App\Models\Contrato;
+use App\Models\Perfil;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,7 @@ class UsuarioController extends Controller
             'usuario' => new User(['status' => 'ativo']),
             'perfis' => Perfil::where('ativo', true)->orderBy('nome')->get(),
             'contratos' => Contrato::whereNotIn('status', ['encerrado', 'cancelado'])->orderBy('numero')->get(),
+            'colaboradores' => $this->colaboradoresParaSelect(),
         ]);
     }
 
@@ -67,9 +69,10 @@ class UsuarioController extends Controller
     public function edit(User $usuario)
     {
         return view('usuarios.edit', [
-            'usuario' => $usuario,
+            'usuario' => $usuario->load('colaborador'),
             'perfis' => Perfil::where('ativo', true)->orderBy('nome')->get(),
             'contratos' => Contrato::whereNotIn('status', ['encerrado', 'cancelado'])->orderBy('numero')->get(),
+            'colaboradores' => $this->colaboradoresParaSelect(),
         ]);
     }
 
@@ -100,6 +103,12 @@ class UsuarioController extends Controller
     {
         return $request->validate([
             'perfil_id' => ['nullable', 'exists:perfis,id'],
+            'colaborador_id' => [
+                'nullable',
+                'integer',
+                'exists:colaboradores,id',
+                Rule::unique('users', 'colaborador_id')->ignore($usuario?->id),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuario?->id)],
             'telefone' => ['nullable', 'string', 'max:40'],
@@ -109,6 +118,20 @@ class UsuarioController extends Controller
             'contratos' => ['nullable', 'array'],
             'contratos.*' => ['integer', 'exists:contratos,id'],
             'password' => [$usuario ? 'nullable' : 'required', 'string', 'min:6', 'confirmed'],
-        ]) + ['todos_contratos' => $request->boolean('todos_contratos')];
+        ]) + [
+            'todos_contratos' => $request->boolean('todos_contratos'),
+            'colaborador_id' => $request->filled('colaborador_id') ? (int) $request->input('colaborador_id') : null,
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Colaborador>
+     */
+    private function colaboradoresParaSelect()
+    {
+        return Colaborador::query()
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'matricula', 'telefone', 'cargo']);
     }
 }

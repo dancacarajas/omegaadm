@@ -110,14 +110,24 @@ class PontoColaboradorService
             $this->sincronizarIntervaloPendenteDaEscala($registro, $colaborador);
             $registro->refresh();
 
+            $diaEscala = $colaborador->horarioEscalaDiaNaData($momento);
+
             $proxima = $this->proximaBatida($registro);
             if ($proxima === null) {
+                $ajusteForaEscala = $this->tentarAtualizarBatidaForaEscala($registro, $momento, $diaEscala);
+                if ($ajusteForaEscala !== null) {
+                    $this->recalcularStatus($registro);
+                    $registro->origem = self::ORIGEM;
+                    $registro->save();
+
+                    return $ajusteForaEscala;
+                }
+
                 throw ValidationException::withMessages([
                     'ponto' => 'Todas as batidas de hoje já foram registradas.',
                 ]);
             }
 
-            $diaEscala = $colaborador->horarioEscalaDiaNaData($momento);
             $hora = $this->horarioParaBatida($proxima['campo'], $momento, $diaEscala);
             $registro->setAttribute($proxima['campo'], $hora);
 
@@ -218,8 +228,92 @@ class PontoColaboradorService
         return $extras;
     }
 
+    /**
+     * Atualiza entrada antecipada ou saída final após o horário da escala (ex.: grade pré-preenchida).
+     *
+     * @return array{registro: FrequenciaRegistro, campo: string, label: string, hora: string, mensagem: string, extras: list<array{label: string, hora: string}>}|null
+     */
+    private function tentarAtualizarBatidaForaEscala(
+        FrequenciaRegistro $registro,
+        Carbon $momento,
+        ?HorarioEscalaDia $diaEscala
+    ): ?array {
+        if (! $diaEscala) {
+            return null;
+        }
+
+        $ymd = $momento->toDateString();
+        $horaAgora = $momento->format('H:i:s');
+
+        $previstoEntrada = FrequenciaCalculo::normalizarHorarioBanco($diaEscala->entrada_1);
+        $realEntrada = FrequenciaCalculo::normalizarHorarioBanco($registro->entrada_1);
+        if ($previstoEntrada !== null && $realEntrada !== null) {
+            try {
+                $iniPrevisto = Carbon::parse("{$ymd} {$previstoEntrada}");
+                $iniReal = Carbon::parse("{$ymd} {$realEntrada}");
+                if ($momento->lt($iniPrevisto) && $iniReal->equalTo($iniPrevisto)) {
+                    $registro->entrada_1 = $horaAgora;
+                    $extras = $this->preencherIntervaloAutomaticoDaEscala($registro, $diaEscala);
+
+                    return [
+                        'registro' => $registro,
+                        'campo' => 'entrada_1',
+                        'label' => self::BATIDAS['entrada_1'],
+                        'hora' => substr($horaAgora, 0, 5),
+                        'extras' => $extras,
+                        'mensagem' => $this->montarMensagemSucesso(self::BATIDAS['entrada_1'], substr($horaAgora, 0, 5), $extras)
+                            .' Horário anterior à escala registrado; o adicional entra como hora extra.',
+                    ];
+                }
+            } catch (\Throwable) {
+                // segue para saída tardia
+            }
+        }
+
+        if (FrequenciaCalculo::horarioArmazenadoVazio($registro->entrada_1)) {
+            return null;
+        }
+
+        $previstoSaida = FrequenciaCalculo::normalizarHorarioBanco($diaEscala->saida_2);
+        if ($previstoSaida === null) {
+            return null;
+        }
+
+        $realSaida = FrequenciaCalculo::normalizarHorarioBanco($registro->saida_2);
+        if ($realSaida !== null && $realSaida !== $previstoSaida) {
+            return null;
+        }
+
+        try {
+            $fimPrevisto = Carbon::parse("{$ymd} {$previstoSaida}");
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($momento->lte($fimPrevisto)) {
+            return null;
+        }
+
+        $registro->saida_2 = $horaAgora;
+
+        return [
+            'registro' => $registro,
+            'campo' => 'saida_2',
+            'label' => self::BATIDAS['saida_2'],
+            'hora' => substr($horaAgora, 0, 5),
+            'extras' => [],
+            'mensagem' => self::BATIDAS['saida_2'].' registrada às '.substr($horaAgora, 0, 5)
+                .'. Minutos após o horário da escala ('.substr($previstoSaida, 0, 5).') entram como hora extra.',
+        ];
+    }
+
     private function horarioParaBatida(string $campo, Carbon $momento, ?HorarioEscalaDia $diaEscala): string
     {
+        // Entrada e saída final sempre usam o relógio da batida (hora extra antes/depois da escala).
+        if (in_array($campo, ['entrada_1', 'saida_2'], true)) {
+            return $momento->format('H:i:s');
+        }
+
         if ($diaEscala && in_array($campo, self::BATIDAS_HORARIO_ESCALA, true)) {
             $valorEscala = $diaEscala->getAttribute($campo);
             if (! FrequenciaCalculo::horarioArmazenadoVazio($valorEscala)) {

@@ -10,10 +10,35 @@
         <p class="text-sm text-brand-gray">Defina o perfil, dados de contato e senha de acesso ao sistema.</p>
     </div>
 
+    @php
+        $colaboradores = $colaboradores ?? collect();
+        $colaboradorId = old('colaborador_id', $usuario->colaborador_id ?? '');
+        $colaboradoresJson = $colaboradores->mapWithKeys(fn ($c) => [
+            (string) $c->id => [
+                'nome' => $c->nome,
+                'telefone' => $c->telefone ?? '',
+                'cargo' => $c->cargo ?? '',
+            ],
+        ]);
+    @endphp
+
     <div class="grid gap-4 lg:grid-cols-3">
+        <label class="lg:col-span-3">
+            <span class="text-xs font-bold uppercase text-brand-gray">Colaborador do efetivo</span>
+            <select name="colaborador_id" id="usuario-colaborador-select" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                <option value="">Selecione para preencher o nome automaticamente</option>
+                @foreach ($colaboradores as $colab)
+                    <option value="{{ $colab->id }}" @selected((string) $colaboradorId === (string) $colab->id)>
+                        {{ $colab->nome }}@if ($colab->matricula) ({{ $colab->matricula }})@endif
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-brand-gray">Opcional. Ao escolher um colaborador ativo do RH, o nome completo (e telefone/cargo, se houver) são preenchidos.</p>
+            @error('colaborador_id') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
+        </label>
         <label class="lg:col-span-2">
             <span class="text-xs font-bold uppercase text-brand-gray">Nome completo *</span>
-            <input name="name" value="{{ old('name', $usuario->name) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10" required>
+            <input id="usuario-name-input" name="name" value="{{ old('name', $usuario->name) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10" required>
             @error('name') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
         </label>
         <label>
@@ -32,12 +57,12 @@
         </label>
         <label>
             <span class="text-xs font-bold uppercase text-brand-gray">Telefone</span>
-            <input name="telefone" value="{{ old('telefone', $usuario->telefone) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+            <input id="usuario-telefone-input" name="telefone" value="{{ old('telefone', $usuario->telefone) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
             @error('telefone') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
         </label>
         <label>
             <span class="text-xs font-bold uppercase text-brand-gray">Cargo / função</span>
-            <input name="cargo" value="{{ old('cargo', $usuario->cargo) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+            <input id="usuario-cargo-input" name="cargo" value="{{ old('cargo', $usuario->cargo) }}" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
             @error('cargo') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
         </label>
         <label>
@@ -95,6 +120,36 @@
             <input type="password" name="password_confirmation" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10" @required(! $usuario->exists)>
         </label>
     </div>
+
+    @push('scripts')
+        <script>
+            (function () {
+                const map = @json($colaboradoresJson);
+                const select = document.getElementById('usuario-colaborador-select');
+                const nameInput = document.getElementById('usuario-name-input');
+                const telefoneInput = document.getElementById('usuario-telefone-input');
+                const cargoInput = document.getElementById('usuario-cargo-input');
+
+                if (!select || !nameInput) {
+                    return;
+                }
+
+                select.addEventListener('change', function () {
+                    const dados = map[select.value];
+                    if (!dados) {
+                        return;
+                    }
+                    nameInput.value = dados.nome || '';
+                    if (telefoneInput && dados.telefone) {
+                        telefoneInput.value = dados.telefone;
+                    }
+                    if (cargoInput && dados.cargo) {
+                        cargoInput.value = dados.cargo;
+                    }
+                });
+            })();
+        </script>
+    @endpush
 
     <div class="mt-6 flex justify-end gap-2 border-t border-zinc-100 pt-5">
         <a href="{{ route('usuarios.index') }}" class="inline-flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">Cancelar</a>
