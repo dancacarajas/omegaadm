@@ -12,8 +12,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
-<body class="min-h-[100dvh] bg-zinc-100 font-sans text-brand-black antialiased">
-    <div class="mx-auto flex min-h-[100dvh] max-w-lg flex-col">
+<body class="min-h-[100dvh] bg-[#ebebed] font-sans text-brand-black antialiased">
+    <div class="mx-auto flex min-h-[100dvh] max-w-lg flex-col bg-zinc-100 shadow-2xl shadow-black/10 ring-1 ring-black/5">
         @yield('content')
     </div>
     @stack('scripts')
