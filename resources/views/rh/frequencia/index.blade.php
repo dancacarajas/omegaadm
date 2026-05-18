@@ -198,13 +198,13 @@
         </div>
     </section>
 
-    <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+    <section class="rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 xl:flex-row xl:items-center xl:justify-between">
             <div>
                 <h2 class="text-xl font-bold text-brand-black">Ponto diário do efetivo</h2>
                 <p class="mt-1 text-sm text-brand-gray">Acompanhe marcações, faltas, atestados e justificativas por data.</p>
                 <p class="mt-2 max-w-3xl rounded-lg border border-brand-burgundy/15 bg-brand-burgundy-soft/40 px-3 py-2 text-xs font-medium text-brand-burgundy">
-                    <strong>Editar ou apagar batidas:</strong> role até a coluna <strong>Marcações</strong> (pode precisar rolar horizontalmente).
+                    <strong>Editar ou apagar batidas:</strong> use a coluna <strong>Marcações</strong> à esquerda; resumo e justificativa ficam à direita em duas linhas.
                     Ajuste os horários e clique em <strong>Salvar marcações</strong>, ou use <strong>Limpar batidas do dia</strong> para remover tudo (ex.: horário errado do app).
                 </p>
             </div>
@@ -222,25 +222,20 @@
             </form>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full min-w-[1480px] text-left text-sm">
+        <div class="overflow-x-auto overflow-y-visible">
+            <table class="w-full min-w-[1100px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                     <tr>
                         <th class="px-5 py-4">Colaborador</th>
-                        <th class="px-4 py-4">Data</th>
-                        <th class="min-w-[320px] bg-brand-burgundy-soft/30 px-4 py-4 text-brand-burgundy">Marcações (editar / limpar)</th>
-                        <th class="px-4 py-4">Horas trabalhadas</th>
-                        <th class="px-4 py-4">Horas falta</th>
-                        <th class="px-4 py-4">Horas extras</th>
-                        <th class="px-4 py-4">Status</th>
-                        <th class="px-4 py-4">Justificativa</th>
-                        <th class="px-5 py-4">Anexar atestado / justificativa</th>
+                        <th class="w-[6.5rem] px-4 py-4">Data</th>
+                        <th class="min-w-[32rem] bg-brand-burgundy-soft/30 px-4 py-4 text-brand-burgundy">Marcações (editar / limpar)</th>
+                        <th class="min-w-[22rem] px-4 py-4">Resumo, status e justificativa</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($registros as $registro)
                         @php
-                            $calcHoras = \App\Support\FrequenciaCalculo::resumoComFallbackEscala($registro);
+                            $calcHoras = \App\Support\FrequenciaCalculo::resumo($registro);
                             $avaliacaoPonto = app(\App\Support\EscalaPontoRegras::class)->avaliarMarcacao(
                                 $registro->colaborador,
                                 $registro->data,
@@ -248,7 +243,7 @@
                             );
                             $pontoBloqueado = ! $avaliacaoPonto['permitido'];
                         @endphp
-                        <tr class="align-top transition hover:bg-brand-gray-soft/50">
+                        <tr class="align-top overflow-visible transition hover:bg-brand-gray-soft/50">
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-burgundy-soft text-sm font-bold text-brand-burgundy">
@@ -280,7 +275,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-4 font-semibold text-brand-black">{{ $registro->data?->format('d/m/Y') }}</td>
-                            <td class="bg-brand-burgundy-soft/10 px-4 py-4">
+                            <td class="overflow-visible bg-brand-burgundy-soft/10 px-4 py-4 align-top">
                                 @php
                                     $temBatida = collect(['entrada_1', 'saida_1', 'entrada_2', 'saida_2'])
                                         ->contains(fn ($c) => ! \App\Support\FrequenciaCalculo::horarioArmazenadoVazio($registro->{$c}));
@@ -292,14 +287,14 @@
                                         default => strtoupper((string) $registro->origem),
                                     };
                                 @endphp
-                                <p class="mb-2 text-[10px] font-bold uppercase tracking-wide text-brand-gray">Origem: {{ $origemLabel }}</p>
-                                <form method="POST" action="{{ route('rh.frequencia.marcacao', $registro) }}" class="space-y-2">
+                                <p class="mb-3 text-[10px] font-bold uppercase tracking-wide text-brand-gray">Origem: {{ $origemLabel }}</p>
+                                <form method="POST" action="{{ route('rh.frequencia.marcacao', $registro) }}" class="space-y-3">
                                     @csrf
-                                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
                                         @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída 1 (alm.)', 'entrada_2' => 'Entrada 2 (alm.)', 'saida_2' => 'Saída final'] as $field => $label)
-                                            <label class="block text-[10px] font-bold uppercase tracking-wide text-brand-gray">
-                                                <span class="mb-1 block">{{ $label }}</span>
-                                                <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" @disabled($pontoBloqueado) class="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-1 text-xs font-semibold text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400">
+                                            <label class="block min-w-[7.5rem] text-[10px] font-bold uppercase tracking-wide text-brand-gray">
+                                                <span class="mb-2 block leading-snug">{{ $label }}</span>
+                                                <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" @disabled($pontoBloqueado) class="freq-marcacao-time h-12 w-full min-h-12 min-w-[7.5rem] box-border rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold leading-normal text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400">
                                             </label>
                                         @endforeach
                                     </div>
@@ -332,51 +327,63 @@
                                     </form>
                                 @endif
                             </td>
-                            <td class="px-4 py-4">
-                                <p class="text-sm font-bold text-brand-black">{{ $calcHoras['trabalhadas_fmt'] }}</p>
-                                <p class="mt-1 text-[10px] text-brand-gray">Soma dos intervalos</p>
-                            </td>
-                            <td class="px-4 py-4">
-                                <p class="text-sm font-bold {{ ($calcHoras['falta'] ?? 0) > 0 ? 'text-red-700' : 'text-brand-gray' }}">{{ $calcHoras['falta_fmt'] }}</p>
-                                <p class="mt-1 text-[10px] text-brand-gray">Vs. {{ $calcHoras['jornada_esperada_fmt'] ?? 'jornada' }}</p>
-                            </td>
-                            <td class="px-4 py-4">
-                                <p class="text-sm font-bold {{ $calcHoras['extras'] > 0 ? 'text-emerald-700' : 'text-brand-gray' }}">{{ $calcHoras['extras_fmt'] }}</p>
-                                <p class="mt-1 text-[10px] text-brand-gray">Acima da jornada</p>
-                            </td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $statusClass[$registro->status] ?? $statusClass['falta'] }}">
-                                    {{ $statusLabel[$registro->status] ?? $registro->status }}
-                                </span>
-                                <p class="mt-1 text-xs text-brand-gray">Origem: {{ strtoupper($registro->origem) }}</p>
-                            </td>
-                            <td class="px-4 py-4">
-                                <p class="font-semibold text-brand-black">{{ $registro->justificativa_tipo ? ucfirst($registro->justificativa_tipo) : '-' }}</p>
-                                <p class="mt-1 max-w-xs text-xs text-brand-gray">{{ $registro->justificativa_texto ?: 'Sem justificativa registrada.' }}</p>
-                                @if ($registro->anexo_path)
-                                    <a href="{{ asset('storage/'.$registro->anexo_path) }}" target="_blank" class="mt-2 inline-flex text-xs font-bold text-brand-burgundy">Ver anexo</a>
-                                @endif
-                            </td>
-                            <td class="px-5 py-4">
-                                <form method="POST" action="{{ route('rh.frequencia.justificar', $registro) }}" enctype="multipart/form-data" class="grid gap-2 lg:grid-cols-[140px_1fr_170px_auto] lg:items-center">
-                                    @csrf
-                                    <select name="justificativa_tipo" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                                        @foreach (['atestado' => 'Atestado', 'justificativa' => 'Justificativa', 'abono' => 'Abono', 'outro' => 'Outro'] as $value => $label)
-                                            <option value="{{ $value }}" @selected($registro->justificativa_tipo === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input name="justificativa_texto" value="{{ $registro->justificativa_texto }}" placeholder="Descreva o motivo..." class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-xs outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                                    <input type="file" name="anexo" class="h-10 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs text-brand-gray file:mr-2 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white">
-                                    <button class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                                        <i data-lucide="save" class="h-4 w-4"></i>
-                                        Salvar
-                                    </button>
-                                </form>
+                            <td class="overflow-visible px-4 py-4 align-top">
+                                {{-- Linha 1: totais e status --}}
+                                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <div class="rounded-lg border border-zinc-200 bg-white px-3 py-2.5">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Horas trabalhadas</p>
+                                        <p class="mt-1 text-sm font-bold text-brand-black">{{ $calcHoras['trabalhadas_fmt'] }}</p>
+                                        <p class="mt-0.5 text-[10px] text-brand-gray">Soma dos intervalos</p>
+                                    </div>
+                                    <div class="rounded-lg border border-zinc-200 bg-white px-3 py-2.5">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Horas falta</p>
+                                        <p class="mt-1 text-sm font-bold {{ ($calcHoras['falta'] ?? 0) > 0 ? 'text-red-700' : 'text-brand-gray' }}">{{ $calcHoras['falta_fmt'] }}</p>
+                                        <p class="mt-0.5 text-[10px] text-brand-gray">Vs. {{ $calcHoras['jornada_esperada_fmt'] ?? 'jornada' }}</p>
+                                    </div>
+                                    <div class="rounded-lg border border-zinc-200 bg-white px-3 py-2.5">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Horas extras</p>
+                                        <p class="mt-1 text-sm font-bold {{ $calcHoras['extras'] > 0 ? 'text-emerald-700' : 'text-brand-gray' }}">{{ $calcHoras['extras_fmt'] }}</p>
+                                        <p class="mt-0.5 text-[10px] text-brand-gray">Acima da jornada</p>
+                                    </div>
+                                    <div class="rounded-lg border border-zinc-200 bg-white px-3 py-2.5">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Status</p>
+                                        <span class="mt-1.5 inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $statusClass[$registro->status] ?? $statusClass['falta'] }}">
+                                            {{ $statusLabel[$registro->status] ?? $registro->status }}
+                                        </span>
+                                        <p class="mt-1.5 text-[10px] text-brand-gray">Origem: {{ strtoupper($registro->origem) }}</p>
+                                    </div>
+                                </div>
+
+                                {{-- Linha 2: justificativa registrada + formulário --}}
+                                <div class="mt-4 grid gap-3 border-t border-zinc-200 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                                    <div class="rounded-lg border border-zinc-200 bg-brand-gray-soft/30 px-3 py-2.5">
+                                        <p class="text-[10px] font-bold uppercase tracking-wide text-brand-gray">Justificativa</p>
+                                        <p class="mt-1 font-semibold text-brand-black">{{ $registro->justificativa_tipo ? ucfirst($registro->justificativa_tipo) : '—' }}</p>
+                                        <p class="mt-1 text-xs leading-relaxed text-brand-gray">{{ $registro->justificativa_texto ?: 'Sem justificativa registrada.' }}</p>
+                                        @if ($registro->anexo_path)
+                                            <a href="{{ asset('storage/'.$registro->anexo_path) }}" target="_blank" class="mt-2 inline-flex text-xs font-bold text-brand-burgundy">Ver anexo</a>
+                                        @endif
+                                    </div>
+                                    <form method="POST" action="{{ route('rh.frequencia.justificar', $registro) }}" enctype="multipart/form-data" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-[8.5rem_1fr] xl:grid-cols-[8.5rem_1fr_10rem_auto] xl:items-center">
+                                        @csrf
+                                        <select name="justificativa_tipo" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:col-span-2 xl:col-span-1">
+                                            @foreach (['atestado' => 'Atestado', 'justificativa' => 'Justificativa', 'abono' => 'Abono', 'outro' => 'Outro'] as $value => $label)
+                                                <option value="{{ $value }}" @selected($registro->justificativa_tipo === $value)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input name="justificativa_texto" value="{{ $registro->justificativa_texto }}" placeholder="Descreva o motivo..." class="h-10 min-w-0 rounded-lg border border-zinc-200 bg-white px-3 text-xs outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:col-span-2 xl:col-span-1">
+                                        <input type="file" name="anexo" class="h-10 min-w-0 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs text-brand-gray file:mr-2 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white sm:col-span-2 xl:col-span-1">
+                                        <button type="submit" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-xs font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark sm:col-span-2 xl:col-span-1">
+                                            <i data-lucide="save" class="h-4 w-4"></i>
+                                            Salvar
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-5 py-12 text-center">
+                            <td colspan="4" class="px-5 py-12 text-center">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="clock" class="h-7 w-7"></i>
                                 </div>
@@ -390,7 +397,7 @@
         </div>
 
         <div class="border-t border-zinc-200 px-5 py-3 text-xs text-brand-gray">
-            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2). A <strong>jornada esperada</strong> por colaborador vem do <strong>Cadastro de horários</strong> vinculado na ficha do efetivo (dia da semana da data filtrada); se não houver escala, usa o padrão do <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code> no .env. <strong>Preenchimento:</strong> ao abrir o dia, o sistema copia da escala os horários ainda vazios (incluindo <strong>Saída 1</strong> e <strong>Entrada 2</strong>, intervalo de almoço). Horas falta = jornada esperada menos trabalhadas (não justificado). Extras = acima da jornada. Dia sem marcação na escala = folga (0h previstas). Justificado: falta como “—”.
+            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2), <strong>somente com batidas registradas</strong> (campo em branco não usa horário da escala). A <strong>jornada esperada</strong> vem do <strong>Cadastro de horários</strong> do efetivo; sem escala, usa <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code>. <strong>Preenchimento automático:</strong> ao abrir o dia, só o intervalo de almoço (Saída 1 / Entrada 2) pode ser copiado da escala. <strong>Horas extras</strong> só após a <strong>saída final</strong> registrada (entrada antes ou saída depois do previsto, ou saldo acima da jornada). Justificado: falta como “—”.
         </div>
 
         <div class="border-t border-zinc-200 p-5">

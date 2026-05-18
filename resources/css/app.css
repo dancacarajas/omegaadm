@@ -148,3 +148,18 @@ select:-webkit-autofill {
 [x-cloak] {
     display: none !important;
 }
+
+/* RH — marcações de ponto: evita corte vertical em input[type=time] na tabela */
+.freq-marcacao-time {
+    min-height: 3rem;
+    overflow: visible;
+}
+
+.freq-marcacao-time::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+.freq-marcacao-time::-webkit-calendar-picker-indicator {
+    margin: 0;
+    padding: 0;
+}

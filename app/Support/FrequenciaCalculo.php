@@ -172,6 +172,11 @@ class FrequenciaCalculo
             return 0;
         }
 
+        // Dia sem saída final: não projeta horário da escala nem conta extra antecipada/tardia.
+        if (self::horarioArmazenadoVazio($registro->saida_2)) {
+            return 0;
+        }
+
         $ymd = $registro->data instanceof CarbonInterface
             ? $registro->data->format('Y-m-d')
             : Carbon::parse($registro->data)->format('Y-m-d');

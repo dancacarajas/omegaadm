@@ -94,4 +94,50 @@ class FrequenciaCalculoExtrasTest extends TestCase
         $this->assertSame(60, FrequenciaCalculo::minutosExtrasForaDaEscala($registro));
         $this->assertGreaterThanOrEqual(60, FrequenciaCalculo::minutosExtras($registro));
     }
+
+    public function test_sem_saida_final_nao_inventa_horas_da_escala_nem_extras(): void
+    {
+        $escala = HorarioEscala::create([
+            'nome' => 'Motoristas',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+
+        HorarioEscalaDia::create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '07:30:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'José',
+            'matricula' => '22281',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+
+        $registro = FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colaborador->id,
+            'data' => '2026-05-18',
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => null,
+            'status' => 'incompleto',
+            'origem' => 'manual',
+        ]);
+
+        $registro->load('colaborador.horarioEscala.dias');
+
+        $resumo = FrequenciaCalculo::resumo($registro);
+        $fallback = FrequenciaCalculo::resumoComFallbackEscala($registro);
+
+        $this->assertSame(480, $resumo['trabalhadas']);
+        $this->assertSame(0, $resumo['extras']);
+        $this->assertGreaterThan(0, $resumo['falta'] ?? 0);
+        $this->assertGreaterThan($resumo['trabalhadas'], $fallback['trabalhadas']);
+    }
 }
