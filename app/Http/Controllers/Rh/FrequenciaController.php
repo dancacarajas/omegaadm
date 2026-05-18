@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\FrequenciaRegistro;
+use App\Support\EscalaPontoRegras;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class FrequenciaController extends Controller
             : $fimMes->copy();
 
         $registros = FrequenciaRegistro::query()
-            ->with(['colaborador.horarioEscala.dias'])
+            ->with(['colaborador.horarioEscala.dias', 'colaborador.horarioEscala.excecoes'])
             ->whereDate('data', $data)
             ->when(request('busca'), function ($query, string $busca) {
                 $query->whereHas('colaborador', function ($query) use ($busca) {
@@ -40,7 +41,7 @@ class FrequenciaController extends Controller
                         ->orWhere('cargo', 'like', "%{$busca}%");
                 });
             })
-            ->orderByRaw("FIELD(status, 'falta', 'incompleto', 'presente', 'justificado')")
+            ->orderByRaw("CASE status WHEN 'falta' THEN 1 WHEN 'incompleto' THEN 2 WHEN 'presente' THEN 3 WHEN 'justificado' THEN 4 ELSE 5 END")
             ->paginate(10)
             ->withQueryString();
 
@@ -124,8 +125,17 @@ class FrequenciaController extends Controller
             ->unique()
             ->values();
 
-        DB::transaction(function () use ($marcacoes, $datas) {
+        $regrasPonto = app(EscalaPontoRegras::class);
+        $bloqueadasRotina = 0;
+
+        DB::transaction(function () use ($marcacoes, $datas, $regrasPonto, &$bloqueadasRotina) {
             foreach ($marcacoes as $marcacao) {
+                if (! $regrasPonto->deveTrabalharNoDia($marcacao['colaborador'], $marcacao['data'])) {
+                    $bloqueadasRotina++;
+
+                    continue;
+                }
+
                 $horarios = collect($marcacao['horarios'])->unique()->sort()->values();
 
                 FrequenciaRegistro::updateOrCreate(
@@ -148,7 +158,12 @@ class FrequenciaController extends Controller
             $this->criarFaltasDosDiasImportados($datas);
         });
 
-        return back()->with('success', 'AFD importado. Marcações lidas: '.count($marcacoes).'. Linhas ignoradas: '.$ignoradas.'.');
+        $msg = 'AFD importado. Marcações lidas: '.count($marcacoes).'. Linhas ignoradas: '.$ignoradas.'.';
+        if ($bloqueadasRotina > 0) {
+            $msg .= ' Marcações bloqueadas (folga/ausência na escala): '.$bloqueadasRotina.'.';
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function marcacaoManual(Request $request, FrequenciaRegistro $registro)
@@ -167,6 +182,19 @@ class FrequenciaController extends Controller
         ])->validate();
 
         $preenchidos = collect($validated)->filter()->count();
+
+        $registro->loadMissing('colaborador.horarioEscala.excecoes');
+        $avaliacao = app(EscalaPontoRegras::class)->avaliarMarcacao(
+            $registro->colaborador,
+            $registro->data,
+            $preenchidos > 0
+        );
+        if (! $avaliacao['permitido']) {
+            return back()
+                ->withErrors(['marcacao' => $avaliacao['motivo']])
+                ->withInput();
+        }
+
         $status = match (true) {
             $preenchidos >= 2 => 'presente',
             $preenchidos === 1 => 'incompleto',
@@ -185,6 +213,25 @@ class FrequenciaController extends Controller
         ]);
 
         return back()->with('success', 'Marcações manuais salvas para '.$registro->colaborador?->nome.'.');
+    }
+
+    public function limparMarcacoes(FrequenciaRegistro $registro)
+    {
+        $registro->loadMissing('colaborador.horarioEscala.excecoes');
+
+        $registro->update([
+            'entrada_1' => null,
+            'saida_1' => null,
+            'entrada_2' => null,
+            'saida_2' => null,
+            'status' => 'falta',
+            'origem' => 'manual',
+        ]);
+
+        return back()->with(
+            'success',
+            'Batidas do dia removidas para '.$registro->colaborador?->nome.'. O colaborador pode marcar de novo no app /ponto.'
+        );
     }
 
     public function justificar(Request $request, FrequenciaRegistro $registro)
@@ -293,24 +340,35 @@ class FrequenciaController extends Controller
             ->get();
 
         foreach ($colaboradores as $colaborador) {
-            $registro = FrequenciaRegistro::firstOrCreate(
-                [
+            $registro = FrequenciaRegistro::query()
+                ->where('colaborador_id', $colaborador->id)
+                ->whereDate('data', $data)
+                ->first();
+
+            $criado = false;
+            if (! $registro) {
+                $registro = FrequenciaRegistro::create([
                     'colaborador_id' => $colaborador->id,
                     'data' => $data,
-                ],
-                [
                     'status' => 'falta',
                     'origem' => 'grade',
-                ]
-            );
+                ]);
+                $criado = true;
+            }
 
-            $this->preencherHorariosDaEscalaNosVazios($registro, $colaborador, $data);
+            if ($criado) {
+                $this->preencherHorariosDaEscalaNosVazios($registro, $colaborador, $data);
+            }
         }
     }
 
     private function preencherHorariosDaEscalaNosVazios(FrequenciaRegistro $registro, Colaborador $colaborador, string $dataYmd): void
     {
         if ($registro->status === 'justificado') {
+            return;
+        }
+
+        if (! app(EscalaPontoRegras::class)->deveTrabalharNoDia($colaborador, $dataYmd)) {
             return;
         }
 

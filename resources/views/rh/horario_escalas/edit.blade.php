@@ -8,7 +8,7 @@
     <form method="POST" action="{{ route('rh.horarios.update', $escala) }}" class="space-y-6" data-horario-escala-form>
         @csrf
         @method('PUT')
-        @include('rh.horario_escalas._form', ['escala' => $escala, 'diasPorSemana' => $diasPorSemana])
+        @include('rh.horario_escalas._form')
 
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <a href="{{ route('rh.horarios.index') }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">

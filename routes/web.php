@@ -22,6 +22,7 @@ use App\Http\Controllers\Rh\FrequenciaController;
 use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\IndicadoresMensaisController;
 use App\Http\Controllers\Rh\RecrutamentoController;
+use App\Http\Controllers\Ponto\PontoColaboradorController;
 use App\Http\Controllers\Rh\RecrutamentoMassUpdateController;
 use App\Http\Controllers\SesmtController;
 use App\Http\Controllers\SsmaEpiEpcController;
@@ -56,6 +57,18 @@ Route::middleware(['installed', 'guest'])->group(function () {
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installed', 'auth'])->name('logout');
+
+Route::middleware(['installed'])->prefix('ponto')->name('ponto.')->group(function () {
+    Route::get('/', fn () => redirect()->route('ponto.identificar'))->name('home');
+    Route::get('/identificar', [PontoColaboradorController::class, 'showIdentificar'])->name('identificar');
+    Route::post('/identificar', [PontoColaboradorController::class, 'identificar'])->name('identificar.store');
+
+    Route::middleware('ponto.colaborador')->group(function () {
+        Route::get('/app', [PontoColaboradorController::class, 'index'])->name('index');
+        Route::post('/registrar', [PontoColaboradorController::class, 'registrar'])->name('registrar');
+        Route::post('/sair', [PontoColaboradorController::class, 'sair'])->name('sair');
+    });
+});
 
 Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(function () {
     Route::redirect('/', '/publico/contratos/histograma');
@@ -278,6 +291,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::post('frequencia/importar-afd', [FrequenciaController::class, 'importarAfd'])->name('frequencia.importar-afd');
         Route::post('frequencia/{registro}/marcacao', [FrequenciaController::class, 'marcacaoManual'])->name('frequencia.marcacao');
+        Route::post('frequencia/{registro}/limpar-marcacoes', [FrequenciaController::class, 'limparMarcacoes'])->name('frequencia.limpar-marcacoes');
         Route::post('frequencia/{registro}/justificar', [FrequenciaController::class, 'justificar'])->name('frequencia.justificar');
         Route::resource('frequencia/horarios', HorarioEscalaController::class)
             ->except(['show'])

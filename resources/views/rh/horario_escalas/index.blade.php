@@ -14,8 +14,8 @@
 @section('content')
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
-            <h2 class="text-xl font-bold text-brand-black">Escalas semanais</h2>
-            <p class="mt-1 text-sm text-brand-gray">Defina os horários que podem rodar no efetivo (ex.: fábrica, administrativo, turno).</p>
+            <h2 class="text-xl font-bold text-brand-black">Escalas de horários</h2>
+            <p class="mt-1 text-sm text-brand-gray">Semanal (fixo por dia da semana) ou rotativa (revezamento no calendário, ex.: motoristas).</p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[720px] text-left text-sm">
@@ -33,13 +33,19 @@
                     @forelse ($escalas as $escala)
                         <tr class="transition hover:bg-brand-gray-soft/40">
                             <td class="px-5 py-4 font-semibold text-brand-black">{{ $escala->nome }}</td>
-                            <td class="px-4 py-4 text-brand-gray">{{ ucfirst($escala->tipo) }}</td>
+                            <td class="px-4 py-4 text-brand-gray">{{ $escala->tipo === 'rotativa' ? 'Rotativa' : 'Semanal' }}</td>
                             <td class="px-4 py-4">
                                 <span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold {{ $escala->status === 'ativo' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-brand-gray-soft text-brand-gray' }}">
                                     {{ $escala->status === 'ativo' ? 'Ativo' : 'Inativo' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-4 text-brand-gray">{{ $escala->dias_count }} / 7</td>
+                            <td class="px-4 py-4 text-brand-gray">
+                                @if ($escala->tipo === 'rotativa')
+                                    {{ $escala->ciclo_dias ?? $escala->dias_count }} dias/ciclo
+                                @else
+                                    {{ $escala->dias_count }} / 7
+                                @endif
+                            </td>
                             <td class="px-4 py-4 font-medium text-brand-gray">{{ $escala->colaboradores_count }}</td>
                             <td class="px-5 py-4 text-right">
                                 <a href="{{ route('rh.horarios.edit', $escala) }}" class="inline-flex h-9 items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">

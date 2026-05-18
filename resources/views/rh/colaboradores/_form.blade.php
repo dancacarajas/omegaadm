@@ -260,17 +260,60 @@
             </label>
             <label class="md:col-span-2">
                 <span class="{{ $labelClass }}">Cadastro de horários</span>
-                <select name="horario_escala_id" class="{{ $inputClass }}">
-                    <option value="">— Sem vínculo —</option>
+                <select name="horario_escala_id" id="colab-horario-escala-id" class="{{ $inputClass }}" data-colab-escala-select>
+                    <option value="" data-tipo="">— Sem vínculo —</option>
                     @foreach ($horarioEscalas as $escala)
-                        <option value="{{ $escala->id }}" @selected((string) old('horario_escala_id', $colaborador->horario_escala_id) === (string) $escala->id)>
-                            {{ $escala->nome }}@if ($escala->status !== 'ativo') ({{ $escala->status === 'inativo' ? 'Inativo' : ucfirst($escala->status) }})@endif
+                        @php
+                            $rotuloTipo = match ($escala->tipo) {
+                                'rotativa_semanal' => 'rotativa semanal',
+                                'rotativa' => 'rotativa',
+                                default => 'semanal',
+                            };
+                        @endphp
+                        <option
+                            value="{{ $escala->id }}"
+                            data-tipo="{{ $escala->tipo }}"
+                            @selected((string) old('horario_escala_id', $colaborador->horario_escala_id) === (string) $escala->id)
+                        >
+                            {{ $escala->nome }} · {{ $rotuloTipo }}@if ($escala->status !== 'ativo') (inativo)@endif
                         </option>
                     @endforeach
                 </select>
                 @error('horario_escala_id') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
-                <span class="mt-1 block text-xs font-medium text-brand-gray">Vincule a escala criada em RH → Frequência → Cadastro de horários.</span>
+                <span class="mt-1 block text-xs font-medium text-brand-gray">
+                    Motoristas em revezamento: escala <strong>rotativa semanal</strong> e grupo abaixo.
+                    <a href="{{ route('rh.horarios.index') }}" class="font-bold text-brand-burgundy hover:underline">Cadastro de horários</a>
+                </span>
             </label>
+            <label class="md:col-span-2 hidden" data-colab-ciclo-offset-wrap>
+                <span class="{{ $labelClass }}" data-colab-ciclo-offset-label>Grupo na rotatividade</span>
+                <select name="horario_escala_ciclo_offset" id="colab-horario-ciclo-offset" class="{{ $inputClass }}">
+                    <option value="0" data-rotativa-semanal="Grupo 0 — sem.1: seg, qua, sex" data-rotativa="Fase 0 — dia 1 do ciclo" @selected((string) old('horario_escala_ciclo_offset', $colaborador->horario_escala_ciclo_offset ?? 0) === '0')>Grupo 0 — sem.1: seg, qua, sex</option>
+                    <option value="1" data-rotativa-semanal="Grupo 1 — sem.1: ter, qui" data-rotativa="Fase 1 — revezamento oposto" @selected((string) old('horario_escala_ciclo_offset', $colaborador->horario_escala_ciclo_offset ?? 0) === '1')>Grupo 1 — sem.1: ter, qui</option>
+                </select>
+                @error('horario_escala_ciclo_offset') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
+                <span class="mt-1 block text-xs font-medium text-brand-gray" data-colab-ciclo-offset-hint></span>
+            </label>
+            @if ($colaborador->exists && $colaborador->status === 'ativo')
+                <div class="md:col-span-2 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4" role="note">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold uppercase tracking-wide text-emerald-900">Ponto pelo celular</p>
+                            <p class="mt-1 text-sm text-emerald-950">
+                                Acesso em <strong>/ponto</strong> com matrícula e CPF (seção Dados pessoais).
+                            </p>
+                            <ul class="mt-2 space-y-1 text-xs text-emerald-900/90">
+                                <li>Matrícula: <span class="font-semibold">{{ $colaborador->matricula ?: '— não informada' }}</span></li>
+                                <li>CPF: <span class="font-semibold">{{ $colaborador->cpf ?: '— não informado' }}</span></li>
+                            </ul>
+                        </div>
+                        <a href="{{ url('/ponto') }}" target="_blank" rel="noopener" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white shadow-sm">
+                            <i data-lucide="smartphone" class="h-4 w-4"></i>
+                            Abrir app de ponto
+                        </a>
+                    </div>
+                </div>
+            @endif
         </div>
     </section>
 
@@ -391,3 +434,49 @@
         </div>
     </section>
 </div>
+
+@push('scripts')
+<script>
+(function () {
+    const select = document.querySelector('[data-colab-escala-select]');
+    const wrap = document.querySelector('[data-colab-ciclo-offset-wrap]');
+    const offsetSelect = document.getElementById('colab-horario-ciclo-offset');
+    const hint = document.querySelector('[data-colab-ciclo-offset-hint]');
+    const label = document.querySelector('[data-colab-ciclo-offset-label]');
+    if (!select || !wrap || !offsetSelect) return;
+
+    const hints = {
+        rotativa_semanal: 'Na semana 2 os grupos invertem (seg/qua/sex ↔ ter/qui). Sábado e domingo são folga para todos.',
+        rotativa: 'Ciclo de 2 dias: fase 0 trabalha no dia 1, fase 1 no dia oposto.',
+    };
+
+    function tipoSelecionado() {
+        const opt = select.options[select.selectedIndex];
+        return opt?.dataset?.tipo || '';
+    }
+
+    function sync() {
+        const tipo = tipoSelecionado();
+        const rotativa = tipo === 'rotativa' || tipo === 'rotativa_semanal';
+        wrap.classList.toggle('hidden', !rotativa);
+        if (hint) hint.textContent = hints[tipo] || '';
+        if (label) {
+            label.textContent = tipo === 'rotativa_semanal'
+                ? 'Grupo na rotatividade (semanal)'
+                : 'Fase no ciclo (dia sim/não)';
+        }
+        if (rotativa) {
+            [...offsetSelect.options].forEach((opt) => {
+                const texto = tipo === 'rotativa_semanal'
+                    ? opt.dataset.rotativaSemanal
+                    : opt.dataset.rotativa;
+                if (texto) opt.textContent = texto;
+            });
+        }
+    }
+
+    select.addEventListener('change', sync);
+    sync();
+})();
+</script>
+@endpush

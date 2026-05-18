@@ -56,6 +56,7 @@ class Colaborador extends Model
         'jornada_semanal',
         'horario',
         'horario_escala_id',
+        'horario_escala_ciclo_offset',
         'data_admissao',
         'data_opcao_fgts',
         'data_demissao',
@@ -132,7 +133,7 @@ class Colaborador extends Model
     }
 
     /**
-     * Dia da escala semanal vinculada (dia_semana 1=seg … 7=dom, ISO-8601).
+     * Dia da escala na data: semanal (dia_semana 1=seg … 7=dom) ou rotativa (posição no ciclo).
      */
     public function horarioEscalaDiaNaData(DateTimeInterface|string|null $data): ?HorarioEscalaDia
     {
@@ -142,12 +143,34 @@ class Colaborador extends Model
 
         $this->loadMissing('horarioEscala.dias');
 
+        $escala = $this->horarioEscala;
+        if (! $escala) {
+            return null;
+        }
+
         $carbon = $data instanceof DateTimeInterface
             ? Carbon::parse($data)
             : Carbon::parse((string) $data);
 
+        if ($escala->isRotativaSemanal()) {
+            return \App\Support\HorarioEscalaSemanalAlternada::diaNaData($this, $carbon);
+        }
+
+        if ($escala->isRotativa()) {
+            $indice = \App\Support\HorarioEscalaRotativa::indiceDiaCiclo(
+                $escala,
+                $carbon,
+                (int) ($this->horario_escala_ciclo_offset ?? 0)
+            );
+            if ($indice === null) {
+                return null;
+            }
+
+            return $escala->dias->firstWhere('dia_semana', $indice);
+        }
+
         $diaSemana = (int) $carbon->isoWeekday();
 
-        return $this->horarioEscala?->dias->firstWhere('dia_semana', $diaSemana);
+        return $escala->dias->firstWhere('dia_semana', $diaSemana);
     }
 }

@@ -345,6 +345,13 @@ class ColaboradorController extends Controller
             }
         }
 
+        if (array_key_exists('horario_escala_ciclo_offset', $data)) {
+            $off = $data['horario_escala_ciclo_offset'];
+            $data['horario_escala_ciclo_offset'] = is_numeric($off)
+                ? max(0, min(13, (int) $off))
+                : 0;
+        }
+
         $data['status'] = $this->normalizeOption($data['status'] ?? 'ativo', [
             'ativo' => 'ativo',
             'afastado' => 'afastado',
@@ -472,6 +479,7 @@ class ColaboradorController extends Controller
             'jornada_semanal' => ['nullable', 'string', 'max:40'],
             'horario' => ['nullable', 'string', 'max:255'],
             'horario_escala_id' => ['nullable', 'integer', Rule::exists('horario_escalas', 'id')],
+            'horario_escala_ciclo_offset' => ['nullable', 'integer', 'min:0', 'max:13'],
             'data_admissao' => ['nullable', 'date'],
             'data_opcao_fgts' => ['nullable', 'date'],
             'data_demissao' => ['nullable', 'date'],
@@ -502,6 +510,6 @@ class ColaboradorController extends Controller
         return HorarioEscala::query()
             ->orderByRaw("CASE WHEN status = 'ativo' THEN 0 ELSE 1 END")
             ->orderBy('nome')
-            ->get(['id', 'nome', 'status']);
+            ->get(['id', 'nome', 'tipo', 'status']);
     }
 }

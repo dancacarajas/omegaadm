@@ -1,0 +1,216 @@
+@php
+    $colaboradoresDisponiveis = $colaboradoresDisponiveis ?? collect();
+    $excecoesEscala = $excecoesEscala ?? collect();
+    $tipoAtual = $tipoAtual ?? old('tipo', $escala->tipo ?? 'semanal');
+    $mostraGrupo = in_array($tipoAtual, ['rotativa', 'rotativa_semanal'], true);
+    $idsNaEscala = collect(old('escala_colaboradores', []))
+        ->pluck('colaborador_id')
+        ->filter()
+        ->map(fn ($id) => (int) $id)
+        ->all();
+    if ($idsNaEscala === [] && $escala->exists) {
+        $idsNaEscala = $escala->colaboradores->pluck('id')->all();
+    }
+@endphp
+
+<section class="overflow-hidden rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-lg font-bold text-brand-black">Colaboradores nesta escala</h2>
+    <p class="mt-1 text-sm text-brand-gray">
+        Marque quem participa da escala.
+        @if ($mostraGrupo)
+            Em seguida escolha o <strong>grupo 0 ou 1</strong> no campo destacado em cada linha.
+        @endif
+    </p>
+
+    @if ($mostraGrupo)
+        <div class="mt-4 grid gap-2 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/30 p-3 text-xs text-brand-black sm:grid-cols-2">
+            <p><span class="font-bold">Grupo 0</span> — Semana 1: seg, qua, sex · Semana 2: ter, qui</p>
+            <p><span class="font-bold">Grupo 1</span> — Semana 1: ter, qui · Semana 2: seg, qua, sex</p>
+        </div>
+    @endif
+
+    @if ($colaboradoresDisponiveis->isEmpty())
+        <p class="mt-4 text-sm text-brand-gray">Nenhum colaborador ativo disponível para vincular.</p>
+    @else
+        <div class="mt-5 space-y-3">
+            @foreach ($colaboradoresDisponiveis as $idx => $colab)
+                @php
+                    $naEscala = in_array($colab->id, $idsNaEscala, true);
+                    $offset = (int) old("escala_colaboradores.$idx.ciclo_offset", $colab->horario_escala_ciclo_offset ?? 0);
+                @endphp
+                <div class="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4" data-escala-colab-row>
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
+                        <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 lg:pt-8">
+                            <input type="checkbox" value="1" data-escala-colab-check class="h-4 w-4 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($naEscala)>
+                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Incluir</span>
+                        </label>
+                        <input type="hidden" name="escala_colaboradores[{{ $idx }}][colaborador_id]" value="{{ $colab->id }}" data-escala-colab-id disabled @disabled(! $naEscala)>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-semibold text-brand-black">{{ $colab->nome }}</p>
+                            <p class="text-xs text-brand-gray">{{ $colab->matricula ?: 'Sem matrícula' }}</p>
+                        </div>
+                        @if ($mostraGrupo)
+                            <div class="w-full lg:w-72" data-escala-col-fase>
+                                <label class="block text-xs font-bold uppercase tracking-wide text-brand-burgundy">Grupo na rotatividade</label>
+                                <select name="escala_colaboradores[{{ $idx }}][ciclo_offset]" class="mt-1.5 w-full rounded-lg border-2 border-brand-burgundy/40 bg-white px-3 py-2.5 text-sm font-semibold text-brand-black shadow-sm" @disabled(! $naEscala) data-escala-colab-offset>
+                                    <option value="0" @selected($offset === 0)>Grupo 0 — sem.1: seg, qua, sex</option>
+                                    <option value="1" @selected($offset === 1)>Grupo 1 — sem.1: ter, qui</option>
+                                </select>
+                                @if (! $naEscala)
+                                    <p class="mt-1 text-xs text-amber-800">Marque «Incluir» para habilitar.</p>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+    @error('escala_colaboradores')
+        <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
+    @enderror
+</section>
+
+@if ($escala->exists)
+    <section class="overflow-hidden rounded-xl border border-violet-200/80 bg-violet-50/40 p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-bold text-brand-black">Exceções administrativas</h2>
+        <p class="mt-1 text-sm text-brand-gray">
+            Registre ausências temporárias e cobertura. Ex.: Pedro ausente por luto — outro motorista marca ponto <strong>todos os dias</strong> até o retorno, ignorando a folga do ciclo.
+        </p>
+
+        @if ($excecoesEscala->isNotEmpty())
+            <div class="mt-5 space-y-3">
+                @foreach ($excecoesEscala as $exIdx => $excecao)
+                    <div class="rounded-lg border border-violet-200/60 bg-white p-4 text-sm">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][id]" value="{{ $excecao->id }}">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][colaborador_ausente_id]" value="{{ $excecao->colaborador_ausente_id }}">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][colaborador_cobertura_id]" value="{{ $excecao->colaborador_cobertura_id }}">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][data_inicio]" value="{{ $excecao->data_inicio->format('Y-m-d') }}">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][data_fim]" value="{{ $excecao->data_fim->format('Y-m-d') }}">
+                        <input type="hidden" name="excecoes[{{ $exIdx }}][motivo]" value="{{ $excecao->motivo }}">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="font-bold text-brand-black">
+                                    Ausente: {{ $excecao->colaboradorAusente?->nome }}
+                                    @if ($excecao->colaboradorCobertura)
+                                        · Cobertura: {{ $excecao->colaboradorCobertura->nome }}
+                                    @endif
+                                </p>
+                                <p class="mt-1 text-xs text-brand-gray">
+                                    {{ $excecao->data_inicio->format('d/m/Y') }} — {{ $excecao->data_fim->format('d/m/Y') }}
+                                    @if ($excecao->motivo)
+                                        · {{ $excecao->motivo }}
+                                    @endif
+                                </p>
+                            </div>
+                            <label class="inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-red-600">
+                                <input type="checkbox" name="excecoes_remover[]" value="{{ $excecao->id }}" class="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500">
+                                Remover
+                            </label>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        @php
+            $colaboradoresEscala = $escala->colaboradores->isNotEmpty()
+                ? $escala->colaboradores
+                : $colaboradoresDisponiveis->filter(fn ($c) => in_array($c->id, $idsNaEscala, true));
+            $novaExIdx = $excecoesEscala->count();
+        @endphp
+
+        @if ($colaboradoresEscala->isNotEmpty())
+            <div class="mt-6 rounded-lg border border-dashed border-violet-300 bg-white p-4">
+                <h3 class="text-sm font-bold text-brand-black">Nova exceção</h3>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Colaborador ausente</label>
+                        <select name="excecoes[{{ $novaExIdx }}][colaborador_ausente_id]" class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                            <option value="">— Selecione —</option>
+                            @foreach ($colaboradoresEscala as $c)
+                                <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Cobertura (opcional)</label>
+                        <select name="excecoes[{{ $novaExIdx }}][colaborador_cobertura_id]" class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                            <option value="">— Nenhum —</option>
+                            @foreach ($colaboradoresEscala as $c)
+                                <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-[10px] text-brand-gray">Quem cobre pode marcar ponto em qualquer dia do período.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Motivo</label>
+                        <input type="text" name="excecoes[{{ $novaExIdx }}][motivo]" maxlength="500" placeholder="Ex.: luto familiar" class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Início</label>
+                        <input type="date" name="excecoes[{{ $novaExIdx }}][data_inicio]" class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Fim</label>
+                        <input type="date" name="excecoes[{{ $novaExIdx }}][data_fim]" class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                    </div>
+                </div>
+            </div>
+        @else
+            <p class="mt-4 text-sm text-amber-800">Salve a escala com ao menos um colaborador vinculado para registrar exceções.</p>
+        @endif
+    </section>
+@endif
+
+@push('scripts')
+    <script>
+        (function () {
+            const tipoSel = document.querySelector('[data-horario-tipo]');
+            const faseCols = document.querySelectorAll('[data-escala-col-fase]');
+
+            function syncTipoColab() {
+                const rot = tipoSel?.value === 'rotativa' || tipoSel?.value === 'rotativa_semanal';
+                faseCols.forEach((el) => {
+                    el.classList.toggle('hidden', !rot);
+                    if (rot) {
+                        el.removeAttribute('hidden');
+                    }
+                });
+            }
+
+            tipoSel?.addEventListener('change', syncTipoColab);
+
+            document.querySelectorAll('[data-escala-colab-check]').forEach((cb) => {
+                cb.addEventListener('change', () => {
+                    const row = cb.closest('[data-escala-colab-row]');
+                    const hidden = row?.querySelector('[data-escala-colab-id]');
+                    const offset = row?.querySelector('[data-escala-colab-offset]');
+                    if (hidden) {
+                        hidden.disabled = !cb.checked;
+                    }
+                    if (offset) {
+                        offset.disabled = !cb.checked;
+                    }
+                });
+            });
+
+            document.querySelector('form[data-horario-escala-form]')?.addEventListener('submit', () => {
+                document.querySelectorAll('[data-escala-colab-check]').forEach((cb) => {
+                    const row = cb.closest('[data-escala-colab-row]');
+                    const hidden = row?.querySelector('[data-escala-colab-id]');
+                    const offset = row?.querySelector('[data-escala-colab-offset]');
+                    if (cb.checked) {
+                        hidden?.removeAttribute('disabled');
+                        offset?.removeAttribute('disabled');
+                    } else {
+                        hidden?.removeAttribute('name');
+                        offset?.removeAttribute('name');
+                    }
+                });
+            });
+
+            syncTipoColab();
+        })();
+    </script>
+@endpush

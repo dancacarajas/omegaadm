@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'installed' => EnsureInstalled::class,
             'perfil.rota' => EnsurePerfilPermissaoRota::class,
+            'ponto.colaborador' => \App\Http\Middleware\EnsureColaboradorPonto::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

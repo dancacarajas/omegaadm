@@ -21,6 +21,12 @@
         $fmtHora = fn ($t) => $t ? substr((string) $t, 0, 5) : '';
     @endphp
 
+    @if (session('success'))
+        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+            {{ session('success') }}
+        </div>
+    @endif
+
     @if (session('error'))
         <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {{ session('error') }}
@@ -161,6 +167,10 @@
             <div>
                 <h2 class="text-xl font-bold text-brand-black">Ponto diário do efetivo</h2>
                 <p class="mt-1 text-sm text-brand-gray">Acompanhe marcações, faltas, atestados e justificativas por data.</p>
+                <p class="mt-2 max-w-3xl rounded-lg border border-brand-burgundy/15 bg-brand-burgundy-soft/40 px-3 py-2 text-xs font-medium text-brand-burgundy">
+                    <strong>Editar ou apagar batidas:</strong> role até a coluna <strong>Marcações</strong> (pode precisar rolar horizontalmente).
+                    Ajuste os horários e clique em <strong>Salvar marcações</strong>, ou use <strong>Limpar batidas do dia</strong> para remover tudo (ex.: horário errado do app).
+                </p>
             </div>
             <form method="GET" class="grid gap-2 sm:grid-cols-[150px_130px_1fr_auto] sm:items-center">
                 <input type="date" name="data" value="{{ $data }}" class="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
@@ -182,7 +192,7 @@
                     <tr>
                         <th class="px-5 py-4">Colaborador</th>
                         <th class="px-4 py-4">Data</th>
-                        <th class="px-4 py-4">Marcações</th>
+                        <th class="min-w-[320px] bg-brand-burgundy-soft/30 px-4 py-4 text-brand-burgundy">Marcações (editar / limpar)</th>
                         <th class="px-4 py-4">Horas trabalhadas</th>
                         <th class="px-4 py-4">Horas falta</th>
                         <th class="px-4 py-4">Horas extras</th>
@@ -195,6 +205,12 @@
                     @forelse ($registros as $registro)
                         @php
                             $calcHoras = \App\Support\FrequenciaCalculo::resumoComFallbackEscala($registro);
+                            $avaliacaoPonto = app(\App\Support\EscalaPontoRegras::class)->avaliarMarcacao(
+                                $registro->colaborador,
+                                $registro->data,
+                                true
+                            );
+                            $pontoBloqueado = ! $avaliacaoPonto['permitido'];
                         @endphp
                         <tr class="align-top transition hover:bg-brand-gray-soft/50">
                             <td class="px-5 py-4">
@@ -209,8 +225,18 @@
                                             $diaEscala = $registro->colaborador->horarioEscalaDiaNaData($registro->data);
                                         @endphp
                                         @if ($registro->colaborador->horarioEscala)
-                                            <p class="mt-1 text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">Escala: {{ $registro->colaborador->horarioEscala->nome }}</p>
+                                            <p class="mt-1 text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">
+                                                Escala: {{ $registro->colaborador->horarioEscala->nome }}
+                                                @if ($registro->colaborador->horarioEscala->isRotativaSemanal())
+                                                    · rotativa semanal · grupo {{ (int) $registro->colaborador->horario_escala_ciclo_offset }}
+                                                @elseif ($registro->colaborador->horarioEscala->isRotativa())
+                                                    · rotativa · fase {{ (int) $registro->colaborador->horario_escala_ciclo_offset }}
+                                                @endif
+                                            </p>
                                             <p class="text-[10px] text-brand-gray">Previsto hoje: {{ $diaEscala?->textoGrade() ?? '—' }}</p>
+                                            @if ($pontoBloqueado)
+                                                <p class="mt-1 text-[10px] font-bold text-amber-800">{{ $avaliacaoPonto['motivo'] }}</p>
+                                            @endif
                                         @else
                                             <p class="mt-1 text-[10px] text-brand-gray">Sem escala — usa jornada padrão ({{ \App\Support\FrequenciaCalculo::formatarMinutos(\App\Support\FrequenciaCalculo::jornadaMinutosEsperados()) }})</p>
                                         @endif
@@ -218,22 +244,57 @@
                                 </div>
                             </td>
                             <td class="px-4 py-4 font-semibold text-brand-black">{{ $registro->data?->format('d/m/Y') }}</td>
-                            <td class="px-4 py-4">
+                            <td class="bg-brand-burgundy-soft/10 px-4 py-4">
+                                @php
+                                    $temBatida = collect(['entrada_1', 'saida_1', 'entrada_2', 'saida_2'])
+                                        ->contains(fn ($c) => ! \App\Support\FrequenciaCalculo::horarioArmazenadoVazio($registro->{$c}));
+                                    $origemLabel = match ($registro->origem) {
+                                        'app_colaborador' => 'App colaborador',
+                                        'manual' => 'Manual RH',
+                                        'afd' => 'Importação AFD',
+                                        'grade' => 'Grade automática',
+                                        default => strtoupper((string) $registro->origem),
+                                    };
+                                @endphp
+                                <p class="mb-2 text-[10px] font-bold uppercase tracking-wide text-brand-gray">Origem: {{ $origemLabel }}</p>
                                 <form method="POST" action="{{ route('rh.frequencia.marcacao', $registro) }}" class="space-y-2">
                                     @csrf
                                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                         @foreach (['entrada_1' => 'Entrada', 'saida_1' => 'Saída 1 (alm.)', 'entrada_2' => 'Entrada 2 (alm.)', 'saida_2' => 'Saída final'] as $field => $label)
                                             <label class="block text-[10px] font-bold uppercase tracking-wide text-brand-gray">
                                                 <span class="mb-1 block">{{ $label }}</span>
-                                                <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" class="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-1 text-xs font-semibold text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                                                <input type="time" name="{{ $field }}" value="{{ $fmtHora($registro->{$field}) }}" step="60" @disabled($pontoBloqueado) class="h-9 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-1 text-xs font-semibold text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400">
                                             </label>
                                         @endforeach
                                     </div>
-                                    <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-2 text-xs font-bold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white sm:w-auto">
-                                        <i data-lucide="clock" class="h-3.5 w-3.5"></i>
-                                        Registrar ponto manual
-                                    </button>
+                                    @if ($errors->has('marcacao') && (int) old('_registro_id') === $registro->id)
+                                        <p class="text-[10px] font-bold text-red-600">{{ $errors->first('marcacao') }}</p>
+                                    @endif
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="submit" @disabled($pontoBloqueado) class="inline-flex h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-brand-burgundy px-3 text-xs font-bold text-white shadow-sm transition hover:bg-brand-burgundy-dark disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 sm:flex-none sm:min-w-[9rem]">
+                                            <i data-lucide="save" class="h-3.5 w-3.5"></i>
+                                            {{ $pontoBloqueado ? 'Bloqueado' : 'Salvar marcações' }}
+                                        </button>
+                                        @if ($temBatida)
+                                            <button
+                                                type="submit"
+                                                form="limpar-marcacoes-{{ $registro->id }}"
+                                                class="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 transition hover:bg-red-100"
+                                                onclick="return confirm('Remover todas as batidas deste dia para {{ addslashes($registro->colaborador->nome) }}?');"
+                                            >
+                                                <i data-lucide="eraser" class="h-3.5 w-3.5"></i>
+                                                Limpar batidas do dia
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <p class="text-[10px] text-brand-gray">Deixe um campo em branco e salve para apagar só aquela batida.</p>
+                                    <input type="hidden" name="_registro_id" value="{{ $registro->id }}">
                                 </form>
+                                @if ($temBatida)
+                                    <form id="limpar-marcacoes-{{ $registro->id }}" method="POST" action="{{ route('rh.frequencia.limpar-marcacoes', $registro) }}" class="hidden">
+                                        @csrf
+                                    </form>
+                                @endif
                             </td>
                             <td class="px-4 py-4">
                                 <p class="text-sm font-bold text-brand-black">{{ $calcHoras['trabalhadas_fmt'] }}</p>

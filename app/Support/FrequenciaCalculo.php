@@ -167,6 +167,11 @@ class FrequenciaCalculo
         return (int) $a->diffInMinutes($b);
     }
 
+    public static function normalizarHorarioBanco(mixed $valor): ?string
+    {
+        return self::normalizarHora($valor);
+    }
+
     private static function normalizarHora(mixed $valor): ?string
     {
         if ($valor instanceof CarbonInterface) {
