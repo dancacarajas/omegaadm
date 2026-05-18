@@ -61,6 +61,7 @@ class TstColaboradorController extends Controller
 
         $recentes = SsmaTstRegistro::query()
             ->with('atividade')
+            ->withCount('fotos')
             ->where('colaborador_id', $colaborador->id)
             ->orderByDesc('data')
             ->orderByDesc('id')
@@ -84,7 +85,7 @@ class TstColaboradorController extends Controller
 
         $this->registros->criar(
             $data,
-            $request,
+            $this->registros->extrairArquivos($request),
             null,
             SsmaTstRegistroService::ORIGEM_APP_COLABORADOR,
         );

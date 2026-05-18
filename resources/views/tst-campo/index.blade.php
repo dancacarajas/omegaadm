@@ -87,37 +87,7 @@
                     <textarea name="descricao" id="descricao" rows="4" required placeholder="Descreva o que foi realizado..." class="ponto-input min-h-[6rem] resize-y py-3">{{ old('descricao') }}</textarea>
                 </div>
 
-                <div class="ponto-field-card" id="tst-foto-card">
-                    <p class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-gray">Registro fotográfico <span class="text-red-600">*</span></p>
-                    <p class="mb-3 text-xs text-brand-gray">Somente imagem (JPG, PNG, GIF ou WebP — até 10 MB).</p>
-
-                    <input type="file" id="arquivo-camera" class="tst-sr-only" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" tabindex="-1">
-                    <input type="file" id="arquivo-galeria" class="tst-sr-only" accept="image/jpeg,image/png,image/gif,image/webp" tabindex="-1">
-                    <input type="file" name="arquivo" id="arquivo" class="tst-sr-only" accept="image/jpeg,image/png,image/gif,image/webp" required tabindex="-1">
-
-                    <div class="tst-photo-actions" id="tst-photo-actions">
-                        <button type="button" class="tst-photo-btn tst-photo-btn--primary" id="btn-tirar-foto" aria-label="Abrir câmera e tirar foto">
-                            <span class="tst-photo-btn-icon">
-                                <i data-lucide="camera" class="h-5 w-5"></i>
-                            </span>
-                            Tirar foto
-                        </button>
-                        <button type="button" class="tst-photo-btn" id="btn-escolher-galeria" aria-label="Escolher imagem da galeria">
-                            <span class="tst-photo-btn-icon">
-                                <i data-lucide="image" class="h-5 w-5"></i>
-                            </span>
-                            Anexar imagem
-                        </button>
-                    </div>
-
-                    <p id="tst-photo-filename" class="tst-photo-filename hidden" aria-live="polite"></p>
-
-                    <div id="tst-preview" class="mt-3 hidden overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-                        <img src="" alt="Pré-visualização da foto" class="max-h-52 w-full object-contain">
-                        <button type="button" id="btn-remover-foto" class="tst-photo-clear">Remover foto e escolher outra</button>
-                    </div>
-                    <p id="tst-photo-erro" class="mt-2 hidden text-xs font-semibold text-red-600" role="alert"></p>
-                </div>
+                <x-tst-fotos-upload variant="mobile" :obrigatorio="true" />
 
                 <button type="submit" class="ponto-btn-primary">
                     <span class="ponto-btn-primary-row">
@@ -144,7 +114,7 @@
                                 </span>
                                 <span class="ponto-batida-label min-w-0">
                                     <span class="block truncate font-semibold">{{ $item->atividade?->nome ?? 'Sem atividade' }}</span>
-                                    <span class="ponto-batida-sublabel line-clamp-2">{{ Str::limit($item->descricao, 80) }}</span>
+                                    <span class="ponto-batida-sublabel line-clamp-2">{{ Str::limit($item->descricao, 80) }}@if (($item->fotos_count ?? 0) > 0) · {{ $item->fotos_count }} foto(s)@endif</span>
                                 </span>
                             </div>
                             <span class="ponto-batida-hora ponto-batida-hora--done shrink-0 text-right">
@@ -157,117 +127,3 @@
         @endif
     </main>
 @endsection
-
-@push('scripts')
-    <script>
-        (function () {
-            const MAX_BYTES = 10 * 1024 * 1024;
-            const TIPOS = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-            const inputEnvio = document.getElementById('arquivo');
-            const inputCamera = document.getElementById('arquivo-camera');
-            const inputGaleria = document.getElementById('arquivo-galeria');
-            const btnCamera = document.getElementById('btn-tirar-foto');
-            const btnGaleria = document.getElementById('btn-escolher-galeria');
-            const btnRemover = document.getElementById('btn-remover-foto');
-            const preview = document.getElementById('tst-preview');
-            const img = preview?.querySelector('img');
-            const filenameEl = document.getElementById('tst-photo-filename');
-            const erroEl = document.getElementById('tst-photo-erro');
-            const form = document.getElementById('form-tst-campo');
-
-            let previewUrl = null;
-
-            function mostrarErro(msg) {
-                if (!erroEl) return;
-                if (msg) {
-                    erroEl.textContent = msg;
-                    erroEl.classList.remove('hidden');
-                } else {
-                    erroEl.textContent = '';
-                    erroEl.classList.add('hidden');
-                }
-            }
-
-            function limparPreviewUrl() {
-                if (previewUrl) {
-                    URL.revokeObjectURL(previewUrl);
-                    previewUrl = null;
-                }
-            }
-
-            function aplicarArquivo(file) {
-                mostrarErro('');
-                if (!file) {
-                    return false;
-                }
-                if (!TIPOS.includes(file.type)) {
-                    mostrarErro('Selecione apenas imagem (JPG, PNG, GIF ou WebP).');
-                    return false;
-                }
-                if (file.size > MAX_BYTES) {
-                    mostrarErro('A imagem deve ter no máximo 10 MB.');
-                    return false;
-                }
-
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                inputEnvio.files = dt.files;
-
-                limparPreviewUrl();
-                if (img && preview) {
-                    previewUrl = URL.createObjectURL(file);
-                    img.src = previewUrl;
-                    preview.classList.remove('hidden');
-                }
-                if (filenameEl) {
-                    filenameEl.textContent = file.name;
-                    filenameEl.classList.remove('hidden');
-                }
-                return true;
-            }
-
-            function limparFoto() {
-                limparPreviewUrl();
-                inputEnvio.value = '';
-                inputCamera.value = '';
-                inputGaleria.value = '';
-                preview?.classList.add('hidden');
-                filenameEl?.classList.add('hidden');
-                mostrarErro('');
-            }
-
-            btnCamera?.addEventListener('click', () => inputCamera?.click());
-            btnGaleria?.addEventListener('click', () => inputGaleria?.click());
-
-            inputCamera?.addEventListener('change', () => {
-                const file = inputCamera.files?.[0];
-                if (file) aplicarArquivo(file);
-            });
-
-            inputGaleria?.addEventListener('change', () => {
-                const file = inputGaleria.files?.[0];
-                if (file) aplicarArquivo(file);
-            });
-
-            btnRemover?.addEventListener('click', limparFoto);
-
-            form?.addEventListener('submit', function (e) {
-                if (!inputEnvio?.files?.length) {
-                    e.preventDefault();
-                    mostrarErro('Adicione uma foto: tire uma foto ou anexe uma imagem.');
-                    return;
-                }
-                const btn = form.querySelector('button[type="submit"]');
-                if (btn) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.7';
-                }
-            });
-
-            if (window.lucide?.createIcons) {
-                window.lucide.createIcons();
-            }
-        })();
-    </script>
-@endpush

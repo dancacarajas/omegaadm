@@ -60,18 +60,25 @@
         </section>
 
         <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wide text-brand-gray">Registro fotográfico</h2>
-            @php
-                $url = $registro->arquivo_path ? Storage::disk('public')->url($registro->arquivo_path) : null;
-            @endphp
-            @if ($url)
-                <img src="{{ $url }}" alt="Registro fotográfico" class="mt-4 max-h-96 w-full rounded-lg border border-zinc-200 object-contain">
-                <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-burgundy hover:underline">
-                    <i data-lucide="external-link" class="h-4 w-4"></i>
-                    Abrir / baixar arquivo
-                </a>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-brand-gray">
+                Registro fotográfico
+                @if ($registro->fotos->isNotEmpty())
+                    <span class="ml-1 font-normal normal-case text-brand-gray">({{ $registro->fotos->count() }})</span>
+                @endif
+            </h2>
+            @if ($registro->fotos->isNotEmpty())
+                <div class="tst-fotos-grid tst-fotos-grid--show mt-4">
+                    @foreach ($registro->fotos as $foto)
+                        @php $url = $foto->urlPublica(); @endphp
+                        @if ($url)
+                            <a href="{{ $url }}" target="_blank" rel="noopener" class="tst-foto-thumb tst-foto-thumb--link">
+                                <img src="{{ $url }}" alt="Foto {{ $loop->iteration }}">
+                            </a>
+                        @endif
+                    @endforeach
+                </div>
             @else
-                <p class="mt-4 text-sm text-brand-gray">Nenhum arquivo anexado.</p>
+                <p class="mt-4 text-sm text-brand-gray">Nenhuma foto anexada.</p>
             @endif
         </section>
     </div>

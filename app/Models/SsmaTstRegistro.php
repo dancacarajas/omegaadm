@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SsmaTstRegistro extends Model
 {
@@ -41,6 +41,38 @@ class SsmaTstRegistro extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function fotos(): HasMany
+    {
+        return $this->hasMany(SsmaTstRegistroFoto::class, 'ssma_tst_registro_id')->orderBy('ordem');
+    }
+
+    public function sincronizarCamposLegados(): void
+    {
+        $primeira = $this->fotos()->orderBy('ordem')->first();
+
+        $this->forceFill([
+            'arquivo_path' => $primeira?->arquivo_path,
+            'arquivo_nome' => $primeira?->arquivo_nome,
+            'arquivo_mime' => $primeira?->arquivo_mime,
+        ])->saveQuietly();
+    }
+
+    public function removerTodosArquivos(): void
+    {
+        $this->loadMissing('fotos');
+
+        foreach ($this->fotos as $foto) {
+            $foto->removerArquivo();
+            $foto->delete();
+        }
+
+        $this->forceFill([
+            'arquivo_path' => null,
+            'arquivo_nome' => null,
+            'arquivo_mime' => null,
+        ])->saveQuietly();
+    }
+
     public function scopeFiltrar(
         $query,
         ?string $busca,
@@ -61,12 +93,5 @@ class SsmaTstRegistro extends Model
             ->when($dataAte, fn ($q) => $q->whereDate('data', '<=', $dataAte))
             ->when($atividadeId, fn ($q) => $q->where('ssma_tst_atividade_id', $atividadeId))
             ->when($colaboradorId, fn ($q) => $q->where('colaborador_id', $colaboradorId));
-    }
-
-    public function removerArquivo(): void
-    {
-        if ($this->arquivo_path) {
-            Storage::disk('public')->delete($this->arquivo_path);
-        }
     }
 }

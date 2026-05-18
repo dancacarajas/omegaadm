@@ -2,12 +2,12 @@
 
 namespace App\Support;
 
-use App\Models\Colaborador;
 use App\Models\SsmaTstRegistro;
+use App\Models\SsmaTstRegistroFoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\File;
+use Illuminate\Validation\ValidationException;
 
 class SsmaTstRegistroService
 {
@@ -15,10 +15,14 @@ class SsmaTstRegistroService
 
     public const ORIGEM_SISTEMA = 'sistema';
 
+    public const MIN_FOTOS = 1;
+
+    public const MAX_FOTOS = 4;
+
     /**
      * @return array<string, mixed>
      */
-    public function validar(Request $request, bool $arquivoObrigatorio, ?int $colaboradorIdFixo = null): array
+    public function validar(Request $request, bool $fotosObrigatorias, ?int $colaboradorIdFixo = null, int $fotosExistentes = 0): array
     {
         $rules = [
             'ssma_tst_atividade_id' => ['nullable', 'exists:ssma_tst_atividades,id'],
@@ -32,46 +36,131 @@ class SsmaTstRegistroService
             $rules['colaborador_id'] = ['required', 'exists:colaboradores,id'];
         }
 
-        $rules['arquivo'] = $arquivoObrigatorio
-            ? ['required', File::types(['jpg', 'jpeg', 'png', 'gif', 'webp'])->max(10240)]
-            : ['nullable', File::types(['jpg', 'jpeg', 'png', 'gif', 'webp'])->max(10240)];
+        $maxNovas = max(0, self::MAX_FOTOS - $fotosExistentes);
 
-        $data = $request->validate($rules, [], [
+        if ($fotosObrigatorias && $fotosExistentes === 0) {
+            $rules['arquivos'] = ['required', 'array', 'min:'.self::MIN_FOTOS, 'max:'.self::MAX_FOTOS];
+        } else {
+            $rules['arquivos'] = ['nullable', 'array', 'max:'.$maxNovas];
+        }
+
+        $rules['arquivos.*'] = [
+            File::types(['jpg', 'jpeg', 'png', 'gif', 'webp'])->max(10240),
+        ];
+
+        $data = $request->validate($rules, [
+            'arquivos.required' => 'Adicione pelo menos uma foto (mínimo '.self::MIN_FOTOS.', máximo '.self::MAX_FOTOS.').',
+            'arquivos.min' => 'Adicione pelo menos '.self::MIN_FOTOS.' foto.',
+            'arquivos.max' => 'É permitido no máximo '.self::MAX_FOTOS.' fotos por registro.',
+            'arquivos.*.max' => 'Cada imagem deve ter no máximo 10 MB.',
+        ], [
             'ssma_tst_atividade_id' => 'atividade',
             'colaborador_id' => 'colaborador',
             'descricao' => 'descrição da atividade',
-            'arquivo' => 'registro fotográfico',
+            'arquivos' => 'fotos',
         ]);
 
         if ($colaboradorIdFixo !== null) {
             $data['colaborador_id'] = $colaboradorIdFixo;
         }
 
+        $novas = $this->extrairArquivos($request);
+        $total = $fotosExistentes + count($novas);
+
+        if ($fotosObrigatorias && $total < self::MIN_FOTOS) {
+            throw ValidationException::withMessages([
+                'arquivos' => 'Adicione pelo menos '.self::MIN_FOTOS.' foto.',
+            ]);
+        }
+
+        if ($total > self::MAX_FOTOS) {
+            throw ValidationException::withMessages([
+                'arquivos' => 'É permitido no máximo '.self::MAX_FOTOS.' fotos por registro.',
+            ]);
+        }
+
+        if ($total === 0 && ! $fotosObrigatorias && $fotosExistentes === 0) {
+            throw ValidationException::withMessages([
+                'arquivos' => 'O registro precisa de pelo menos uma foto.',
+            ]);
+        }
+
         return $data;
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @return list<UploadedFile>
      */
-    public function criar(array $data, Request $request, ?int $userId = null, string $origem = self::ORIGEM_SISTEMA): SsmaTstRegistro
+    public function extrairArquivos(Request $request): array
     {
-        if (! $request->hasFile('arquivo')) {
-            throw new \InvalidArgumentException('Registro fotográfico é obrigatório.');
+        $arquivos = $request->file('arquivos', []);
+
+        if (! is_array($arquivos)) {
+            return [];
         }
 
-        $upload = $this->armazenarArquivo($request->file('arquivo'));
+        return array_values(array_filter($arquivos, fn ($f) => $f instanceof UploadedFile));
+    }
 
-        return SsmaTstRegistro::create([
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<UploadedFile>  $arquivos
+     */
+    public function criar(
+        array $data,
+        array $arquivos,
+        ?int $userId = null,
+        string $origem = self::ORIGEM_SISTEMA,
+    ): SsmaTstRegistro {
+        if (count($arquivos) < self::MIN_FOTOS) {
+            throw new \InvalidArgumentException('É necessário pelo menos '.self::MIN_FOTOS.' foto.');
+        }
+
+        $uploads = array_map(fn (UploadedFile $f) => $this->armazenarArquivo($f), $arquivos);
+        $primeira = $uploads[0];
+
+        $registro = SsmaTstRegistro::create([
             'ssma_tst_atividade_id' => $data['ssma_tst_atividade_id'] ?? null,
             'data' => $data['data'],
             'colaborador_id' => $data['colaborador_id'],
             'descricao' => $data['descricao'],
-            'arquivo_path' => $upload['path'],
-            'arquivo_nome' => $upload['nome'],
-            'arquivo_mime' => $upload['mime'],
+            'arquivo_path' => $primeira['path'],
+            'arquivo_nome' => $primeira['nome'],
+            'arquivo_mime' => $primeira['mime'],
             'user_id' => $userId,
             'origem' => $origem,
         ]);
+
+        foreach ($uploads as $i => $upload) {
+            $registro->fotos()->create([
+                'arquivo_path' => $upload['path'],
+                'arquivo_nome' => $upload['nome'],
+                'arquivo_mime' => $upload['mime'],
+                'ordem' => $i,
+            ]);
+        }
+
+        return $registro->fresh(['fotos']);
+    }
+
+    /**
+     * @param  list<UploadedFile>  $arquivos
+     */
+    public function anexarFotos(SsmaTstRegistro $registro, array $arquivos): void
+    {
+        $ordemBase = (int) $registro->fotos()->max('ordem');
+
+        foreach ($arquivos as $i => $file) {
+            $upload = $this->armazenarArquivo($file);
+            $registro->fotos()->create([
+                'arquivo_path' => $upload['path'],
+                'arquivo_nome' => $upload['nome'],
+                'arquivo_mime' => $upload['mime'],
+                'ordem' => $ordemBase + $i + 1,
+            ]);
+        }
+
+        $registro->sincronizarCamposLegados();
     }
 
     /**

@@ -26,6 +26,7 @@ class SsmaTstRegistroController extends Controller
 
         $registros = (clone $queryBase)
             ->with(['colaborador', 'atividade', 'usuario'])
+            ->withCount('fotos')
             ->orderByDesc('data')
             ->orderByDesc('id')
             ->paginate(15)
@@ -81,7 +82,7 @@ class SsmaTstRegistroController extends Controller
         $data = $this->registroService->validar($request, true);
         $this->registroService->criar(
             $data,
-            $request,
+            $this->registroService->extrairArquivos($request),
             auth()->id(),
             SsmaTstRegistroService::ORIGEM_SISTEMA,
         );
@@ -95,7 +96,7 @@ class SsmaTstRegistroController extends Controller
     {
         $this->authorizeView();
 
-        $registro->load(['colaborador', 'atividade', 'usuario']);
+        $registro->load(['colaborador', 'atividade', 'usuario', 'fotos']);
 
         $podeEditar = auth()->user()?->podeAcaoNoModulo('sesmt', 'editar') ?? false;
 
@@ -105,6 +106,8 @@ class SsmaTstRegistroController extends Controller
     public function edit(SsmaTstRegistro $registro)
     {
         $this->authorizeEdit();
+
+        $registro->load('fotos');
 
         return view('sesmt.registros-tst.registros.edit', [
             'registro' => $registro,
@@ -120,18 +123,20 @@ class SsmaTstRegistroController extends Controller
     {
         $this->authorizeEdit();
 
-        $data = $this->registroService->validar($request, false);
+        $registro->loadCount('fotos');
+        $data = $this->registroService->validar($request, false, null, (int) $registro->fotos_count);
 
-        if ($request->hasFile('arquivo')) {
-            $registro->removerArquivo();
-            $upload = $this->registroService->armazenarArquivo($request->file('arquivo'));
-            $data['arquivo_path'] = $upload['path'];
-            $data['arquivo_nome'] = $upload['nome'];
-            $data['arquivo_mime'] = $upload['mime'];
+        $novas = $this->registroService->extrairArquivos($request);
+        if ($novas !== []) {
+            $this->registroService->anexarFotos($registro, $novas);
         }
 
-        unset($data['arquivo']);
-        $registro->update($data);
+        $registro->update([
+            'ssma_tst_atividade_id' => $data['ssma_tst_atividade_id'] ?? null,
+            'data' => $data['data'],
+            'colaborador_id' => $data['colaborador_id'],
+            'descricao' => $data['descricao'],
+        ]);
 
         return redirect()
             ->route('sesmt.registros-tst.registros.show', $registro)
@@ -142,7 +147,7 @@ class SsmaTstRegistroController extends Controller
     {
         $this->authorizeEdit();
 
-        $registro->removerArquivo();
+        $registro->removerTodosArquivos();
         $registro->delete();
 
         return redirect()
