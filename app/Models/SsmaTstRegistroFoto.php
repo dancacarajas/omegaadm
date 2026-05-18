@@ -33,6 +33,10 @@ class SsmaTstRegistroFoto extends Model
             return null;
         }
 
+        if ($this->exists) {
+            return route('sesmt.registros-tst.fotos.show', $this);
+        }
+
         return asset('storage/'.ltrim($this->arquivo_path, '/'));
     }
 

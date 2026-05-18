@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Colaborador;
 use App\Models\SsmaTstAtividade;
 use App\Models\SsmaTstRegistro;
+use App\Models\SsmaTstRegistroFoto;
 use App\Support\SsmaTstRegistroIndicadores;
 use App\Support\SsmaTstRegistroService;
 use Illuminate\Http\Request;
@@ -90,6 +91,22 @@ class SsmaTstRegistroController extends Controller
         return redirect()
             ->route('sesmt.registros-tst.registros.index')
             ->with('success', 'Registro TST enviado com sucesso.');
+    }
+
+    public function foto(SsmaTstRegistroFoto $foto)
+    {
+        $this->authorizeView();
+
+        abort_unless(
+            $foto->arquivo_path && Storage::disk('public')->exists($foto->arquivo_path),
+            404,
+        );
+
+        return Storage::disk('public')->response(
+            $foto->arquivo_path,
+            $foto->arquivo_nome,
+            ['Content-Type' => $foto->arquivo_mime ?? 'image/jpeg'],
+        );
     }
 
     public function show(SsmaTstRegistro $registro)

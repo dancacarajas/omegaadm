@@ -274,6 +274,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/sesmt/registros-tst', [SsmaTstRegistroController::class, 'index'])->name('sesmt.registros-tst.registros.index');
     Route::get('/sesmt/registros-tst/novo', [SsmaTstRegistroController::class, 'create'])->name('sesmt.registros-tst.registros.create');
     Route::post('/sesmt/registros-tst', [SsmaTstRegistroController::class, 'store'])->name('sesmt.registros-tst.registros.store');
+    Route::get('/sesmt/registros-tst/fotos/{foto}', [SsmaTstRegistroController::class, 'foto'])->name('sesmt.registros-tst.fotos.show');
     Route::get('/sesmt/registros-tst/{registro}', [SsmaTstRegistroController::class, 'show'])->name('sesmt.registros-tst.registros.show');
     Route::get('/sesmt/registros-tst/{registro}/editar', [SsmaTstRegistroController::class, 'edit'])->name('sesmt.registros-tst.registros.edit');
     Route::put('/sesmt/registros-tst/{registro}', [SsmaTstRegistroController::class, 'update'])->name('sesmt.registros-tst.registros.update');
