@@ -407,6 +407,7 @@ class FrequenciaController extends Controller
      */
     private function garantirRegistrosDoDia(string $data): void
     {
+        $regrasPonto = app(EscalaPontoRegras::class);
         $colaboradores = Colaborador::query()
             ->where('status', 'ativo')
             ->with(['horarioEscala.dias'])
@@ -418,18 +419,22 @@ class FrequenciaController extends Controller
                 ->whereDate('data', $data)
                 ->first();
 
+            $folgaEscala = $regrasPonto->diaAbonadoPorFolgaEscala($colaborador, $data);
+
             $criado = false;
             if (! $registro) {
                 $registro = FrequenciaRegistro::create([
                     'colaborador_id' => $colaborador->id,
                     'data' => $data,
-                    'status' => 'falta',
+                    'status' => $folgaEscala ? 'folga' : 'falta',
                     'origem' => 'grade',
                 ]);
                 $criado = true;
+            } elseif ($folgaEscala && $registro->status === 'falta' && \App\Support\FrequenciaCalculo::minutosTrabalhados($registro) === 0) {
+                $registro->update(['status' => 'folga']);
             }
 
-            if ($criado) {
+            if ($criado && ! $folgaEscala) {
                 $this->preencherHorariosDaEscalaNosVazios($registro, $colaborador, $data);
             }
         }

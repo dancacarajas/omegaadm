@@ -9,12 +9,14 @@
         $statusLabel = [
             'presente' => 'Presente',
             'falta' => 'Falta',
+            'folga' => 'Folga (escala)',
             'justificado' => 'Justificado',
             'incompleto' => 'Incompleto',
         ];
         $statusClass = [
             'presente' => 'border-emerald-200 bg-emerald-50 text-emerald-700',
             'falta' => 'border-red-200 bg-red-50 text-red-700',
+            'folga' => 'border-sky-200 bg-sky-50 text-sky-800',
             'justificado' => 'border-brand-burgundy/20 bg-brand-burgundy-soft text-brand-burgundy',
             'incompleto' => 'border-amber-200 bg-amber-50 text-amber-700',
         ];
@@ -397,7 +399,7 @@
         </div>
 
         <div class="border-t border-zinc-200 px-5 py-3 text-xs text-brand-gray">
-            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2), <strong>somente com batidas registradas</strong> (campo em branco não usa horário da escala). A <strong>jornada esperada</strong> vem do <strong>Cadastro de horários</strong> do efetivo; sem escala, usa <code class="rounded bg-zinc-100 px-1">RH_FREQUENCIA_JORNADA_MINUTOS</code>. <strong>Preenchimento automático:</strong> ao abrir o dia, só o intervalo de almoço (Saída 1 / Entrada 2) pode ser copiado da escala. <strong>Horas extras</strong> só após a <strong>saída final</strong> registrada (entrada antes ou saída depois do previsto, ou saldo acima da jornada). Justificado: falta como “—”.
+            <strong class="text-brand-black">Cálculo:</strong> horas trabalhadas = (Saída 1 − Entrada 1) + (Saída 2 − Entrada 2), <strong>somente com batidas registradas</strong>. <strong>Folga na escala</strong> (rotativa / dia sem jornada): jornada 0h, sem horas falta — dia abonado. Demais dias: jornada pela escala do efetivo. <strong>Horas extras</strong> só após a <strong>saída final</strong> registrada. Justificado: falta como “—”.
         </div>
 
         <div class="border-t border-zinc-200 p-5">

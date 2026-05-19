@@ -7,7 +7,9 @@ use App\Models\FrequenciaRegistro;
 use App\Models\HorarioEscala;
 use App\Models\HorarioEscalaDia;
 use App\Models\User;
+use App\Support\EscalaPontoRegras;
 use App\Support\FrequenciaCalculo;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -139,5 +141,53 @@ class FrequenciaCalculoExtrasTest extends TestCase
         $this->assertSame(0, $resumo['extras']);
         $this->assertGreaterThan(0, $resumo['falta'] ?? 0);
         $this->assertGreaterThan($resumo['trabalhadas'], $fallback['trabalhadas']);
+    }
+
+    public function test_dia_de_folga_rotativa_semanal_nao_gera_horas_falta(): void
+    {
+        $segunda = Carbon::parse('2026-05-18');
+        $escala = HorarioEscala::create([
+            'nome' => 'Motoristas',
+            'tipo' => 'rotativa_semanal',
+            'ciclo_dias' => 14,
+            'data_inicio_ciclo' => '2026-05-04',
+            'status' => 'ativo',
+        ]);
+
+        HorarioEscalaDia::create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'Rafael',
+            'matricula' => '22541',
+            'horario_escala_id' => $escala->id,
+            'horario_escala_ciclo_offset' => 1,
+            'status' => 'ativo',
+        ]);
+
+        $regras = app(EscalaPontoRegras::class);
+        $this->assertFalse($regras->deveTrabalharNoDia($colaborador, $segunda));
+        $this->assertTrue($regras->diaAbonadoPorFolgaEscala($colaborador, $segunda));
+
+        $registro = FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colaborador->id,
+            'data' => $segunda->toDateString(),
+            'status' => 'falta',
+            'origem' => 'grade',
+        ]);
+
+        $registro->load('colaborador.horarioEscala.dias');
+        $resumo = FrequenciaCalculo::resumo($registro);
+
+        $this->assertSame(0, FrequenciaCalculo::jornadaMinutosParaRegistro($registro));
+        $this->assertNull($resumo['falta']);
+        $this->assertSame('Folga (abonada)', $resumo['falta_fmt']);
+        $this->assertSame(0, $resumo['extras']);
     }
 }

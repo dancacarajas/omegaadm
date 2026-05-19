@@ -65,6 +65,14 @@ class EscalaPontoRegras
         return $this->avaliarMarcacao($colaborador, $data, true)['permitido'];
     }
 
+    /** Dia de folga na escala (rotativa / sem jornada prevista) — não gera horas falta. */
+    public function diaAbonadoPorFolgaEscala(Colaborador $colaborador, CarbonInterface|string $data): bool
+    {
+        $avaliacao = $this->avaliarMarcacao($colaborador, $data, true);
+
+        return ! $avaliacao['permitido'] && $avaliacao['codigo'] === 'folga_escala';
+    }
+
     private function excecaoVigente(Colaborador $colaborador, CarbonInterface $data): ?HorarioEscalaExcecao
     {
         if (! $colaborador->horario_escala_id) {

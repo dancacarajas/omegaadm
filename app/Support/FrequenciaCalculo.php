@@ -25,9 +25,17 @@ class FrequenciaCalculo
             return self::jornadaMinutosEsperados();
         }
 
+        if (app(EscalaPontoRegras::class)->diaAbonadoPorFolgaEscala($colaborador, $registro->data)) {
+            return 0;
+        }
+
         $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
         if (! $diaEscala) {
             return self::jornadaMinutosEsperados();
+        }
+
+        if (! self::diaEscalaTemJornada($diaEscala)) {
+            return 0;
         }
 
         $ymd = $registro->data instanceof CarbonInterface
@@ -104,6 +112,22 @@ class FrequenciaCalculo
                 'extras_fmt' => self::formatarMinutos($extras),
                 'jornada_esperada_minutos' => $jornada,
                 'jornada_esperada_fmt' => $jornadaFmt,
+            ];
+        }
+
+        $folgaEscala = $registro->colaborador
+            && app(EscalaPontoRegras::class)->diaAbonadoPorFolgaEscala($registro->colaborador, $registro->data);
+
+        if ($folgaEscala && $trabalhadas === 0 && $status !== 'justificado') {
+            return [
+                'trabalhadas' => 0,
+                'trabalhadas_fmt' => '0h',
+                'falta' => null,
+                'falta_fmt' => 'Folga (abonada)',
+                'extras' => 0,
+                'extras_fmt' => '0h',
+                'jornada_esperada_minutos' => 0,
+                'jornada_esperada_fmt' => 'Folga (escala)',
             ];
         }
 
@@ -212,6 +236,17 @@ class FrequenciaCalculo
         }
 
         return $extras;
+    }
+
+    private static function diaEscalaTemJornada(HorarioEscalaDia $dia): bool
+    {
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            if (! self::horarioArmazenadoVazio($dia->getAttribute($campo))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function minutosPrevistosEscalaDia(string $diaYmd, HorarioEscalaDia $dia): int
