@@ -10,10 +10,12 @@ use App\Support\ContratoAccess;
 use App\Support\Rh\CartaoPontoPeriodo;
 use App\Support\AfdExport;
 use App\Support\EscalaPontoRegras;
+use App\Support\FrequenciaPontoCsvImport;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class FrequenciaController extends Controller
 {
@@ -96,6 +98,11 @@ class FrequenciaController extends Controller
 
         $cartaoPeriodo = CartaoPontoPeriodo::competenciaPorMes($mes);
 
+        $colaboradoresAtivos = Colaborador::query()
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'matricula', 'cpf', 'cargo']);
+
         return view('rh.frequencia.index', compact(
             'registros',
             'indicadores',
@@ -104,7 +111,8 @@ class FrequenciaController extends Controller
             'data',
             'mes',
             'contratosAtivos',
-            'cartaoPeriodo'
+            'cartaoPeriodo',
+            'colaboradoresAtivos'
         ));
     }
 
@@ -183,6 +191,72 @@ class FrequenciaController extends Controller
         $msg = 'AFD importado. Marcações lidas: '.count($marcacoes).'. Linhas ignoradas: '.$ignoradas.'.';
         if ($bloqueadasRotina > 0) {
             $msg .= ' Marcações bloqueadas (folga/ausência na escala): '.$bloqueadasRotina.'.';
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    public function importarCsv(Request $request)
+    {
+        $validated = $request->validate([
+            'arquivo' => ['required', 'file', 'max:51200'],
+            'data_inicio' => ['required', 'date'],
+            'data_fim' => ['required', 'date', 'after_or_equal:data_inicio'],
+            'escopo_colaboradores' => ['required', Rule::in(['todos', 'colaborador', 'selecionados'])],
+            'colaborador_id' => ['required_if:escopo_colaboradores,colaborador', 'nullable', 'integer', 'exists:colaboradores,id'],
+            'colaborador_ids' => ['required_if:escopo_colaboradores,selecionados', 'nullable', 'array', 'min:1'],
+            'colaborador_ids.*' => ['integer', 'exists:colaboradores,id'],
+        ]);
+
+        $colaboradorIds = match ($validated['escopo_colaboradores']) {
+            'colaborador' => [(int) $validated['colaborador_id']],
+            'selecionados' => array_values(array_unique(array_map('intval', $validated['colaborador_ids'] ?? []))),
+            default => null,
+        };
+
+        try {
+            $resultado = app(FrequenciaPontoCsvImport::class)->importar(
+                $request->file('arquivo')->getRealPath(),
+                $validated['data_inicio'],
+                $validated['data_fim'],
+                $colaboradorIds
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+
+        $periodoFmt = Carbon::parse($validated['data_inicio'])->format('d/m/Y')
+            .' a '.Carbon::parse($validated['data_fim'])->format('d/m/Y');
+
+        if ($resultado['importados'] === 0) {
+            $msg = 'Nenhum registro importado no período '.$periodoFmt.'.';
+            if (($resultado['fora_periodo'] ?? 0) > 0) {
+                $msg .= ' Linhas fora do período: '.$resultado['fora_periodo'].'.';
+            }
+            if ($resultado['colaboradores_nao_encontrados'] !== []) {
+                $msg .= ' Matrículas/CPFs não encontrados no efetivo: '
+                    .implode(', ', array_slice($resultado['colaboradores_nao_encontrados'], 0, 15));
+                if (count($resultado['colaboradores_nao_encontrados']) > 15) {
+                    $msg .= '…';
+                }
+            }
+
+            return back()->with('error', $msg)->withInput();
+        }
+
+        $msg = 'CSV importado ('.$periodoFmt.'): '.$resultado['importados'].' dia(s) gravado(s).';
+        if (($resultado['fora_escopo_colaborador'] ?? 0) > 0) {
+            $msg .= ' Linhas de outros colaboradores (não importadas): '.$resultado['fora_escopo_colaborador'].'.';
+        }
+        if (($resultado['fora_periodo'] ?? 0) > 0) {
+            $msg .= ' Fora do período (não importadas): '.$resultado['fora_periodo'].'.';
+        }
+        if ($resultado['ignorados'] > 0) {
+            $msg .= ' Outras linhas ignoradas: '.$resultado['ignorados'].'.';
+        }
+        if ($resultado['colaboradores_nao_encontrados'] !== []) {
+            $msg .= ' Sem cadastro no efetivo: '
+                .count($resultado['colaboradores_nao_encontrados']).' identificador(es).';
         }
 
         return back()->with('success', $msg);

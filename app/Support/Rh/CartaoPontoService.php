@@ -70,7 +70,7 @@ class CartaoPontoService
                 $ymd = $dia->format('Y-m-d');
                 /** @var FrequenciaRegistro|null $registro */
                 $registro = $registros->get($ymd);
-                $linha = $this->montarLinhaDia($colaborador, $dia, $registro, $regras);
+                $linha = $this->montarLinhaDia($colaborador, $dia, $registro, $regras, $ymd);
                 $linhas[] = $linha;
 
                 $totais['normais'] += $linha['minutos_normais'];
@@ -150,20 +150,50 @@ class CartaoPontoService
         Colaborador $colaborador,
         Carbon $dia,
         ?FrequenciaRegistro $registro,
-        EscalaPontoRegras $regras
+        EscalaPontoRegras $regras,
+        string $ymd
     ): array {
         $diaEscala = $colaborador->horarioEscalaDiaNaData($dia);
         $temJornada = $this->diaTemJornada($diaEscala);
-        $rotuloEspecial = $this->rotuloEspecialDia($colaborador, $registro, $temJornada);
 
-        if ($rotuloEspecial !== null) {
-            return $this->linhaRotulo($dia, $rotuloEspecial);
+        if ($registro !== null && $this->registroTemBatidas($registro)) {
+            return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
+        }
+
+        if ($registro !== null && $registro->status === 'justificado') {
+            return $this->linhaRotulo($dia, $this->rotuloJustificativa($registro), $registro, $ymd);
+        }
+
+        if ($registro !== null && $registro->status === 'folga') {
+            return $this->linhaRotulo($dia, 'Folga', $registro, $ymd);
+        }
+
+        if ($registro !== null && in_array($registro->status, ['presente', 'incompleto'], true)) {
+            return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
+        }
+
+        $rotuloEscala = $this->rotuloQuandoSemRegistro($colaborador, $registro, $temJornada, $dia);
+        if ($rotuloEscala !== null) {
+            return $this->linhaRotulo($dia, $rotuloEscala, $registro, $ymd);
         }
 
         if (! $registro) {
-            return $this->linhaVazia($dia, $temJornada);
+            return $this->linhaVazia($dia, $temJornada, $ymd);
         }
 
+        return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function linhaComBatidas(
+        Colaborador $colaborador,
+        Carbon $dia,
+        FrequenciaRegistro $registro,
+        ?HorarioEscalaDia $diaEscala,
+        string $ymd
+    ): array {
         $sufixo = $this->sufixoOrigem($registro->origem);
         $resumo = FrequenciaCalculo::resumo($registro);
         $minutosTrabalhado = (int) $resumo['trabalhadas'];
@@ -177,8 +207,20 @@ class CartaoPontoService
         $diaFalta = $status === 'falta' ? 1 : 0;
         $atestado = $status === 'justificado' && $registro->justificativa_tipo === 'atestado' ? '1' : '';
 
+        $tipoVisual = match (true) {
+            $status === 'falta' || $minutosFalta > 0 => 'falta',
+            $status === 'incompleto' => 'incompleto',
+            default => 'normal',
+        };
+
         return [
-            'dia' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'data_ymd' => $ymd,
+            'registro_id' => $registro->id,
+            'status' => $status,
+            'tipo_visual' => $tipoVisual,
+            'apurado' => $status !== 'falta' && $minutosFalta === 0,
+            'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'dia_completo' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
             'entrada_1' => $this->fmtBatida($registro->entrada_1, $sufixo),
             'saida_1' => $this->fmtBatida($registro->saida_1, $sufixo),
             'entrada_2' => $this->fmtBatida($registro->entrada_2, $sufixo),
@@ -205,7 +247,19 @@ class CartaoPontoService
         ];
     }
 
-    private function rotuloEspecialDia(Colaborador $colaborador, ?FrequenciaRegistro $registro, bool $temJornada): ?string
+    private function rotuloJustificativa(FrequenciaRegistro $registro): string
+    {
+        if ($registro->justificativa_tipo === 'atestado') {
+            return 'Atestado Médico';
+        }
+
+        $texto = trim((string) ($registro->justificativa_texto ?? ''));
+
+        return $texto !== '' ? $texto : 'Justificado';
+    }
+
+    /** Rótulo inferido pela escala quando não há batidas gravadas no dia. */
+    private function rotuloQuandoSemRegistro(Colaborador $colaborador, ?FrequenciaRegistro $registro, bool $temJornada, Carbon $dia): ?string
     {
         if ($registro) {
             $texto = strtolower((string) ($registro->justificativa_texto ?? ''));
@@ -215,6 +269,10 @@ class CartaoPontoService
             if (str_contains($texto, 'feriado')) {
                 return 'Feriado';
             }
+        }
+
+        if (! $colaborador->horario_escala_id) {
+            return null;
         }
 
         if (! $temJornada) {
@@ -228,17 +286,41 @@ class CartaoPontoService
         return null;
     }
 
+    private function registroTemBatidas(FrequenciaRegistro $registro): bool
+    {
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            if (! FrequenciaCalculo::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @return array<string, mixed>
      */
-    private function linhaRotulo(Carbon $dia, string $rotulo): array
+    private function linhaRotulo(Carbon $dia, string $rotulo, ?FrequenciaRegistro $registro, string $ymd): array
     {
+        $tipoVisual = match (true) {
+            strcasecmp($rotulo, 'Folga') === 0 => 'folga',
+            str_contains(mb_strtolower($rotulo), 'feriado') => 'feriado',
+            str_contains(mb_strtolower($rotulo), 'atestado') => 'justificado',
+            default => 'justificado',
+        };
+
         return [
-            'dia' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'data_ymd' => $ymd,
+            'registro_id' => $registro?->id,
+            'status' => $registro?->status ?? ($tipoVisual === 'folga' ? 'folga' : 'justificado'),
+            'tipo_visual' => $tipoVisual,
+            'apurado' => true,
+            'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'dia_completo' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
             'entrada_1' => $rotulo,
-            'saida_1' => '',
-            'entrada_2' => '',
-            'saida_2' => '',
+            'saida_1' => $tipoVisual === 'folga' ? 'Folga' : ($tipoVisual !== 'normal' ? $rotulo : ''),
+            'entrada_2' => $tipoVisual === 'folga' ? 'Folga' : ($tipoVisual !== 'normal' ? $rotulo : ''),
+            'saida_2' => $tipoVisual === 'folga' ? 'Folga' : ($tipoVisual !== 'normal' ? $rotulo : ''),
             'total_normais' => '',
             'total_trabalhado' => '',
             'adicional_noturno' => '',
@@ -265,11 +347,19 @@ class CartaoPontoService
     /**
      * @return array<string, mixed>
      */
-    private function linhaVazia(Carbon $dia, bool $temJornada): array
+    private function linhaVazia(Carbon $dia, bool $temJornada, string $ymd): array
     {
+        $ehFalta = $temJornada;
+
         return [
-            'dia' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
-            'entrada_1' => '',
+            'data_ymd' => $ymd,
+            'registro_id' => null,
+            'status' => $ehFalta ? 'falta' : null,
+            'tipo_visual' => $ehFalta ? 'falta' : 'vazio',
+            'apurado' => ! $ehFalta,
+            'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'dia_completo' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'entrada_1' => $ehFalta ? 'Falta' : '',
             'saida_1' => '',
             'entrada_2' => '',
             'saida_2' => '',
@@ -335,11 +425,12 @@ class CartaoPontoService
     private function sufixoOrigem(?string $origem): string
     {
         return match ($origem) {
-            'afd' => '(C)',
-            'app_colaborador' => '(M)',
-            'grade' => '(P)',
-            'manual' => '(I)',
-            default => '(I)',
+            'afd' => ' (C)',
+            'csv_ponto' => ' (C)',
+            'app_colaborador' => ' (M)',
+            'grade' => ' (P)',
+            'manual' => ' (I)',
+            default => ' (I)',
         };
     }
 

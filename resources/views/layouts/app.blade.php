@@ -101,9 +101,13 @@
                                         <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $frequenciaOpen ? 'rotate-180' : '' }}" data-menu-chevron="frequencia"></i>
                                     </button>
                                     <div data-menu-panel="frequencia" class="{{ $frequenciaOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
-                                        <a href="{{ route('rh.frequencia.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        <a href="{{ route('rh.frequencia.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.index') || request()->routeIs('rh.frequencia.marcacao') || request()->routeIs('rh.frequencia.importar-*') || request()->routeIs('rh.frequencia.exportar-*') || request()->routeIs('rh.frequencia.cartao-ponto.*') || request()->routeIs('rh.frequencia.limpar-marcacoes') || request()->routeIs('rh.frequencia.justificar') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="clock" class="h-4 w-4"></i>
                                             Ponto diário
+                                        </a>
+                                        <a href="{{ route('rh.frequencia.apuracao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.apuracao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="table-2" class="h-4 w-4"></i>
+                                            Apuração do Ponto
                                         </a>
                                         <a href="{{ route('rh.horarios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.horarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-range" class="h-4 w-4"></i>

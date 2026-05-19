@@ -1,0 +1,4 @@
+Nome da empresa;Nome do funcionário;Número de matrícula;Nome do cargo;Número da Folha (funcionário);CPF do funcionário;Dia;Entrada 1;Saída 1;Entrada 2;Saída 2;Total Normais;Total Trabalhado;Adicional Noturno;Horas Previstas;Dia Falta;Horas Falta;Horas Atraso;Falta e Atraso;Atestado;Extra   50% ;Extras Total;Justificativas
+OMEGA SERVICOS;TESTE CSV;99901;CARGO;;12345678901;06/04/2026 SEG;07:30 (I);12:00 (I);13:00 (I);17:31 (I); 09:00; 09:01; ; 09:00; ; ; ; ; ; ; 
+OMEGA SERVICOS;TESTE CSV;99901;CARGO;;12345678901;04/04/2026 SAB;Folga;Folga;Folga;Folga; ; ; ; ; ; ; ; ; ; ; 
+OMEGA SERVICOS;TESTE CSV;99901;CARGO;;12345678901;24/03/2026 TER;Justificado Mobilização SGC;Justificado Mobilização SGC;Justificado Mobilização SGC;Justificado Mobilização SGC; ; ; ; 09:00; ; ; ; ; ; ; ;Mobilização SGC

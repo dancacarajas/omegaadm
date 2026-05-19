@@ -68,13 +68,42 @@
     <section class="mb-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
         <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
             <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
-                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Arquivo AFD</p>
+                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Importação de ponto</p>
                 <h2 class="mt-1 text-xl font-bold text-brand-black">Importar e exportar marcações</h2>
-                <p class="mt-1 text-sm text-brand-gray">Importe batidas do relógio ou exporte as marcações do sistema (app, manual e importações) no formato AFD para outros programas de ponto.</p>
+                <p class="mt-1 text-sm text-brand-gray">Importe a exportação CSV do sistema de ponto (batidas, folgas e justificativas) ou use AFD do relógio. Exporte AFD para outros programas.</p>
             </div>
 
             <div class="space-y-6 p-5">
                 <div>
+                    <h3 class="text-sm font-bold text-brand-black">Importar CSV (exportação do ponto)</h3>
+                    <p class="mt-1 text-xs text-brand-gray">Separador <code class="rounded bg-zinc-100 px-1">;</code> — matrícula, CPF, Dia e as quatro marcações. Só grava linhas cuja data estiver no período escolhido.</p>
+                    <form method="POST" action="{{ route('rh.frequencia.importar-csv') }}" enctype="multipart/form-data" class="mt-3 space-y-3">
+                        @csrf
+                        <input type="hidden" name="escopo_colaboradores" value="todos">
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
+                                <input type="date" name="data_inicio" value="{{ old('data_inicio', request('csv_data_inicio', $exportInicio)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
+                            </label>
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
+                                <input type="date" name="data_fim" value="{{ old('data_fim', request('csv_data_fim', $exportFim)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
+                            </label>
+                        </div>
+                        <div class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo CSV</span>
+                                <input type="file" name="arquivo" accept=".csv,.txt,text/csv" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-emerald-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
+                            </label>
+                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+                                <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+                                Importar CSV
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="border-t border-zinc-100 pt-5">
                     <h3 class="text-sm font-bold text-brand-black">Importar AFD</h3>
                     <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                         @csrf
@@ -285,6 +314,7 @@
                                         'app_colaborador' => 'App colaborador',
                                         'manual' => 'Manual RH',
                                         'afd' => 'Importação AFD',
+                                        'csv_ponto' => 'Importação CSV (ponto)',
                                         'grade' => 'Grade automática',
                                         default => strtoupper((string) $registro->origem),
                                     };
