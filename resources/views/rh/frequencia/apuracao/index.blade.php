@@ -81,7 +81,7 @@
                         </select>
                     </label>
                     <label class="space-y-1 text-xs font-bold uppercase text-brand-gray">
-                        Cargo
+                        Função
                         <select name="cargo" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-2 text-sm">
                             <option value="">Todos</option>
                             @foreach ($cargos as $c)

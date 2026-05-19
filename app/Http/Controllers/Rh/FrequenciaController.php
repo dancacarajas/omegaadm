@@ -38,7 +38,9 @@ class FrequenciaController extends Controller
             ? Carbon::parse(request('absenteismo_fim'))->startOfDay()
             : $fimMes->copy();
 
-        $registros = FrequenciaRegistro::query()
+        $ordenacao = request('ordenacao', 'prioridade');
+
+        $registrosQuery = FrequenciaRegistro::query()
             ->with(['colaborador.horarioEscala.dias', 'colaborador.horarioEscala.excecoes'])
             ->whereDate('data', $data)
             ->when(request('busca'), function ($query, string $busca) {
@@ -49,9 +51,20 @@ class FrequenciaController extends Controller
                         ->orWhere('cargo', 'like', "%{$busca}%");
                 });
             })
-            ->orderByRaw("CASE status WHEN 'falta' THEN 1 WHEN 'incompleto' THEN 2 WHEN 'presente' THEN 3 WHEN 'justificado' THEN 4 ELSE 5 END")
-            ->paginate(10)
-            ->withQueryString();
+            ->when(request('cargo'), function ($query, string $cargo) {
+                $query->whereHas('colaborador', fn ($q) => $q->where('cargo', $cargo));
+            });
+
+        if ($ordenacao === 'alfabetica') {
+            $registrosQuery
+                ->join('colaboradores', 'colaboradores.id', '=', 'frequencia_registros.colaborador_id')
+                ->orderBy('colaboradores.nome')
+                ->select('frequencia_registros.*');
+        } else {
+            $registrosQuery->orderByRaw("CASE frequencia_registros.status WHEN 'falta' THEN 1 WHEN 'incompleto' THEN 2 WHEN 'presente' THEN 3 WHEN 'justificado' THEN 4 ELSE 5 END");
+        }
+
+        $registros = $registrosQuery->paginate(10)->withQueryString();
 
         $totalAtivos = Colaborador::where('status', 'ativo')->count();
         $presentes = FrequenciaRegistro::whereDate('data', $data)->where('status', 'presente')->count();
@@ -104,6 +117,8 @@ class FrequenciaController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome', 'matricula', 'cpf', 'cargo']);
 
+        $funcoes = $this->funcoesDistintasColaboradores();
+
         return view('rh.frequencia.index', compact(
             'registros',
             'indicadores',
@@ -113,7 +128,9 @@ class FrequenciaController extends Controller
             'mes',
             'contratosAtivos',
             'cartaoPeriodo',
-            'colaboradoresAtivos'
+            'colaboradoresAtivos',
+            'ordenacao',
+            'funcoes'
         ));
     }
 
@@ -615,5 +632,21 @@ class FrequenciaController extends Controller
         }
 
         return $s;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function funcoesDistintasColaboradores(): array
+    {
+        return Colaborador::query()
+            ->whereNotNull('cargo')
+            ->where('cargo', '!=', '')
+            ->distinct()
+            ->orderBy('cargo')
+            ->pluck('cargo')
+            ->map(fn ($v) => (string) $v)
+            ->values()
+            ->all();
     }
 }

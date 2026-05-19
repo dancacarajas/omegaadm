@@ -230,26 +230,55 @@
     </section>
 
     <section class="rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 xl:flex-row xl:items-center xl:justify-between">
+        <div class="space-y-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/60 p-5">
             <div>
                 <h2 class="text-xl font-bold text-brand-black">Ponto diário do efetivo</h2>
                 <p class="mt-1 text-sm text-brand-gray">Acompanhe marcações, faltas, atestados e justificativas por data.</p>
                 <p class="mt-2 max-w-3xl rounded-lg border border-brand-burgundy/15 bg-brand-burgundy-soft/40 px-3 py-2 text-xs font-medium text-brand-burgundy">
-                    <strong>Editar ou apagar batidas:</strong> use a coluna <strong>Marcações</strong> à esquerda; resumo e justificativa ficam à direita em duas linhas.
-                    Ajuste os horários e clique em <strong>Salvar marcações</strong>, ou use <strong>Limpar batidas do dia</strong> para remover tudo (ex.: horário errado do app).
+                    <strong>Editar ou apagar batidas:</strong> use a coluna <strong>Marcações</strong> à esquerda; resumo e justificativa ficam à direita.
                 </p>
             </div>
-            <form method="GET" class="grid gap-2 sm:grid-cols-[150px_130px_1fr_auto] sm:items-center">
-                <input type="date" name="data" value="{{ $data }}" class="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                <input type="month" name="mes" value="{{ $mes }}" class="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                <label class="relative">
-                    <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
-                    <input name="busca" value="{{ request('busca') }}" placeholder="Buscar colaborador..." class="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                </label>
-                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                    <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>
-                    Filtrar
-                </button>
+
+            <form method="GET" class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                    <label class="space-y-1.5 lg:col-span-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Data</span>
+                        <input type="date" name="data" value="{{ $data }}" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                    </label>
+                    <label class="space-y-1.5 lg:col-span-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Mês ref.</span>
+                        <input type="month" name="mes" value="{{ $mes }}" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                    </label>
+                    <label class="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Buscar</span>
+                        <span class="relative block">
+                            <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
+                            <input name="busca" value="{{ request('busca') }}" placeholder="Nome ou matrícula…" class="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        </span>
+                    </label>
+                    <label class="space-y-1.5 lg:col-span-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Função</span>
+                        <select name="cargo" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            <option value="">Todas</option>
+                            @foreach ($funcoes ?? [] as $funcao)
+                                <option value="{{ $funcao }}" @selected(request('cargo') === $funcao)>{{ $funcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="space-y-1.5 lg:col-span-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Ordenar</span>
+                        <select name="ordenacao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            <option value="prioridade" @selected(($ordenacao ?? request('ordenacao', 'prioridade')) === 'prioridade')>Faltas primeiro</option>
+                            <option value="alfabetica" @selected(($ordenacao ?? request('ordenacao')) === 'alfabetica')>A–Z</option>
+                        </select>
+                    </label>
+                    <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
+                        <button type="submit" class="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-burgundy-dark">
+                            <i data-lucide="search" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">Aplicar</span>
+                        </button>
+                    </div>
+                </div>
             </form>
         </div>
 

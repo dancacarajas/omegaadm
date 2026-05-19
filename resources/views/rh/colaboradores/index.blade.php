@@ -25,6 +25,10 @@
         ];
     @endphp
 
+    @if (session('warning'))
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">{{ session('warning') }}</div>
+    @endif
+
     @if (session('import_errors'))
         <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p class="font-bold">Algumas linhas não foram importadas:</p>
@@ -93,27 +97,94 @@
     </section>
 
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex flex-col gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="space-y-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/60 p-5">
             <div>
                 <h2 class="text-xl font-bold text-brand-black">Cadastro de colaboradores</h2>
                 <p class="mt-1 text-sm text-brand-gray">Controle do efetivo com dados pessoais, contrato e admissão.</p>
             </div>
-            <form method="GET" class="flex flex-col gap-2 sm:flex-row">
-                <label class="relative">
-                    <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
-                    <input name="busca" value="{{ request('busca') }}" placeholder="Buscar por nome, CPF, matrícula..." class="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10 sm:w-80">
-                </label>
-                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                    <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>
-                    Buscar
-                </button>
+
+            <form method="GET" class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                    <label class="space-y-1.5 sm:col-span-2 lg:col-span-5">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Buscar</span>
+                        <span class="relative block">
+                            <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
+                            <input name="busca" value="{{ request('busca') }}" placeholder="Nome, CPF ou matrícula…" class="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        </span>
+                    </label>
+                    <label class="space-y-1.5 lg:col-span-3">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Função</span>
+                        <select name="cargo" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            <option value="">Todas as funções</option>
+                            @foreach ($funcoes ?? [] as $funcao)
+                                <option value="{{ $funcao }}" @selected(request('cargo') === $funcao)>{{ $funcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="space-y-1.5 lg:col-span-3">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Ordenar por</span>
+                        <select name="ordenacao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            <option value="recentes" @selected(($ordenacao ?? request('ordenacao', 'recentes')) === 'recentes')>Mais recentes</option>
+                            <option value="alfabetica" @selected(($ordenacao ?? request('ordenacao')) === 'alfabetica')>Ordem alfabética (A–Z)</option>
+                        </select>
+                    </label>
+                    <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
+                        <button type="submit" class="inline-flex h-10 min-w-[5.5rem] flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
+                            <i data-lucide="search" class="h-4 w-4"></i>
+                            Aplicar
+                        </button>
+                        @if (request()->filled('busca') || request()->filled('cargo') || request('ordenacao') === 'alfabetica')
+                            <a href="{{ route('rh.efetivo.index') }}" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-gray transition hover:border-zinc-300 hover:text-brand-black" title="Limpar filtros">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                            </a>
+                        @endif
+                    </div>
+                </div>
+
+                @if (request()->filled('busca') || request()->filled('cargo') || request('ordenacao') === 'alfabetica')
+                    <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
+                        <span class="text-[11px] font-bold uppercase text-brand-gray">Filtros ativos:</span>
+                        @if (request()->filled('busca'))
+                            <span class="rounded-md bg-brand-burgundy-soft px-2 py-0.5 text-xs font-semibold text-brand-burgundy">Busca: {{ request('busca') }}</span>
+                        @endif
+                        @if (request()->filled('cargo'))
+                            <span class="rounded-md bg-brand-burgundy-soft px-2 py-0.5 text-xs font-semibold text-brand-burgundy">Função: {{ request('cargo') }}</span>
+                        @endif
+                        @if (request('ordenacao') === 'alfabetica')
+                            <span class="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-brand-gray">Ordem A–Z</span>
+                        @endif
+                    </div>
+                @endif
             </form>
         </div>
 
+        <form method="POST" action="{{ route('rh.efetivo.excluir-massa') }}" id="form-exclusao-massa" class="hidden border-b border-zinc-100 bg-zinc-50/80 px-5 py-3" data-barra-exclusao onsubmit="return confirm('Remover permanentemente os colaboradores selecionados do efetivo? Esta ação não pode ser desfeita.');">
+            @csrf
+            @if (request('busca'))
+                <input type="hidden" name="busca" value="{{ request('busca') }}">
+            @endif
+            @if (request('ordenacao'))
+                <input type="hidden" name="ordenacao" value="{{ request('ordenacao') }}">
+            @endif
+            @if (request('cargo'))
+                <input type="hidden" name="cargo" value="{{ request('cargo') }}">
+            @endif
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm font-semibold text-brand-black"><span data-contador-selecionados>0</span> selecionado(s)</p>
+                <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-lg bg-red-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-red-700">
+                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    Excluir selecionados
+                </button>
+            </div>
+        </form>
+
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1080px] text-left text-sm">
+            <table class="w-full min-w-[1120px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                     <tr>
+                        <th class="w-10 px-3 py-4">
+                            <input type="checkbox" id="efetivo-selecionar-todos" class="rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20" title="Selecionar todos desta página" aria-label="Selecionar todos">
+                        </th>
                         <th class="px-5 py-4">Colaborador</th>
                         <th class="px-5 py-4">Matrícula</th>
                         <th class="px-5 py-4">Cargo</th>
@@ -126,7 +197,10 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($colaboradores as $colaborador)
-                        <tr class="transition hover:bg-brand-gray-soft/60">
+                        <tr class="transition hover:bg-brand-gray-soft/60" data-linha-efetivo>
+                            <td class="px-3 py-4 text-center">
+                                <input type="checkbox" form="form-exclusao-massa" name="colaborador_ids[]" value="{{ $colaborador->id }}" class="cb-efetivo rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20" aria-label="Selecionar {{ $colaborador->nome }}">
+                            </td>
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
                                     @if (filled($colaborador->foto_path))
@@ -140,7 +214,7 @@
                                     @endif
                                     <div>
                                         <p class="font-semibold text-brand-black">{{ $colaborador->nome }}</p>
-                                        <p class="text-xs text-brand-gray">{{ $colaborador->telefone ?: ($colaborador->cpf ?: 'CPF não informado') }}</p>
+                                        <p class="text-xs text-brand-gray">{{ filled($colaborador->cpf) ? $colaborador->cpf : 'CPF não informado' }}</p>
                                     </div>
                                 </div>
                             </td>
@@ -188,7 +262,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-5 py-12 text-center">
+                            <td colspan="9" class="px-5 py-12 text-center">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="user-plus" class="h-7 w-7"></i>
                                 </div>
@@ -209,4 +283,39 @@
             {{ $colaboradores->links() }}
         </div>
     </section>
+
+    @push('scripts')
+        <script>
+            (function () {
+                const form = document.getElementById('form-exclusao-massa');
+                const barra = document.querySelector('[data-barra-exclusao]');
+                const selecionarTodos = document.getElementById('efetivo-selecionar-todos');
+                const contador = document.querySelector('[data-contador-selecionados]');
+
+                function checkboxes() {
+                    return Array.from(document.querySelectorAll('.cb-efetivo'));
+                }
+
+                function atualizarBarra() {
+                    const marcados = checkboxes().filter((cb) => cb.checked);
+                    const n = marcados.length;
+                    if (contador) contador.textContent = String(n);
+                    barra?.classList.toggle('hidden', n === 0);
+                    if (selecionarTodos) {
+                        const todos = checkboxes();
+                        selecionarTodos.checked = todos.length > 0 && todos.every((cb) => cb.checked);
+                        selecionarTodos.indeterminate = n > 0 && n < todos.length;
+                    }
+                }
+
+                selecionarTodos?.addEventListener('change', function () {
+                    checkboxes().forEach((cb) => { cb.checked = selecionarTodos.checked; });
+                    atualizarBarra();
+                });
+
+                checkboxes().forEach((cb) => cb.addEventListener('change', atualizarBarra));
+                atualizarBarra();
+            })();
+        </script>
+    @endpush
 @endsection

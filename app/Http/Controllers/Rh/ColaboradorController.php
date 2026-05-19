@@ -8,6 +8,7 @@ use App\Models\HorarioEscala;
 use App\Support\SimpleSpreadsheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -15,11 +16,13 @@ use Illuminate\Validation\Rule;
 
 class ColaboradorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $ordenacao = $request->input('ordenacao', 'recentes');
+
         $colaboradores = Colaborador::query()
             ->with('horarioEscala')
-            ->when(request('busca'), function ($query, string $busca) {
+            ->when($request->filled('busca'), function ($query, string $busca) {
                 $query->where(function ($query) use ($busca) {
                         $query->where('nome', 'like', "%{$busca}%")
                         ->orWhere('telefone', 'like', "%{$busca}%")
@@ -28,11 +31,18 @@ class ColaboradorController extends Controller
                         ->orWhere('cargo', 'like', "%{$busca}%");
                 });
             })
-            ->latest()
+            ->when($request->filled('cargo'), fn ($query) => $query->where('cargo', $request->input('cargo')))
+            ->when(
+                $ordenacao === 'alfabetica',
+                fn ($query) => $query->orderBy('nome'),
+                fn ($query) => $query->latest()
+            )
             ->paginate(10)
             ->withQueryString();
 
-        return view('rh.colaboradores.index', compact('colaboradores'));
+        $funcoes = $this->funcoesDistintas();
+
+        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes'));
     }
 
     public function create()
@@ -95,11 +105,76 @@ class ColaboradorController extends Controller
 
     public function destroy(Colaborador $colaborador)
     {
-        $colaborador->delete();
+        if ($this->colaboradorPossuiRegistrosTst($colaborador->id)) {
+            return back()->with('error', 'Não é possível excluir: existem registros TST vinculados a este colaborador.');
+        }
+
+        $this->excluirColaborador($colaborador);
 
         return redirect()
             ->route('rh.efetivo.index')
             ->with('success', 'Colaborador removido do efetivo.');
+    }
+
+    public function destroyMassa(Request $request)
+    {
+        $data = $request->validate([
+            'colaborador_ids' => ['required', 'array', 'min:1'],
+            'colaborador_ids.*' => ['integer', 'distinct', 'exists:colaboradores,id'],
+        ]);
+
+        $excluidos = 0;
+        $bloqueados = [];
+
+        foreach (Colaborador::query()->whereIn('id', $data['colaborador_ids'])->get() as $colaborador) {
+            if ($this->colaboradorPossuiRegistrosTst($colaborador->id)) {
+                $bloqueados[] = $colaborador->nome.' (registros TST)';
+
+                continue;
+            }
+
+            try {
+                $this->excluirColaborador($colaborador);
+                $excluidos++;
+            } catch (\Throwable) {
+                $bloqueados[] = $colaborador->nome.' (vínculos no sistema)';
+            }
+        }
+
+        if ($excluidos === 0 && $bloqueados !== []) {
+            return redirect()
+                ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo']))
+                ->with('error', 'Nenhum colaborador foi excluído. '.implode('; ', array_slice($bloqueados, 0, 8)));
+        }
+
+        $mensagem = $excluidos === 1
+            ? '1 colaborador removido do efetivo.'
+            : "{$excluidos} colaboradores removidos do efetivo.";
+
+        if ($bloqueados !== []) {
+            $mensagem .= ' Não excluído(s): '.implode('; ', array_slice($bloqueados, 0, 8));
+            if (count($bloqueados) > 8) {
+                $mensagem .= '…';
+            }
+        }
+
+        return redirect()
+            ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo']))
+            ->with($bloqueados === [] ? 'success' : 'warning', $mensagem);
+    }
+
+    private function excluirColaborador(Colaborador $colaborador): void
+    {
+        if ($colaborador->foto_path) {
+            Storage::disk('public')->delete($colaborador->foto_path);
+        }
+
+        $colaborador->delete();
+    }
+
+    private function colaboradorPossuiRegistrosTst(int $colaboradorId): bool
+    {
+        return DB::table('ssma_tst_registros')->where('colaborador_id', $colaboradorId)->exists();
     }
 
     public function modeloImportacao()
@@ -511,5 +586,21 @@ class ColaboradorController extends Controller
             ->orderByRaw("CASE WHEN status = 'ativo' THEN 0 ELSE 1 END")
             ->orderBy('nome')
             ->get(['id', 'nome', 'tipo', 'status']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function funcoesDistintas(): array
+    {
+        return Colaborador::query()
+            ->whereNotNull('cargo')
+            ->where('cargo', '!=', '')
+            ->distinct()
+            ->orderBy('cargo')
+            ->pluck('cargo')
+            ->map(fn ($v) => (string) $v)
+            ->values()
+            ->all();
     }
 }
