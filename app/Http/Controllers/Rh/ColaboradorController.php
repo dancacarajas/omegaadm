@@ -22,9 +22,10 @@ class ColaboradorController extends Controller
 
         $colaboradores = Colaborador::query()
             ->with('horarioEscala')
-            ->when($request->filled('busca'), function ($query, string $busca) {
+            ->when($request->filled('busca'), function ($query) use ($request) {
+                $busca = trim((string) $request->input('busca'));
                 $query->where(function ($query) use ($busca) {
-                        $query->where('nome', 'like', "%{$busca}%")
+                    $query->where('nome', 'like', "%{$busca}%")
                         ->orWhere('telefone', 'like', "%{$busca}%")
                         ->orWhere('cpf', 'like', "%{$busca}%")
                         ->orWhere('matricula', 'like', "%{$busca}%")

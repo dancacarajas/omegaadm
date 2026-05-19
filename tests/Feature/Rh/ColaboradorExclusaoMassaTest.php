@@ -31,6 +31,19 @@ class ColaboradorExclusaoMassaTest extends TestCase
         $this->assertDatabaseHas('colaboradores', ['id' => $c->id]);
     }
 
+    public function test_filtra_por_busca_nome(): void
+    {
+        $user = User::factory()->create();
+        Colaborador::query()->create(['nome' => 'Marlon Silva', 'matricula' => '100', 'status' => 'ativo']);
+        Colaborador::query()->create(['nome' => 'Vinicius Costa', 'matricula' => '101', 'status' => 'ativo']);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.index', ['busca' => 'marlon']))
+            ->assertOk()
+            ->assertSee('Marlon Silva', false)
+            ->assertDontSee('Vinicius Costa', false);
+    }
+
     public function test_lista_por_ordem_alfabetica(): void
     {
         $user = User::factory()->create();
