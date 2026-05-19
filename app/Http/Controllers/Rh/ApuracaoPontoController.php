@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\FrequenciaRegistro;
 use App\Models\HorarioEscala;
+use App\Models\FrequenciaJustificativaTipo;
+use App\Support\EscalaPontoRegras;
 use App\Support\FrequenciaPontoCsvImport;
+use App\Support\JustificativaPontoService;
 use App\Support\Rh\CartaoPontoService;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -43,6 +47,12 @@ class ApuracaoPontoController extends Controller
 
         $cartao = null;
         if ($colaborador) {
+            $this->garantirRegistrosPeriodoColaborador(
+                $colaborador->id,
+                $dataInicio->toDateString(),
+                $dataFim->toDateString()
+            );
+
             $cartoes = app(CartaoPontoService::class)->montarCartoes(
                 collect([$colaborador]),
                 $dataInicio->toDateString(),
@@ -67,7 +77,166 @@ class ApuracaoPontoController extends Controller
             'horarios' => HorarioEscala::query()->where('status', 'ativo')->orderBy('nome')->get(['id', 'nome']),
             'buscaColaborador' => trim((string) $request->input('busca', '')),
             'resumoRegistros' => $resumoRegistros,
+            'tiposJustificativa' => FrequenciaJustificativaTipo::query()
+                ->where('ativo', true)
+                ->orderBy('ordem')
+                ->orderBy('nome')
+                ->get(),
+            'redirectApuracao' => $this->urlApuracao($request, $colaborador?->id, $dataInicio->toDateString(), $dataFim->toDateString()),
         ]);
+    }
+
+    public function aplicarJustificativa(Request $request)
+    {
+        $data = $request->validate([
+            'colaborador_id' => ['required', 'integer', 'exists:colaboradores,id'],
+            'data_inicio' => ['required', 'date'],
+            'data_fim' => ['required', 'date', 'after_or_equal:data_inicio'],
+            'justificativa_tipo_id' => ['required', 'integer', 'exists:frequencia_justificativa_tipos,id'],
+            'observacao' => ['nullable', 'string', 'max:2000'],
+            'anexo' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx', 'max:10240'],
+        ]);
+
+        $colaborador = Colaborador::query()->findOrFail((int) $data['colaborador_id']);
+        $tipo = FrequenciaJustificativaTipo::query()->findOrFail((int) $data['justificativa_tipo_id']);
+
+        $anexoPath = null;
+        if ($request->hasFile('anexo')) {
+            $anexoPath = $request->file('anexo')->store('frequencia/justificativas', 'public');
+        }
+
+        $dias = app(JustificativaPontoService::class)->aplicarPeriodo(
+            $colaborador,
+            $data['data_inicio'],
+            $data['data_fim'],
+            $tipo,
+            $data['observacao'] ?? null,
+            $anexoPath
+        );
+
+        return redirect()
+            ->to($request->input('redirect', $this->urlApuracao($request, $colaborador->id, $data['data_inicio'], $data['data_fim'])))
+            ->with('success', "Justificativa «{$tipo->nome}» aplicada em {$dias} dia(s).");
+    }
+
+    public function salvarMarcacao(Request $request)
+    {
+        $data = $request->validate([
+            'registro_id' => ['required', 'integer', 'exists:frequencia_registros,id'],
+            'entrada_1' => ['nullable', 'date_format:H:i'],
+            'saida_1' => ['nullable', 'date_format:H:i'],
+            'entrada_2' => ['nullable', 'date_format:H:i'],
+            'saida_2' => ['nullable', 'date_format:H:i'],
+            'redirect' => ['nullable', 'string'],
+        ]);
+
+        $registro = FrequenciaRegistro::query()->findOrFail((int) $data['registro_id']);
+        $registro->loadMissing('colaborador.horarioEscala.excecoes');
+
+        $horarios = collect(['entrada_1', 'saida_1', 'entrada_2', 'saida_2'])
+            ->mapWithKeys(fn (string $c) => [$c => ($data[$c] ?? '') === '' ? null : $data[$c]])
+            ->all();
+
+        $preenchidos = collect($horarios)->filter()->count();
+
+        $avaliacao = app(EscalaPontoRegras::class)->avaliarMarcacao(
+            $registro->colaborador,
+            $registro->data,
+            $preenchidos > 0
+        );
+
+        if (! $avaliacao['permitido']) {
+            return redirect()
+                ->to($data['redirect'] ?? route('rh.frequencia.apuracao.index'))
+                ->withErrors(['marcacao' => $avaliacao['motivo']]);
+        }
+
+        $hora = static fn (?string $v) => $v ? ($v.':00') : null;
+
+        $status = match (true) {
+            $preenchidos >= 2 => 'presente',
+            $preenchidos === 1 => 'incompleto',
+            default => 'falta',
+        };
+
+        $registro->update([
+            'entrada_1' => $hora($horarios['entrada_1']),
+            'saida_1' => $hora($horarios['saida_1']),
+            'entrada_2' => $hora($horarios['entrada_2']),
+            'saida_2' => $hora($horarios['saida_2']),
+            'status' => $status,
+            'origem' => 'manual',
+            'justificativa_tipo' => null,
+            'justificativa_tipo_id' => null,
+            'justificativa_texto' => null,
+        ]);
+
+        return redirect()
+            ->to($data['redirect'] ?? route('rh.frequencia.apuracao.index'))
+            ->with('success', 'Marcações salvas.');
+    }
+
+    public function limparMarcacoes(Request $request, FrequenciaRegistro $registro)
+    {
+        $registro->loadMissing('colaborador.horarioEscala.excecoes');
+
+        $registro->update([
+            'entrada_1' => null,
+            'saida_1' => null,
+            'entrada_2' => null,
+            'saida_2' => null,
+            'status' => 'falta',
+            'origem' => 'manual',
+            'justificativa_tipo' => null,
+            'justificativa_tipo_id' => null,
+            'justificativa_texto' => null,
+        ]);
+
+        return redirect()
+            ->to($request->input('redirect', route('rh.frequencia.apuracao.index')))
+            ->with('success', 'Batidas removidas.');
+    }
+
+    public function removerJustificativa(Request $request, FrequenciaRegistro $registro)
+    {
+        app(JustificativaPontoService::class)->removerJustificativa($registro);
+
+        return redirect()
+            ->to($request->input('redirect', route('rh.frequencia.apuracao.index')))
+            ->with('success', 'Justificativa removida do dia.');
+    }
+
+    private function garantirRegistrosPeriodoColaborador(int $colaboradorId, string $dataInicio, string $dataFim): void
+    {
+        $inicio = Carbon::parse($dataInicio)->startOfDay();
+        $fim = Carbon::parse($dataFim)->startOfDay();
+
+        foreach (CarbonPeriod::create($inicio, $fim) as $dia) {
+            FrequenciaRegistro::query()->firstOrCreate(
+                [
+                    'colaborador_id' => $colaboradorId,
+                    'data' => $dia->toDateString(),
+                ],
+                [
+                    'status' => 'falta',
+                    'origem' => 'grade',
+                ]
+            );
+        }
+    }
+
+    private function urlApuracao(Request $request, ?int $colaboradorId, string $dataInicio, string $dataFim): string
+    {
+        return route('rh.frequencia.apuracao.index', array_filter([
+            'colaborador_id' => $colaboradorId,
+            'data_inicio' => $dataInicio,
+            'data_fim' => $dataFim,
+            'departamento' => $request->input('departamento'),
+            'centro_custo' => $request->input('centro_custo'),
+            'cargo' => $request->input('cargo'),
+            'horario_escala_id' => $request->input('horario_escala_id'),
+            'busca' => $request->input('busca'),
+        ], fn ($v) => $v !== null && $v !== ''));
     }
 
     /**

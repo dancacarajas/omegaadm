@@ -316,6 +316,7 @@
                                         'afd' => 'Importação AFD',
                                         'csv_ponto' => 'Importação CSV (ponto)',
                                         'grade' => 'Grade automática',
+                                        'feriado' => 'Feriado cadastrado',
                                         default => strtoupper((string) $registro->origem),
                                     };
                                 @endphp

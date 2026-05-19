@@ -20,7 +20,9 @@ use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\ColaboradorController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\ApuracaoPontoController;
+use App\Http\Controllers\Rh\FeriadoController;
 use App\Http\Controllers\Rh\FrequenciaController;
+use App\Http\Controllers\Rh\JustificativaTipoController;
 use App\Http\Controllers\Rh\HorarioEscalaController;
 use App\Http\Controllers\Rh\IndicadoresMensaisController;
 use App\Http\Controllers\Rh\RecrutamentoController;
@@ -321,6 +323,32 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::get('frequencia/apuracao', [ApuracaoPontoController::class, 'index'])->name('frequencia.apuracao.index');
+        Route::post('frequencia/apuracao/justificativa', [ApuracaoPontoController::class, 'aplicarJustificativa'])->name('frequencia.apuracao.justificativa');
+        Route::post('frequencia/apuracao/marcacao', [ApuracaoPontoController::class, 'salvarMarcacao'])->name('frequencia.apuracao.marcacao');
+        Route::post('frequencia/apuracao/{registro}/limpar', [ApuracaoPontoController::class, 'limparMarcacoes'])->name('frequencia.apuracao.limpar');
+        Route::post('frequencia/apuracao/{registro}/remover-justificativa', [ApuracaoPontoController::class, 'removerJustificativa'])->name('frequencia.apuracao.remover-justificativa');
+        Route::resource('frequencia/justificativa-tipos', JustificativaTipoController::class)
+            ->except(['show'])
+            ->parameters(['justificativa-tipos' => 'justificativa_tipo'])
+            ->names([
+                'index' => 'frequencia.justificativa-tipos.index',
+                'create' => 'frequencia.justificativa-tipos.create',
+                'store' => 'frequencia.justificativa-tipos.store',
+                'edit' => 'frequencia.justificativa-tipos.edit',
+                'update' => 'frequencia.justificativa-tipos.update',
+                'destroy' => 'frequencia.justificativa-tipos.destroy',
+            ]);
+        Route::resource('frequencia/feriados', FeriadoController::class)
+            ->except(['show'])
+            ->parameters(['feriados' => 'feriado'])
+            ->names([
+                'index' => 'frequencia.feriados.index',
+                'create' => 'frequencia.feriados.create',
+                'store' => 'frequencia.feriados.store',
+                'edit' => 'frequencia.feriados.edit',
+                'update' => 'frequencia.feriados.update',
+                'destroy' => 'frequencia.feriados.destroy',
+            ]);
         Route::post('frequencia/importar-afd', [FrequenciaController::class, 'importarAfd'])->name('frequencia.importar-afd');
         Route::post('frequencia/importar-csv', [FrequenciaController::class, 'importarCsv'])->name('frequencia.importar-csv');
         Route::get('frequencia/exportar-afd', [FrequenciaController::class, 'exportarAfd'])->name('frequencia.exportar-afd');

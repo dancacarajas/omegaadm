@@ -5,6 +5,17 @@
 @section('page-title', 'Apuração do Ponto')
 
 @section('content')
+    @if (session('success'))
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{{ session('success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            @foreach ($errors->all() as $erro)
+                <p>{{ $erro }}</p>
+            @endforeach
+        </div>
+    @endif
+
     @php
         $classeLinha = fn (array $linha) => match ($linha['tipo_visual'] ?? 'normal') {
             'folga' => 'text-sky-700',
@@ -162,9 +173,15 @@
                             <p class="text-lg font-bold text-brand-black">{{ $colaborador->nome }}</p>
                             <p class="text-xs text-brand-gray">{{ $colaborador->cargo ?: 'Cargo não informado' }} · Mat. {{ $colaborador->matricula ?: '—' }}</p>
                         </div>
-                        <div class="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-xs font-bold">
-                            <span class="rounded-md bg-white px-3 py-1.5 text-brand-burgundy shadow-sm">Apuração</span>
-                            <a href="{{ route('rh.frequencia.index', ['busca' => $colaborador->matricula ?: $colaborador->nome]) }}" class="rounded-md px-3 py-1.5 text-brand-gray hover:text-brand-black">Ajustar no ponto diário</a>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" data-abrir-modal-justificativa data-data-inicio="{{ $dataInicio }}" data-data-fim="{{ $dataFim }}" class="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white hover:bg-brand-burgundy-dark">
+                                <i data-lucide="file-plus" class="h-4 w-4"></i>
+                                Adicionar justificativa
+                            </button>
+                            <a href="{{ route('rh.frequencia.justificativa-tipos.index') }}" class="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black hover:bg-zinc-50">
+                                <i data-lucide="settings-2" class="h-4 w-4"></i>
+                                Tipos de justificativa
+                            </a>
                         </div>
                     </div>
 
@@ -174,7 +191,7 @@
                                 <tr>
                                     <th class="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left">Data / Dia</th>
                                     <th class="px-2 py-2 text-center w-14">Ok</th>
-                                    <th class="px-2 py-2 text-center w-14">Editar</th>
+                                    <th class="px-2 py-2 text-center w-28">Ações</th>
                                     <th class="px-2 py-2 text-center">Ent. 1</th>
                                     <th class="px-2 py-2 text-center">Sai. 1</th>
                                     <th class="px-2 py-2 text-center">Ent. 2</th>
@@ -203,18 +220,50 @@
                                                 <i data-lucide="x-circle" class="mx-auto h-4 w-4 text-red-500"></i>
                                             @endif
                                         </td>
-                                        <td class="px-2 py-2 text-center">
+                                        <td class="relative px-2 py-2 text-center">
                                             @if ($linha['registro_id'])
-                                                <a href="{{ route('rh.frequencia.index', ['data' => $linha['data_ymd'], 'busca' => $colaborador->matricula ?: $colaborador->nome]) }}" class="inline-flex text-brand-burgundy hover:text-brand-burgundy-dark" title="Editar no ponto diário">
-                                                    <i data-lucide="pencil" class="h-4 w-4"></i>
-                                                </a>
+                                                <button type="button" data-menu-acoes data-registro="{{ $linha['registro_id'] }}" data-data="{{ $linha['data_ymd'] }}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-burgundy hover:bg-brand-burgundy-soft" title="Ações do dia">
+                                                    <i data-lucide="more-vertical" class="h-4 w-4"></i>
+                                                </button>
+                                                <div data-menu-painel="{{ $linha['registro_id'] }}" class="absolute right-2 top-full z-30 hidden min-w-[12rem] rounded-lg border border-zinc-200 bg-white py-1 text-left text-xs shadow-lg">
+                                                    <button type="button" data-abrir-modal-justificativa data-data-inicio="{{ $linha['data_ymd'] }}" data-data-fim="{{ $linha['data_ymd'] }}" class="block w-full px-3 py-2 text-left font-semibold text-brand-burgundy hover:bg-zinc-50">Justificativas</button>
+                                                    @if ($linha['registro_id'] && ($linha['status'] ?? '') === 'justificado')
+                                                        <form method="POST" action="{{ route('rh.frequencia.apuracao.remover-justificativa', $linha['registro_id']) }}" onsubmit="return confirm('Remover justificativa deste dia?');">
+                                                            @csrf
+                                                            <input type="hidden" name="redirect" value="{{ $redirectApuracao }}">
+                                                            <button type="submit" class="block w-full px-3 py-2 text-left text-brand-gray hover:bg-zinc-50">Remover justificativa</button>
+                                                        </form>
+                                                    @endif
+                                                    <form method="POST" action="{{ route('rh.frequencia.apuracao.limpar', $linha['registro_id']) }}" onsubmit="return confirm('Limpar todas as batidas deste dia?');">
+                                                        @csrf
+                                                        <input type="hidden" name="redirect" value="{{ $redirectApuracao }}">
+                                                        <button type="submit" class="block w-full px-3 py-2 text-left text-brand-gray hover:bg-zinc-50">Limpar batidas</button>
+                                                    </form>
+                                                    @if (!($linha['eh_rotulo'] ?? false))
+                                                        <button type="button" data-submit-marcacao="{{ $linha['registro_id'] }}" class="block w-full px-3 py-2 text-left font-semibold text-brand-black hover:bg-zinc-50">Salvar batidas</button>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </td>
-                                        @foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo)
-                                            <td class="whitespace-nowrap px-2 py-2 text-center {{ $classeBatida($linha, $campo) }}">
-                                                {{ $linha[$campo] ?: '—' }}
+                                        @if ($linha['eh_rotulo'] ?? false)
+                                            <td colspan="4" class="px-2 py-2 text-center text-xs font-semibold {{ $classeLinha($linha) }}">
+                                                {{ $linha['entrada_1'] }}
+                                                @if ($linha['anexo_url'] ?? null)
+                                                    <a href="{{ $linha['anexo_url'] }}" target="_blank" class="ml-2 text-brand-burgundy underline">Anexo</a>
+                                                @endif
                                             </td>
-                                        @endforeach
+                                        @else
+                                            <form id="form-marcacao-{{ $linha['registro_id'] }}" method="POST" action="{{ route('rh.frequencia.apuracao.marcacao') }}" class="contents">
+                                                @csrf
+                                                <input type="hidden" name="registro_id" value="{{ $linha['registro_id'] }}">
+                                                <input type="hidden" name="redirect" value="{{ $redirectApuracao }}">
+                                                @foreach (['entrada_1' => 'Ent. 1', 'saida_1' => 'Sai. 1', 'entrada_2' => 'Ent. 2', 'saida_2' => 'Sai. 2'] as $campo => $rotuloCampo)
+                                                    <td class="px-1 py-1 text-center">
+                                                        <input type="time" name="{{ $campo }}" value="{{ $linha['marcacoes_raw'][$campo] ?? '' }}" step="60" class="h-8 w-[4.5rem] rounded border border-zinc-200 px-1 text-center text-[11px] font-semibold outline-none focus:border-brand-burgundy focus:ring-1 focus:ring-brand-burgundy/20">
+                                                    </td>
+                                                @endforeach
+                                            </form>
+                                        @endif
                                         <td class="px-2 py-2 text-center text-brand-black">{{ $linha['total_trabalhado'] ?: '—' }}</td>
                                         <td class="px-2 py-2 text-center {{ ($linha['dia_falta'] ?? '') !== '' ? 'text-red-600 font-semibold' : '' }}">{{ $linha['dia_falta'] ?: '—' }}</td>
                                         <td class="px-2 py-2 text-center {{ ($linha['horas_falta'] ?? '') !== '' ? 'text-red-600' : '' }}">{{ $linha['horas_falta'] ?: '—' }}</td>
@@ -226,7 +275,7 @@
                             <tfoot class="bg-zinc-100 text-xs font-bold text-brand-black">
                                 <tr>
                                     <td class="sticky left-0 z-10 bg-zinc-100 px-3 py-2">TOTAL</td>
-                                    <td colspan="6"></td>
+                                    <td colspan="7"></td>
                                     <td class="px-2 py-2 text-center">{{ $cartao['totais']['trabalhado'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['dia_falta'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['horas_falta'] ?: '—' }}</td>
@@ -251,6 +300,53 @@
             </a>
         </div>
     </form>
+
+    @if ($colaborador ?? null)
+        <div id="modal-justificativa" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+            <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-xl">
+                <div class="border-b border-zinc-200 px-5 py-4">
+                    <h3 class="text-lg font-bold text-brand-black">Adicionar justificativa</h3>
+                    <p class="mt-1 text-sm text-brand-gray">Funcionário: <strong>{{ $colaborador->nome }}</strong></p>
+                </div>
+                <form method="POST" action="{{ route('rh.frequencia.apuracao.justificativa') }}" enctype="multipart/form-data" class="space-y-4 p-5">
+                    @csrf
+                    <input type="hidden" name="colaborador_id" value="{{ $colaborador->id }}">
+                    <input type="hidden" name="redirect" value="{{ $redirectApuracao ?? '' }}">
+                    <label class="block space-y-1">
+                        <span class="text-xs font-bold uppercase text-brand-gray">Tipo *</span>
+                        <select name="justificativa_tipo_id" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm">
+                            <option value="">Selecione…</option>
+                            @foreach ($tiposJustificativa ?? [] as $tipo)
+                                <option value="{{ $tipo->id }}">{{ $tipo->nome }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="space-y-1">
+                            <span class="text-xs font-bold uppercase text-brand-gray">Início</span>
+                            <input type="date" name="data_inicio" id="just-data-inicio" required value="{{ $dataInicio }}" class="h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs font-bold uppercase text-brand-gray">Término</span>
+                            <input type="date" name="data_fim" id="just-data-fim" required value="{{ $dataFim }}" class="h-11 w-full rounded-lg border border-zinc-200 px-3 text-sm">
+                        </label>
+                    </div>
+                    <label class="block space-y-1">
+                        <span class="text-xs font-bold uppercase text-brand-gray">Observação</span>
+                        <textarea name="observacao" rows="2" class="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm" placeholder="Complemento opcional"></textarea>
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="text-xs font-bold uppercase text-brand-gray">Anexo</span>
+                        <input type="file" name="anexo" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" class="w-full text-sm">
+                    </label>
+                    <div class="flex justify-end gap-2 border-t border-zinc-100 pt-4">
+                        <button type="button" data-fechar-modal-justificativa class="h-10 rounded-lg border border-zinc-200 px-4 text-sm font-semibold">Fechar</button>
+                        <button type="submit" class="h-10 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white">Adicionar justificativa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     @push('scripts')
         <script>
@@ -287,6 +383,53 @@
             document.querySelectorAll('[data-colaborador-card]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     document.getElementById('input-colaborador-id').value = btn.value;
+                });
+            });
+
+            const modalJust = document.getElementById('modal-justificativa');
+            const abrirModal = function (ini, fim) {
+                if (!modalJust) return;
+                document.getElementById('just-data-inicio').value = ini || '';
+                document.getElementById('just-data-fim').value = fim || ini || '';
+                modalJust.classList.remove('hidden');
+                modalJust.classList.add('flex');
+            };
+            const fecharModal = function () {
+                if (!modalJust) return;
+                modalJust.classList.add('hidden');
+                modalJust.classList.remove('flex');
+            };
+            document.querySelectorAll('[data-abrir-modal-justificativa]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    abrirModal(btn.dataset.dataInicio, btn.dataset.dataFim);
+                });
+            });
+            document.querySelectorAll('[data-fechar-modal-justificativa]').forEach(function (btn) {
+                btn.addEventListener('click', fecharModal);
+            });
+            modalJust?.addEventListener('click', function (e) {
+                if (e.target === modalJust) fecharModal();
+            });
+
+            document.querySelectorAll('[data-menu-acoes]').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const id = btn.dataset.registro;
+                    document.querySelectorAll('[data-menu-painel]').forEach(function (p) {
+                        p.classList.toggle('hidden', p.dataset.menuPainel !== id);
+                    });
+                });
+            });
+            document.addEventListener('click', function () {
+                document.querySelectorAll('[data-menu-painel]').forEach(function (p) {
+                    p.classList.add('hidden');
+                });
+            });
+
+            document.querySelectorAll('[data-submit-marcacao]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const form = document.getElementById('form-marcacao-' + btn.dataset.submitMarcacao);
+                    form?.requestSubmit();
                 });
             });
         </script>

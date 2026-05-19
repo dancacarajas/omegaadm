@@ -6,6 +6,7 @@ use App\Models\Colaborador;
 use App\Models\FrequenciaRegistro;
 use App\Models\HorarioEscalaDia;
 use App\Support\EscalaPontoRegras;
+use App\Support\FeriadoPontoService;
 use App\Support\FrequenciaCalculo;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -37,6 +38,7 @@ class CartaoPontoService
 
         $ids = $colaboradores->pluck('id')->all();
         $registrosPorColaborador = FrequenciaRegistro::query()
+            ->with('justificativaTipoCatalogo')
             ->whereIn('colaborador_id', $ids)
             ->whereDate('data', '>=', $inicio->toDateString())
             ->whereDate('data', '<=', $fim->toDateString())
@@ -160,6 +162,15 @@ class CartaoPontoService
             return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
         }
 
+        $feriado = app(FeriadoPontoService::class)->feriadoNaData($dia);
+        if ($feriado !== null) {
+            return $this->linhaRotulo($dia, $feriado->rotuloPonto(), $registro, $ymd);
+        }
+
+        if ($registro !== null && ($registro->origem ?? '') === FeriadoPontoService::ORIGEM) {
+            return $this->linhaRotulo($dia, $registro->justificativa_texto ?: 'Feriado', $registro, $ymd);
+        }
+
         if ($registro !== null && $registro->status === 'justificado') {
             return $this->linhaRotulo($dia, $this->rotuloJustificativa($registro), $registro, $ymd);
         }
@@ -213,7 +224,7 @@ class CartaoPontoService
             default => 'normal',
         };
 
-        return [
+        return array_merge($this->metadadosApuracao($registro, false), [
             'data_ymd' => $ymd,
             'registro_id' => $registro->id,
             'status' => $status,
@@ -244,11 +255,15 @@ class CartaoPontoService
             'minutos_atraso' => $minutosAtraso,
             'minutos_falta_atraso' => $minutosFalta + $minutosAtraso,
             'minutos_extras' => $minutosExtras,
-        ];
+        ]);
     }
 
     private function rotuloJustificativa(FrequenciaRegistro $registro): string
     {
+        if ($registro->justificativaTipoCatalogo) {
+            return $registro->justificativaTipoCatalogo->nome;
+        }
+
         if ($registro->justificativa_tipo === 'atestado') {
             return 'Atestado Médico';
         }
@@ -309,7 +324,7 @@ class CartaoPontoService
             default => 'justificado',
         };
 
-        return [
+        return array_merge($this->metadadosApuracao($registro, true), [
             'data_ymd' => $ymd,
             'registro_id' => $registro?->id,
             'status' => $registro?->status ?? ($tipoVisual === 'folga' ? 'folga' : 'justificado'),
@@ -341,7 +356,7 @@ class CartaoPontoService
             'minutos_falta_atraso' => 0,
             'minutos_extras' => 0,
             'minutos_dia_falta' => 0,
-        ];
+        ]);
     }
 
     /**
@@ -351,7 +366,7 @@ class CartaoPontoService
     {
         $ehFalta = $temJornada;
 
-        return [
+        return array_merge($this->metadadosApuracao(null, false), [
             'data_ymd' => $ymd,
             'registro_id' => null,
             'status' => $ehFalta ? 'falta' : null,
@@ -382,7 +397,35 @@ class CartaoPontoService
             'minutos_atraso' => 0,
             'minutos_falta_atraso' => 0,
             'minutos_extras' => 0,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function metadadosApuracao(?FrequenciaRegistro $registro, bool $ehRotulo): array
+    {
+        return [
+            'eh_rotulo' => $ehRotulo,
+            'marcacoes_raw' => [
+                'entrada_1' => $this->horaInput($registro?->entrada_1),
+                'saida_1' => $this->horaInput($registro?->saida_1),
+                'entrada_2' => $this->horaInput($registro?->entrada_2),
+                'saida_2' => $this->horaInput($registro?->saida_2),
+            ],
+            'justificativa_tipo' => $registro?->justificativa_tipo,
+            'justificativa_texto' => $registro?->justificativa_texto,
+            'justificativa_tipo_id' => $registro?->justificativa_tipo_id,
+            'justificativa_catalogo' => $registro?->justificativaTipoCatalogo?->nome,
+            'anexo_url' => $registro?->anexo_path ? asset('storage/'.$registro->anexo_path) : null,
         ];
+    }
+
+    private function horaInput(mixed $valor): string
+    {
+        $norm = FrequenciaCalculo::normalizarHorarioBanco($valor);
+
+        return $norm ? substr($norm, 0, 5) : '';
     }
 
     private function diaTemJornada(?HorarioEscalaDia $dia): bool

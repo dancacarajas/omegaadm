@@ -29,6 +29,10 @@ class FrequenciaCalculo
             return 0;
         }
 
+        if (app(FeriadoPontoService::class)->diaAbonadoPorFeriado($registro->data)) {
+            return 0;
+        }
+
         $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
         if (! $diaEscala) {
             return self::jornadaMinutosEsperados();
@@ -99,6 +103,25 @@ class FrequenciaCalculo
         $jornadaFmt = $jornada === 0 ? 'Folga (escala)' : self::formatarMinutos($jornada);
         $trabalhadas = self::minutosTrabalhados($registro);
         $status = $registro->status ?? 'falta';
+
+        $feriadoDia = app(FeriadoPontoService::class)->diaAbonadoPorFeriado($registro->data);
+        $feriadoRegistro = ($registro->origem ?? '') === FeriadoPontoService::ORIGEM;
+
+        if (($feriadoDia || $feriadoRegistro) && $trabalhadas === 0 && $status === 'justificado') {
+            $feriado = app(FeriadoPontoService::class)->feriadoNaData($registro->data);
+            $rotulo = $feriado?->rotuloPonto() ?? 'Feriado (abonado)';
+
+            return [
+                'trabalhadas' => 0,
+                'trabalhadas_fmt' => '0h',
+                'falta' => null,
+                'falta_fmt' => $rotulo,
+                'extras' => 0,
+                'extras_fmt' => '0h',
+                'jornada_esperada_minutos' => 0,
+                'jornada_esperada_fmt' => 'Feriado',
+            ];
+        }
 
         if ($status === 'justificado') {
             $extras = self::minutosExtras($registro, $trabalhadas, $jornada);

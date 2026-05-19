@@ -10,6 +10,7 @@ use App\Support\ContratoAccess;
 use App\Support\Rh\CartaoPontoPeriodo;
 use App\Support\AfdExport;
 use App\Support\EscalaPontoRegras;
+use App\Support\FeriadoPontoService;
 use App\Support\FrequenciaPontoCsvImport;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\Response;
@@ -359,10 +360,10 @@ class FrequenciaController extends Controller
             'origem' => 'manual',
         ]);
 
-        return back()->with('success', 'Marcações manuais salvas para '.$registro->colaborador?->nome.'.');
+        return $this->redirectAposAcao($request, 'Marcações manuais salvas para '.$registro->colaborador?->nome.'.');
     }
 
-    public function limparMarcacoes(FrequenciaRegistro $registro)
+    public function limparMarcacoes(Request $request, FrequenciaRegistro $registro)
     {
         $registro->loadMissing('colaborador.horarioEscala.excecoes');
 
@@ -375,8 +376,8 @@ class FrequenciaController extends Controller
             'origem' => 'manual',
         ]);
 
-        return back()->with(
-            'success',
+        return $this->redirectAposAcao(
+            $request,
             'Batidas do dia removidas para '.$registro->colaborador?->nome.'. O colaborador pode marcar de novo no app /ponto.'
         );
     }
@@ -384,22 +385,56 @@ class FrequenciaController extends Controller
     public function justificar(Request $request, FrequenciaRegistro $registro)
     {
         $data = $request->validate([
-            'justificativa_tipo' => ['required', 'in:atestado,justificativa,abono,outro'],
+            'justificativa_tipo_id' => ['nullable', 'integer', 'exists:frequencia_justificativa_tipos,id'],
+            'justificativa_tipo' => ['required_without:justificativa_tipo_id', 'in:atestado,justificativa,abono,outro'],
             'justificativa_texto' => ['nullable', 'string'],
             'anexo' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx', 'max:10240'],
+            'redirect' => ['nullable', 'string'],
         ]);
+
+        if (! empty($data['justificativa_tipo_id'])) {
+            $registro->loadMissing('colaborador');
+            $tipo = \App\Models\FrequenciaJustificativaTipo::query()->findOrFail((int) $data['justificativa_tipo_id']);
+            app(\App\Support\JustificativaPontoService::class)->aplicarDia(
+                $registro->colaborador,
+                $registro->data instanceof \DateTimeInterface
+                    ? $registro->data->format('Y-m-d')
+                    : (string) $registro->data,
+                $tipo,
+                $data['justificativa_texto'] ?? null,
+                null
+            );
+
+            if ($request->hasFile('anexo')) {
+                $registro->update([
+                    'anexo_path' => $request->file('anexo')->store('frequencia/justificativas', 'public'),
+                ]);
+            }
+
+            return $this->redirectAposAcao($request, 'Justificativa registrada com sucesso.');
+        }
 
         if ($request->hasFile('anexo')) {
             $data['anexo_path'] = $request->file('anexo')->store('frequencia/justificativas', 'public');
         }
 
-        unset($data['anexo']);
+        unset($data['anexo'], $data['justificativa_tipo_id'], $data['redirect']);
 
         $registro->update(array_merge($data, [
             'status' => 'justificado',
+            'justificativa_tipo_id' => null,
         ]));
 
-        return back()->with('success', 'Justificativa registrada com sucesso.');
+        return $this->redirectAposAcao($request, 'Justificativa registrada com sucesso.');
+    }
+
+    private function redirectAposAcao(Request $request, string $mensagem): \Illuminate\Http\RedirectResponse
+    {
+        if ($request->filled('redirect')) {
+            return redirect()->to($request->input('redirect'))->with('success', $mensagem);
+        }
+
+        return back()->with('success', $mensagem);
     }
 
     private function parseAfdLine(string $linha): ?array
@@ -482,6 +517,8 @@ class FrequenciaController extends Controller
     private function garantirRegistrosDoDia(string $data): void
     {
         $regrasPonto = app(EscalaPontoRegras::class);
+        $feriadoPonto = app(FeriadoPontoService::class);
+        $feriadoDia = $feriadoPonto->feriadoNaData($data);
         $colaboradores = Colaborador::query()
             ->where('status', 'ativo')
             ->with(['horarioEscala.dias'])
@@ -492,6 +529,12 @@ class FrequenciaController extends Controller
                 ->where('colaborador_id', $colaborador->id)
                 ->whereDate('data', $data)
                 ->first();
+
+            if ($feriadoDia && $feriadoPonto->deveAplicarFeriadoNoRegistro($registro)) {
+                $feriadoPonto->aplicarFeriadoNoColaborador($colaborador->id, $data, $feriadoDia);
+
+                continue;
+            }
 
             $folgaEscala = $regrasPonto->diaAbonadoPorFolgaEscala($colaborador, $data);
 

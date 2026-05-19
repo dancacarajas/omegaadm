@@ -37,6 +37,16 @@ class EscalaPontoRegras
             }
         }
 
+        if (app(\App\Support\FeriadoPontoService::class)->diaAbonadoPorFeriado($carbon)) {
+            $feriado = app(\App\Support\FeriadoPontoService::class)->feriadoNaData($carbon);
+
+            return [
+                'permitido' => false,
+                'motivo' => 'Não é permitido registrar ponto nesta data: feriado cadastrado ('.($feriado?->nome ?? 'Feriado').').',
+                'codigo' => 'feriado',
+            ];
+        }
+
         if (! $colaborador->horario_escala_id) {
             return ['permitido' => true, 'motivo' => null, 'codigo' => null];
         }

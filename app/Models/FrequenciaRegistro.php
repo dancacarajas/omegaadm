@@ -18,6 +18,7 @@ class FrequenciaRegistro extends Model
         'status',
         'origem',
         'justificativa_tipo',
+        'justificativa_tipo_id',
         'justificativa_texto',
         'anexo_path',
         'importado_em',
@@ -31,5 +32,10 @@ class FrequenciaRegistro extends Model
     public function colaborador()
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    public function justificativaTipoCatalogo()
+    {
+        return $this->belongsTo(FrequenciaJustificativaTipo::class, 'justificativa_tipo_id');
     }
 }

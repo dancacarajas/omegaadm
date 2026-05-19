@@ -109,6 +109,14 @@
                                             <i data-lucide="table-2" class="h-4 w-4"></i>
                                             Apuração do Ponto
                                         </a>
+                                        <a href="{{ route('rh.frequencia.feriados.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.feriados.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="calendar-off" class="h-4 w-4"></i>
+                                            Feriados
+                                        </a>
+                                        <a href="{{ route('rh.frequencia.justificativa-tipos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.justificativa-tipos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="file-badge" class="h-4 w-4"></i>
+                                            Tipos de justificativa
+                                        </a>
                                         <a href="{{ route('rh.horarios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.horarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-range" class="h-4 w-4"></i>
                                             Cadastro de horários
