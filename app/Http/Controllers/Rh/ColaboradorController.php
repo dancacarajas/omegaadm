@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\HorarioEscala;
+use App\Models\SsmaTstRegistro;
 use App\Support\SimpleSpreadsheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -105,10 +105,6 @@ class ColaboradorController extends Controller
 
     public function destroy(Colaborador $colaborador)
     {
-        if ($this->colaboradorPossuiRegistrosTst($colaborador->id)) {
-            return back()->with('error', 'Não é possível excluir: existem registros TST vinculados a este colaborador.');
-        }
-
         $this->excluirColaborador($colaborador);
 
         return redirect()
@@ -127,12 +123,6 @@ class ColaboradorController extends Controller
         $bloqueados = [];
 
         foreach (Colaborador::query()->whereIn('id', $data['colaborador_ids'])->get() as $colaborador) {
-            if ($this->colaboradorPossuiRegistrosTst($colaborador->id)) {
-                $bloqueados[] = $colaborador->nome.' (registros TST)';
-
-                continue;
-            }
-
             try {
                 $this->excluirColaborador($colaborador);
                 $excluidos++;
@@ -169,12 +159,15 @@ class ColaboradorController extends Controller
             Storage::disk('public')->delete($colaborador->foto_path);
         }
 
-        $colaborador->delete();
-    }
+        SsmaTstRegistro::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->get()
+            ->each(function (SsmaTstRegistro $registro) {
+                $registro->removerTodosArquivos();
+                $registro->delete();
+            });
 
-    private function colaboradorPossuiRegistrosTst(int $colaboradorId): bool
-    {
-        return DB::table('ssma_tst_registros')->where('colaborador_id', $colaboradorId)->exists();
+        $colaborador->delete();
     }
 
     public function modeloImportacao()

@@ -43,10 +43,15 @@ class ColaboradorExclusaoMassaTest extends TestCase
             ->assertSeeInOrder(['Ana', 'Zeca'], false);
     }
 
-    public function test_nao_exclui_colaborador_com_registro_tst(): void
+    public function test_exclui_colaborador_mesmo_com_registros_tst(): void
     {
         $user = User::factory()->create();
-        $colaborador = Colaborador::query()->create(['nome' => 'TST', 'matricula' => '9', 'status' => 'ativo']);
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'Técnico SST',
+            'matricula' => '9',
+            'cargo' => 'Técnico em Segurança do Trabalho',
+            'status' => 'ativo',
+        ]);
 
         DB::table('ssma_tst_registros')->insert([
             'colaborador_id' => $colaborador->id,
@@ -62,8 +67,9 @@ class ColaboradorExclusaoMassaTest extends TestCase
                 'colaborador_ids' => [$colaborador->id],
             ])
             ->assertRedirect(route('rh.efetivo.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('colaboradores', ['id' => $colaborador->id]);
+        $this->assertDatabaseMissing('colaboradores', ['id' => $colaborador->id]);
+        $this->assertDatabaseMissing('ssma_tst_registros', ['colaborador_id' => $colaborador->id]);
     }
 }
