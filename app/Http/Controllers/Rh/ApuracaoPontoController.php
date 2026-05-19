@@ -11,6 +11,8 @@ use App\Support\EscalaPontoRegras;
 use App\Support\FrequenciaPontoCsvImport;
 use App\Support\JustificativaPontoService;
 use App\Support\Rh\CartaoPontoService;
+use App\Support\Rh\ColaboradorVinculoPonto;
+use App\Support\Rh\FrequenciaRegistroReconciliacao;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -38,8 +40,9 @@ class ApuracaoPontoController extends Controller
             $colaboradorId = (int) $colaboradores->first()?->id;
         }
 
-        $colaborador = $colaboradores->firstWhere('id', $colaboradorId)
-            ?? Colaborador::query()->with(['horarioEscala.dias'])->find($colaboradorId);
+        $colaborador = $colaboradorId > 0
+            ? Colaborador::query()->with(['horarioEscala.dias', 'horarioEscala.excecoes'])->find($colaboradorId)
+            : null;
 
         $resumoRegistros = $colaborador
             ? $this->resumoRegistrosPeriodo($colaborador->id, $dataInicio->toDateString(), $dataFim->toDateString())
@@ -47,8 +50,14 @@ class ApuracaoPontoController extends Controller
 
         $cartao = null;
         if ($colaborador) {
+            app(FrequenciaRegistroReconciliacao::class)->corrigirFaltasIndevidasNoPeriodo(
+                $dataInicio->toDateString(),
+                $dataFim->toDateString(),
+                $colaborador->id
+            );
+
             $this->garantirRegistrosPeriodoColaborador(
-                $colaborador->id,
+                $colaborador,
                 $dataInicio->toDateString(),
                 $dataFim->toDateString()
             );
@@ -206,22 +215,33 @@ class ApuracaoPontoController extends Controller
             ->with('success', 'Justificativa removida do dia.');
     }
 
-    private function garantirRegistrosPeriodoColaborador(int $colaboradorId, string $dataInicio, string $dataFim): void
+    private function garantirRegistrosPeriodoColaborador(Colaborador $colaborador, string $dataInicio, string $dataFim): void
     {
         $inicio = Carbon::parse($dataInicio)->startOfDay();
         $fim = Carbon::parse($dataFim)->startOfDay();
 
         foreach (CarbonPeriod::create($inicio, $fim) as $dia) {
-            FrequenciaRegistro::query()->firstOrCreate(
-                [
-                    'colaborador_id' => $colaboradorId,
-                    'data' => $dia->toDateString(),
-                ],
-                [
-                    'status' => 'falta',
-                    'origem' => 'grade',
-                ]
-            );
+            $dataYmd = $dia->toDateString();
+
+            if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dataYmd)) {
+                continue;
+            }
+
+            $existe = FrequenciaRegistro::query()
+                ->where('colaborador_id', $colaborador->id)
+                ->whereDate('data', $dataYmd)
+                ->exists();
+
+            if ($existe) {
+                continue;
+            }
+
+            FrequenciaRegistro::query()->create([
+                'colaborador_id' => $colaborador->id,
+                'data' => $dataYmd,
+                'status' => 'falta',
+                'origem' => 'grade',
+            ]);
         }
     }
 

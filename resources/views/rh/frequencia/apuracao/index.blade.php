@@ -20,6 +20,7 @@
         $classeLinha = fn (array $linha) => match ($linha['tipo_visual'] ?? 'normal') {
             'folga' => 'text-sky-700',
             'falta' => 'text-red-600 font-semibold',
+            'fora_vinculo' => 'text-brand-gray',
             'justificado', 'feriado' => 'text-brand-black',
             'incompleto' => 'text-amber-700',
             default => 'text-brand-black',
@@ -214,7 +215,9 @@
                                             {{ $linha['dia'] }}
                                         </td>
                                         <td class="px-2 py-2 text-center">
-                                            @if ($linha['apurado'] ?? false)
+                                            @if ($linha['fora_vinculo'] ?? false)
+                                                <span class="text-xs font-medium text-brand-gray">—</span>
+                                            @elseif ($linha['apurado'] ?? false)
                                                 <i data-lucide="check-circle" class="mx-auto h-4 w-4 text-emerald-600"></i>
                                             @else
                                                 <i data-lucide="x-circle" class="mx-auto h-4 w-4 text-red-500"></i>
@@ -275,7 +278,7 @@
                             <tfoot class="bg-zinc-100 text-xs font-bold text-brand-black">
                                 <tr>
                                     <td class="sticky left-0 z-10 bg-zinc-100 px-3 py-2">TOTAL</td>
-                                    <td colspan="7"></td>
+                                    <td colspan="6"></td>
                                     <td class="px-2 py-2 text-center">{{ $cartao['totais']['trabalhado'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['dia_falta'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['horas_falta'] ?: '—' }}</td>

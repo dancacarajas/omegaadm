@@ -8,6 +8,7 @@ use App\Models\HorarioEscalaDia;
 use App\Support\EscalaPontoRegras;
 use App\Support\FeriadoPontoService;
 use App\Support\FrequenciaCalculo;
+use App\Support\Rh\ColaboradorVinculoPonto;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
@@ -79,7 +80,7 @@ class CartaoPontoService
                 $totais['trabalhado'] += $linha['minutos_trabalhado'];
                 $totais['noturno'] += $linha['minutos_noturno'];
                 $totais['previstas'] += $linha['minutos_previstas'];
-                $totais['dia_falta'] += (int) ($linha['minutos_dia_falta'] ?? $linha['dia_falta'] ?? 0);
+                $totais['dia_falta'] += (int) ($linha['minutos_dia_falta'] ?? 0);
                 $totais['horas_falta'] += $linha['minutos_falta'];
                 $totais['horas_atraso'] += $linha['minutos_atraso'];
                 $totais['falta_atraso'] += $linha['minutos_falta_atraso'];
@@ -92,11 +93,15 @@ class CartaoPontoService
                 'linhas' => $linhas,
                 'totais' => [
                     'normais' => FrequenciaCalculo::formatarMinutosRelogio($totais['normais']),
-                    'trabalhado' => FrequenciaCalculo::formatarMinutosRelogio($totais['trabalhado']),
+                    'trabalhado' => $totais['trabalhado'] > 0
+                    ? FrequenciaCalculo::formatarMinutosRelogio($totais['trabalhado'])
+                    : '',
                     'noturno' => FrequenciaCalculo::formatarMinutosRelogio($totais['noturno']),
                     'previstas' => FrequenciaCalculo::formatarMinutosRelogio($totais['previstas']),
                     'dia_falta' => $totais['dia_falta'] > 0 ? (string) $totais['dia_falta'] : '',
-                    'horas_falta' => FrequenciaCalculo::formatarMinutosRelogio($totais['horas_falta']),
+                    'horas_falta' => $totais['horas_falta'] > 0
+                        ? FrequenciaCalculo::formatarMinutosRelogio($totais['horas_falta'])
+                        : '',
                     'horas_atraso' => FrequenciaCalculo::formatarMinutosRelogio($totais['horas_atraso']),
                     'falta_atraso' => FrequenciaCalculo::formatarMinutosRelogio($totais['falta_atraso']),
                     'atestado' => '',
@@ -155,6 +160,10 @@ class CartaoPontoService
         EscalaPontoRegras $regras,
         string $ymd
     ): array {
+        if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dia)) {
+            return $this->linhaForaVinculo($colaborador, $dia, $ymd);
+        }
+
         $diaEscala = $colaborador->horarioEscalaDiaNaData($dia);
         $temJornada = $this->diaTemJornada($diaEscala);
 
@@ -192,6 +201,10 @@ class CartaoPontoService
             return $this->linhaVazia($dia, $temJornada, $ymd);
         }
 
+        if ($registro->status === 'falta' && ! $this->registroTemBatidas($registro)) {
+            return $this->linhaVazia($dia, $temJornada, $ymd, $registro);
+        }
+
         return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
     }
 
@@ -205,12 +218,28 @@ class CartaoPontoService
         ?HorarioEscalaDia $diaEscala,
         string $ymd
     ): array {
+        $registro->setRelation('colaborador', $colaborador);
+
         $sufixo = $this->sufixoOrigem($registro->origem);
+        $batidaCompleta = $this->registroTemBatidaCompleta($registro);
         $resumo = FrequenciaCalculo::resumo($registro);
         $minutosTrabalhado = (int) $resumo['trabalhadas'];
+
+        if ($batidaCompleta && $minutosTrabalhado === 0) {
+            $resumo = FrequenciaCalculo::resumoComFallbackEscala($registro);
+            $minutosTrabalhado = (int) $resumo['trabalhadas'];
+        }
+
         $minutosPrevistas = (int) $resumo['jornada_esperada_minutos'];
         $minutosExtras = (int) $resumo['extras'];
         $minutosFalta = $resumo['falta'] !== null ? (int) $resumo['falta'] : 0;
+
+        if (! $batidaCompleta && $minutosTrabalhado === 0 && in_array($registro->status, ['presente', 'incompleto'], true)) {
+            $minutosFalta = 0;
+        }
+
+        $minutosFalta = FrequenciaCalculo::faltaEfetivaMinutos($minutosFalta);
+
         $minutosNormais = min($minutosTrabalhado, max(0, $minutosPrevistas));
         $minutosAtraso = $this->minutosAtraso($registro, $diaEscala, $dia->format('Y-m-d'));
 
@@ -219,7 +248,8 @@ class CartaoPontoService
         $atestado = $status === 'justificado' && $registro->justificativa_tipo === 'atestado' ? '1' : '';
 
         $tipoVisual = match (true) {
-            $status === 'falta' || $minutosFalta > 0 => 'falta',
+            $status === 'falta' => 'falta',
+            $minutosFalta > 0 => 'falta',
             $status === 'incompleto' => 'incompleto',
             default => 'normal',
         };
@@ -312,6 +342,70 @@ class CartaoPontoService
         return false;
     }
 
+    /** Entrada e saída final preenchidas (batida completa do dia). */
+    private function registroTemBatidaCompleta(FrequenciaRegistro $registro): bool
+    {
+        return ! FrequenciaCalculo::horarioArmazenadoVazio($registro->entrada_1)
+            && ! FrequenciaCalculo::horarioArmazenadoVazio($registro->saida_2);
+    }
+
+    /**
+     * Dia fora do vínculo (antes da admissão ou após demissão): não conta falta.
+     *
+     * @return array<string, mixed>
+     */
+    private function linhaForaVinculo(Colaborador $colaborador, Carbon $dia, string $ymd): array
+    {
+        $rotulo = $this->rotuloForaVinculo($colaborador, $dia);
+
+        return array_merge($this->metadadosApuracao(null, true), [
+            'fora_vinculo' => true,
+            'data_ymd' => $ymd,
+            'registro_id' => null,
+            'status' => null,
+            'tipo_visual' => 'fora_vinculo',
+            'apurado' => true,
+            'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'dia_completo' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
+            'entrada_1' => $rotulo,
+            'saida_1' => '',
+            'entrada_2' => '',
+            'saida_2' => '',
+            'total_normais' => '',
+            'total_trabalhado' => '',
+            'adicional_noturno' => '',
+            'horas_previstas' => '',
+            'dia_falta' => '',
+            'horas_falta' => '',
+            'horas_atraso' => '',
+            'falta_atraso' => '',
+            'atestado' => '',
+            'extras_total' => '',
+            'minutos_normais' => 0,
+            'minutos_trabalhado' => 0,
+            'minutos_noturno' => 0,
+            'minutos_previstas' => 0,
+            'minutos_dia_falta' => 0,
+            'minutos_falta' => 0,
+            'minutos_atraso' => 0,
+            'minutos_falta_atraso' => 0,
+            'minutos_extras' => 0,
+        ]);
+    }
+
+    private function rotuloForaVinculo(Colaborador $colaborador, Carbon $dia): string
+    {
+        if ($colaborador->data_admissao && $dia->lt($colaborador->data_admissao->copy()->startOfDay())) {
+            return 'Antes da admissão';
+        }
+
+        if ($colaborador->data_demissao && $dia->gt($colaborador->data_demissao->copy()->startOfDay())) {
+            return 'Após demissão';
+        }
+
+        return '—';
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -362,14 +456,14 @@ class CartaoPontoService
     /**
      * @return array<string, mixed>
      */
-    private function linhaVazia(Carbon $dia, bool $temJornada, string $ymd): array
+    private function linhaVazia(Carbon $dia, bool $temJornada, string $ymd, ?FrequenciaRegistro $registro = null): array
     {
         $ehFalta = $temJornada;
 
-        return array_merge($this->metadadosApuracao(null, false), [
+        return array_merge($this->metadadosApuracao($registro, false), [
             'data_ymd' => $ymd,
-            'registro_id' => null,
-            'status' => $ehFalta ? 'falta' : null,
+            'registro_id' => $registro?->id,
+            'status' => $registro?->status ?? ($ehFalta ? 'falta' : null),
             'tipo_visual' => $ehFalta ? 'falta' : 'vazio',
             'apurado' => ! $ehFalta,
             'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],

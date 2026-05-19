@@ -12,6 +12,10 @@ use App\Support\AfdExport;
 use App\Support\EscalaPontoRegras;
 use App\Support\FeriadoPontoService;
 use App\Support\FrequenciaPontoCsvImport;
+use App\Support\Rh\AbsenteismoPeriodo;
+use App\Support\Rh\ExtratoFaltasPeriodo;
+use App\Support\Rh\ColaboradorVinculoPonto;
+use App\Support\Rh\FrequenciaRegistroReconciliacao;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\Request;
@@ -31,6 +35,7 @@ class FrequenciaController extends Controller
         $mes = request('mes') ?: Carbon::parse($data)->format('Y-m');
         $inicioMes = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
         $fimMes = $inicioMes->copy()->endOfMonth();
+
         $absenteismoInicio = request('absenteismo_inicio')
             ? Carbon::parse(request('absenteismo_inicio'))->startOfDay()
             : $inicioMes->copy();
@@ -38,11 +43,39 @@ class FrequenciaController extends Controller
             ? Carbon::parse(request('absenteismo_fim'))->startOfDay()
             : $fimMes->copy();
 
+        if ($absenteismoFim->lt($absenteismoInicio)) {
+            [$absenteismoInicio, $absenteismoFim] = [$absenteismoFim->copy(), $absenteismoInicio->copy()];
+        }
+
+        $rankingInicio = $absenteismoInicio->toDateString();
+        $rankingFim = $absenteismoFim->toDateString();
+
+        app(FrequenciaRegistroReconciliacao::class)->removerRegistrosForaDoVinculoNoPeriodo(
+            $inicioMes->toDateString(),
+            $fimMes->toDateString()
+        );
+
+        app(FrequenciaRegistroReconciliacao::class)->removerRegistrosForaDoVinculoNoPeriodo(
+            $rankingInicio,
+            $rankingFim
+        );
+
+        if (request()->boolean('absenteismo_calcular')) {
+            app(FrequenciaRegistroReconciliacao::class)->corrigirFaltasIndevidasNoPeriodo(
+                $absenteismoInicio->toDateString(),
+                $absenteismoFim->toDateString()
+            );
+        }
+
         $ordenacao = request('ordenacao', 'prioridade');
 
         $registrosQuery = FrequenciaRegistro::query()
             ->with(['colaborador.horarioEscala.dias', 'colaborador.horarioEscala.excecoes'])
             ->whereDate('data', $data)
+            ->whereHas('colaborador', function ($q) {
+                $q->where('status', 'ativo');
+                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($q);
+            })
             ->when(request('busca'), function ($query, string $busca) {
                 $query->whereHas('colaborador', function ($query) use ($busca) {
                     $query->where('nome', 'like', "%{$busca}%")
@@ -67,9 +100,15 @@ class FrequenciaController extends Controller
         $registros = $registrosQuery->paginate(10)->withQueryString();
 
         $totalAtivos = Colaborador::where('status', 'ativo')->count();
-        $presentes = FrequenciaRegistro::whereDate('data', $data)->where('status', 'presente')->count();
-        $faltas = FrequenciaRegistro::whereDate('data', $data)->where('status', 'falta')->count();
-        $justificados = FrequenciaRegistro::whereDate('data', $data)->where('status', 'justificado')->count();
+        $indicadoresBase = fn () => FrequenciaRegistro::query()
+            ->whereDate('data', $data)
+            ->whereHas('colaborador', function ($q) {
+                $q->where('status', 'ativo');
+                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($q);
+            });
+        $presentes = (clone $indicadoresBase())->where('status', 'presente')->count();
+        $faltas = (clone $indicadoresBase())->where('status', 'falta')->count();
+        $justificados = (clone $indicadoresBase())->where('status', 'justificado')->count();
         $ausencias = $faltas + $justificados;
 
         $indicadores = [
@@ -79,28 +118,52 @@ class FrequenciaController extends Controller
             'justificados' => $justificados,
         ];
 
-        $diasPeriodo = max(1, $absenteismoInicio->diffInDays($absenteismoFim, false) + 1);
-        $ausenciasPeriodo = FrequenciaRegistro::query()
-            ->whereBetween('data', [$absenteismoInicio->toDateString(), $absenteismoFim->toDateString()])
-            ->whereIn('status', ['falta', 'justificado'])
-            ->count();
-        $basePeriodo = $totalAtivos * $diasPeriodo;
-        $absenteismo = [
-            'inicio' => $absenteismoInicio->toDateString(),
-            'fim' => $absenteismoFim->toDateString(),
-            'dias' => $diasPeriodo,
-            'ausencias' => $ausenciasPeriodo,
-            'base' => $basePeriodo,
-            'taxa' => $basePeriodo > 0 ? round(($ausenciasPeriodo / $basePeriodo) * 100, 1) : 0,
-        ];
+        $colaboradoresAtivos = Colaborador::query()
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'matricula', 'cpf', 'cargo']);
+
+        $absenteismoColaboradorId = request()->filled('absenteismo_colaborador_id')
+            ? (int) request('absenteismo_colaborador_id')
+            : null;
+
+        $absenteismo = app(AbsenteismoPeriodo::class)->calcular(
+            $absenteismoInicio,
+            $absenteismoFim,
+            $absenteismoColaboradorId
+        );
+
+        $absenteismoColaborador = $absenteismoColaboradorId
+            ? $colaboradoresAtivos->firstWhere('id', $absenteismoColaboradorId)
+            : null;
+
+        $rankingColaboradorFiltro = fn ($q) => $q->where('status', 'ativo')
+            ->when($absenteismoColaboradorId !== null, fn ($c) => $c->where('id', $absenteismoColaboradorId))
+            ->where(function ($c) {
+                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($c);
+            });
 
         $ranking = FrequenciaRegistro::query()
             ->select('colaborador_id', DB::raw('count(*) as total_faltas'))
             ->with('colaborador')
-            ->whereBetween('data', [$inicioMes->toDateString(), $fimMes->toDateString()])
+            ->whereDate('data', '>=', $rankingInicio)
+            ->whereDate('data', '<=', $rankingFim)
             ->where('status', 'falta')
+            ->whereHas('colaborador', $rankingColaboradorFiltro)
             ->groupBy('colaborador_id')
             ->orderByDesc('total_faltas')
+            ->limit(5)
+            ->get();
+
+        $rankingAtestados = FrequenciaRegistro::query()
+            ->select('colaborador_id', DB::raw('count(*) as total_atestados'))
+            ->with('colaborador')
+            ->whereDate('data', '>=', $rankingInicio)
+            ->whereDate('data', '<=', $rankingFim)
+            ->atestadoMedico()
+            ->whereHas('colaborador', $rankingColaboradorFiltro)
+            ->groupBy('colaborador_id')
+            ->orderByDesc('total_atestados')
             ->limit(5)
             ->get();
 
@@ -112,18 +175,16 @@ class FrequenciaController extends Controller
 
         $cartaoPeriodo = CartaoPontoPeriodo::competenciaPorMes($mes);
 
-        $colaboradoresAtivos = Colaborador::query()
-            ->where('status', 'ativo')
-            ->orderBy('nome')
-            ->get(['id', 'nome', 'matricula', 'cpf', 'cargo']);
-
         $funcoes = $this->funcoesDistintasColaboradores();
 
         return view('rh.frequencia.index', compact(
             'registros',
             'indicadores',
             'ranking',
+            'rankingAtestados',
             'absenteismo',
+            'absenteismoColaborador',
+            'absenteismoColaboradorId',
             'data',
             'mes',
             'contratosAtivos',
@@ -132,6 +193,58 @@ class FrequenciaController extends Controller
             'ordenacao',
             'funcoes'
         ));
+    }
+
+    public function extratoFaltas(Request $request)
+    {
+        $mes = $request->input('mes') ?: now()->format('Y-m');
+        $inicioMes = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
+        $fimMes = $inicioMes->copy()->endOfMonth();
+
+        $dataInicio = $request->filled('data_inicio')
+            ? Carbon::parse($request->input('data_inicio'))->toDateString()
+            : ($request->filled('absenteismo_inicio')
+                ? Carbon::parse($request->input('absenteismo_inicio'))->toDateString()
+                : $inicioMes->toDateString());
+
+        $dataFim = $request->filled('data_fim')
+            ? Carbon::parse($request->input('data_fim'))->toDateString()
+            : ($request->filled('absenteismo_fim')
+                ? Carbon::parse($request->input('absenteismo_fim'))->toDateString()
+                : $fimMes->toDateString());
+
+        $colaboradorId = $request->filled('colaborador_id')
+            ? (int) $request->input('colaborador_id')
+            : ($request->filled('absenteismo_colaborador_id')
+                ? (int) $request->input('absenteismo_colaborador_id')
+                : null);
+
+        app(FrequenciaRegistroReconciliacao::class)->corrigirFaltasIndevidasNoPeriodo(
+            $dataInicio,
+            $dataFim,
+            $colaboradorId
+        );
+
+        $extrato = app(ExtratoFaltasPeriodo::class)->montar($dataInicio, $dataFim, $colaboradorId);
+
+        $colaboradorFiltro = $colaboradorId
+            ? Colaborador::query()->find($colaboradorId)
+            : null;
+
+        $colaboradoresAtivos = Colaborador::query()
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'matricula']);
+
+        return view('rh.frequencia.extrato-faltas', [
+            'extrato' => $extrato,
+            'dataInicio' => $dataInicio,
+            'dataFim' => $dataFim,
+            'colaboradorId' => $colaboradorId,
+            'colaboradorFiltro' => $colaboradorFiltro,
+            'colaboradoresAtivos' => $colaboradoresAtivos,
+            'mes' => $mes,
+        ]);
     }
 
     public function importarAfd(Request $request)
@@ -275,6 +388,14 @@ class FrequenciaController extends Controller
         if ($resultado['colaboradores_nao_encontrados'] !== []) {
             $msg .= ' Sem cadastro no efetivo: '
                 .count($resultado['colaboradores_nao_encontrados']).' identificador(es).';
+        }
+
+        $corrigidos = app(FrequenciaRegistroReconciliacao::class)->corrigirFaltasIndevidasNoPeriodo(
+            $resultado['periodo']['inicio'],
+            $resultado['periodo']['fim']
+        );
+        if ($corrigidos > 0) {
+            $msg .= ' Ajuste automático: '.$corrigidos.' dia(s) de folga/feriado (antes marcados como falta).';
         }
 
         return back()->with('success', $msg);
@@ -508,10 +629,16 @@ class FrequenciaController extends Controller
             return;
         }
 
-        $colaboradores = Colaborador::query()->where('status', 'ativo')->get(['id']);
+        $colaboradores = Colaborador::query()
+            ->where('status', 'ativo')
+            ->get(['id', 'data_admissao', 'data_demissao']);
 
         foreach ($datas as $data) {
             foreach ($colaboradores as $colaborador) {
+                if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $data)) {
+                    continue;
+                }
+
                 FrequenciaRegistro::firstOrCreate(
                     [
                         'colaborador_id' => $colaborador->id,
@@ -542,6 +669,10 @@ class FrequenciaController extends Controller
             ->get();
 
         foreach ($colaboradores as $colaborador) {
+            if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $data)) {
+                continue;
+            }
+
             $registro = FrequenciaRegistro::query()
                 ->where('colaborador_id', $colaborador->id)
                 ->whereDate('data', $data)

@@ -15,6 +15,21 @@ class FrequenciaCalculo
         return max(1, (int) env('RH_FREQUENCIA_JORNADA_MINUTOS', 480));
     }
 
+    /** Diferença até este limite (min) entre jornada e batidas não conta como falta na apuração. */
+    public static function toleranciaMinutosFalta(): int
+    {
+        return max(0, (int) env('RH_FREQUENCIA_TOLERANCIA_FALTA_MINUTOS', 10));
+    }
+
+    public static function faltaEfetivaMinutos(?int $minutosFalta): int
+    {
+        if ($minutosFalta === null || $minutosFalta <= 0) {
+            return 0;
+        }
+
+        return $minutosFalta <= self::toleranciaMinutosFalta() ? 0 : $minutosFalta;
+    }
+
     /**
      * Jornada esperada (minutos) para o registro: escala do colaborador no dia, senão env padrão.
      */
@@ -51,12 +66,13 @@ class FrequenciaCalculo
 
     public static function minutosTrabalhados(FrequenciaRegistro $registro): int
     {
-        $data = $registro->data;
-        if (! $data instanceof CarbonInterface) {
+        if ($registro->data === null) {
             return 0;
         }
 
-        $dia = $data->format('Y-m-d');
+        $dia = $registro->data instanceof CarbonInterface
+            ? $registro->data->format('Y-m-d')
+            : Carbon::parse((string) $registro->data)->format('Y-m-d');
 
         return self::segmentoMinutos($dia, $registro->entrada_1, $registro->saida_1)
             + self::segmentoMinutos($dia, $registro->entrada_2, $registro->saida_2);

@@ -322,6 +322,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::prefix('rh')->name('rh.')->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
+        Route::get('frequencia/extrato-faltas', [FrequenciaController::class, 'extratoFaltas'])->name('frequencia.extrato-faltas');
         Route::get('frequencia/apuracao', [ApuracaoPontoController::class, 'index'])->name('frequencia.apuracao.index');
         Route::post('frequencia/apuracao/justificativa', [ApuracaoPontoController::class, 'aplicarJustificativa'])->name('frequencia.apuracao.justificativa');
         Route::post('frequencia/apuracao/marcacao', [ApuracaoPontoController::class, 'salvarMarcacao'])->name('frequencia.apuracao.marcacao');

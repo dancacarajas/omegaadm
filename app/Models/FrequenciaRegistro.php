@@ -38,4 +38,14 @@ class FrequenciaRegistro extends Model
     {
         return $this->belongsTo(FrequenciaJustificativaTipo::class, 'justificativa_tipo_id');
     }
+
+    public function scopeAtestadoMedico($query)
+    {
+        return $query
+            ->where('status', 'justificado')
+            ->where(function ($q) {
+                $q->where('justificativa_tipo', 'atestado')
+                    ->orWhereHas('justificativaTipoCatalogo', fn ($t) => $t->where('categoria', 'atestado'));
+            });
+    }
 }

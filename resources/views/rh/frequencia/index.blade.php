@@ -65,173 +65,30 @@
         $exportFim = request('data_fim', $data ?? ($absenteismo['fim'] ?? now()->endOfMonth()->toDateString()));
     @endphp
 
-    <section class="mb-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
-        <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
-                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Importação de ponto</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Importar e exportar marcações</h2>
-                <p class="mt-1 text-sm text-brand-gray">Importe a exportação CSV do sistema de ponto (batidas, folgas e justificativas) ou use AFD do relógio. Exporte AFD para outros programas.</p>
-            </div>
+    <nav class="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm" aria-label="Atalhos da página">
+        <span class="mr-1 text-xs font-bold uppercase tracking-wide text-brand-gray">Ir para:</span>
+        <a href="#ponto-diario" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-burgundy px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-burgundy-dark">
+            <i data-lucide="clock" class="h-3.5 w-3.5"></i>
+            Ponto diário
+        </a>
+        <a href="#analise-periodo" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-black hover:bg-zinc-50">
+            <i data-lucide="percent" class="h-3.5 w-3.5 text-brand-burgundy"></i>
+            Absenteísmo
+        </a>
+        <a href="{{ route('rh.frequencia.apuracao.index', ['data_inicio' => $absenteismo['inicio'], 'data_fim' => $absenteismo['fim']]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-black hover:bg-zinc-50">
+            <i data-lucide="clipboard-list" class="h-3.5 w-3.5 text-brand-burgundy"></i>
+            Apuração
+        </a>
+        <a href="#ferramentas" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-black hover:bg-zinc-50">
+            <i data-lucide="wrench" class="h-3.5 w-3.5 text-brand-burgundy"></i>
+            Importação / PDF
+        </a>
+    </nav>
 
-            <div class="space-y-6 p-5">
-                <div>
-                    <h3 class="text-sm font-bold text-brand-black">Importar CSV (exportação do ponto)</h3>
-                    <p class="mt-1 text-xs text-brand-gray">Separador <code class="rounded bg-zinc-100 px-1">;</code> — matrícula, CPF, Dia e as quatro marcações. Só grava linhas cuja data estiver no período escolhido.</p>
-                    <form method="POST" action="{{ route('rh.frequencia.importar-csv') }}" enctype="multipart/form-data" class="mt-3 space-y-3">
-                        @csrf
-                        <input type="hidden" name="escopo_colaboradores" value="todos">
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <label class="space-y-2">
-                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
-                                <input type="date" name="data_inicio" value="{{ old('data_inicio', request('csv_data_inicio', $exportInicio)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
-                            </label>
-                            <label class="space-y-2">
-                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
-                                <input type="date" name="data_fim" value="{{ old('data_fim', request('csv_data_fim', $exportFim)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
-                            </label>
-                        </div>
-                        <div class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-                            <label class="space-y-2">
-                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo CSV</span>
-                                <input type="file" name="arquivo" accept=".csv,.txt,text/csv" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-emerald-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
-                            </label>
-                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
-                                <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
-                                Importar CSV
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="border-t border-zinc-100 pt-5">
-                    <h3 class="text-sm font-bold text-brand-black">Importar AFD</h3>
-                    <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-                        @csrf
-                        <label class="space-y-2">
-                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo AFD</span>
-                            <input type="file" name="arquivo" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
-                        </label>
-                        <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                            <i data-lucide="upload-cloud" class="h-4 w-4"></i>
-                            Importar
-                        </button>
-                    </form>
-                </div>
-
-                <div class="border-t border-zinc-100 pt-5">
-                    <h3 class="text-sm font-bold text-brand-black">Exportar AFD</h3>
-                    <p class="mt-1 text-xs text-brand-gray">Gera um arquivo <code class="rounded bg-zinc-100 px-1">.txt</code> com registro tipo 3 (Portaria 1510). Usa PIS, ou matrícula/CPF se o PIS não estiver cadastrado.</p>
-                    <form method="GET" action="{{ route('rh.frequencia.exportar-afd') }}" class="mt-3 space-y-3">
-                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-                            <label class="space-y-2">
-                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
-                                <input type="date" name="data_inicio" value="{{ $exportInicio }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                            </label>
-                            <label class="space-y-2">
-                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
-                                <input type="date" name="data_fim" value="{{ $exportFim }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                            </label>
-                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-5 text-sm font-bold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white">
-                                <i data-lucide="download" class="h-4 w-4"></i>
-                                Exportar AFD
-                            </button>
-                        </div>
-                        <input type="hidden" name="data" value="{{ $data }}">
-                        <input type="hidden" name="mes" value="{{ $mes }}">
-                        @if (request('busca'))
-                            <label class="flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-gray">
-                                <input type="checkbox" name="filtrar_busca" value="1" checked class="rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20">
-                                <span>Aplicar busca da listagem: «{{ request('busca') }}»</span>
-                            </label>
-                            <input type="hidden" name="busca" value="{{ request('busca') }}">
-                        @endif
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div class="border-b border-zinc-200 p-5">
-                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Ranking mensal</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Top 5 faltas</h2>
-                <p class="mt-1 text-sm text-brand-gray">Colaboradores com mais faltas no mês filtrado.</p>
-            </div>
-            <div class="divide-y divide-zinc-100">
-                @forelse ($ranking as $item)
-                    <div class="flex items-center justify-between gap-3 p-4">
-                        <div>
-                            <p class="font-semibold text-brand-black">{{ $item->colaborador?->nome }}</p>
-                            <p class="text-xs text-brand-gray">{{ $item->colaborador?->cargo ?: 'Cargo não informado' }}</p>
-                        </div>
-                        <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{{ $item->total_faltas }} faltas</span>
-                    </div>
-                @empty
-                    <div class="p-5 text-sm text-brand-gray">Nenhuma falta registrada no mês.</div>
-                @endforelse
-            </div>
-        </div>
-    </section>
-
-    @include('rh.frequencia._cartao_ponto')
-    <section class="mb-5 grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
-        <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div class="border-b border-zinc-200 p-5">
-                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Absenteísmo</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Taxa por período</h2>
-                <p class="mt-1 text-sm text-brand-gray">Filtre o intervalo para calcular ausências sobre a base de colaboradores ativos.</p>
-            </div>
-            <form method="GET" class="grid gap-3 p-5">
-                <input type="hidden" name="data" value="{{ $data }}">
-                <input type="hidden" name="mes" value="{{ $mes }}">
-                <label class="space-y-2">
-                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Início</span>
-                    <input type="date" name="absenteismo_inicio" value="{{ $absenteismo['inicio'] }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                </label>
-                <label class="space-y-2">
-                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Fim</span>
-                    <input type="date" name="absenteismo_fim" value="{{ $absenteismo['fim'] }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                </label>
-                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                    <i data-lucide="calculator" class="h-4 w-4"></i>
-                    Calcular taxa
-                </button>
-            </form>
-        </div>
-
-        <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Resultado do período</p>
-                    <h2 class="mt-1 text-xl font-bold text-brand-black">{{ \Carbon\Carbon::parse($absenteismo['inicio'])->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($absenteismo['fim'])->format('d/m/Y') }}</h2>
-                </div>
-                <span class="rounded-full bg-brand-burgundy-soft px-3 py-1 text-xs font-bold text-brand-burgundy">{{ $absenteismo['dias'] }} dia(s)</span>
-            </div>
-            <div class="mt-6 grid gap-4 sm:grid-cols-3">
-                <div class="rounded-xl bg-red-50 p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-red-700">Ausências</p>
-                    <p class="mt-2 text-3xl font-black text-red-700">{{ $absenteismo['ausencias'] }}</p>
-                </div>
-                <div class="rounded-xl bg-brand-gray-soft p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Base prevista</p>
-                    <p class="mt-2 text-3xl font-black text-brand-black">{{ $absenteismo['base'] }}</p>
-                </div>
-                <div class="rounded-xl bg-amber-50 p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-amber-700">Taxa</p>
-                    <p class="mt-2 text-3xl font-black text-amber-700">{{ number_format($absenteismo['taxa'], 1, ',', '.') }}%</p>
-                </div>
-            </div>
-            <div class="mt-5 h-3 overflow-hidden rounded-full bg-zinc-100">
-                <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ min(100, $absenteismo['taxa']) }}%"></div>
-            </div>
-            <p class="mt-3 text-sm font-semibold text-brand-gray">
-                Cálculo: {{ $absenteismo['ausencias'] }} ausências ÷ {{ $absenteismo['base'] }} possibilidades de presença.
-            </p>
-        </div>
-    </section>
-
-    <section class="rounded-xl border border-zinc-200 bg-white shadow-sm">
+    <section id="ponto-diario" class="mb-5 scroll-mt-4 rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div class="space-y-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/60 p-5">
             <div>
+                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Operação do dia</p>
                 <h2 class="text-xl font-bold text-brand-black">Ponto diário do efetivo</h2>
                 <p class="mt-1 text-sm text-brand-gray">Acompanhe marcações, faltas, atestados e justificativas por data.</p>
                 <p class="mt-2 max-w-3xl rounded-lg border border-brand-burgundy/15 bg-brand-burgundy-soft/40 px-3 py-2 text-xs font-medium text-brand-burgundy">
@@ -279,6 +136,16 @@
                         </button>
                     </div>
                 </div>
+                @if (request()->hasAny(['absenteismo_inicio', 'absenteismo_fim', 'absenteismo_colaborador_id', 'absenteismo_calcular']))
+                    <input type="hidden" name="absenteismo_inicio" value="{{ $absenteismo['inicio'] }}">
+                    <input type="hidden" name="absenteismo_fim" value="{{ $absenteismo['fim'] }}">
+                    @if ($absenteismoColaboradorId ?? null)
+                        <input type="hidden" name="absenteismo_colaborador_id" value="{{ $absenteismoColaboradorId }}">
+                    @endif
+                    @if (request()->boolean('absenteismo_calcular'))
+                        <input type="hidden" name="absenteismo_calcular" value="1">
+                    @endif
+                @endif
             </form>
         </div>
 
@@ -466,4 +333,261 @@
             {{ $registros->links() }}
         </div>
     </section>
+
+    <section id="analise-periodo" class="mb-5 scroll-mt-4 space-y-5">
+        <div class="rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
+            <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Gestão do período</p>
+            <h2 class="text-xl font-bold text-brand-black">Absenteísmo e rankings</h2>
+            <p class="mt-1 text-sm text-brand-gray">Defina o período com <strong>Calcular taxa</strong>. Os rankings de faltas e atestados usam as mesmas datas.</p>
+        </div>
+        <div class="grid gap-5 xl:grid-cols-[.95fr_1.05fr]">
+        <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div class="border-b border-zinc-200 p-5">
+                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Absenteísmo</p>
+                <h2 class="mt-1 text-xl font-bold text-brand-black">Taxa por período</h2>
+                <p class="mt-1 text-sm text-brand-gray">Conta apenas faltas injustificadas. Folgas, abonos e justificativas do ponto não entram no cálculo.</p>
+            </div>
+            <form method="GET" class="grid gap-3 p-5">
+                <input type="hidden" name="data" value="{{ $data }}">
+                <input type="hidden" name="mes" value="{{ $mes }}">
+                <input type="hidden" name="absenteismo_calcular" value="1">
+                @if (request('busca'))
+                    <input type="hidden" name="busca" value="{{ request('busca') }}">
+                @endif
+                @if (request('cargo'))
+                    <input type="hidden" name="cargo" value="{{ request('cargo') }}">
+                @endif
+                @if (request('ordenacao'))
+                    <input type="hidden" name="ordenacao" value="{{ request('ordenacao') }}">
+                @endif
+                <label class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Colaborador</span>
+                    <select name="absenteismo_colaborador_id" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="">Todo o efetivo ativo</option>
+                        @foreach ($colaboradoresAtivos as $c)
+                            <option value="{{ $c->id }}" @selected(($absenteismoColaboradorId ?? null) === $c->id)>
+                                {{ $c->nome }}{{ $c->matricula ? ' ('.$c->matricula.')' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Início</span>
+                    <input type="date" name="absenteismo_inicio" value="{{ $absenteismo['inicio'] }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                </label>
+                <label class="space-y-2">
+                    <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Fim</span>
+                    <input type="date" name="absenteismo_fim" value="{{ $absenteismo['fim'] }}" class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                </label>
+                <button class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                    <i data-lucide="calculator" class="h-4 w-4"></i>
+                    Calcular taxa
+                </button>
+            </form>
+        </div>
+
+        <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Resultado do período</p>
+                    <h2 class="mt-1 text-xl font-bold text-brand-black">{{ \Carbon\Carbon::parse($absenteismo['inicio'])->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($absenteismo['fim'])->format('d/m/Y') }}</h2>
+                    @if ($absenteismoColaborador ?? null)
+                        <p class="mt-1 text-sm font-semibold text-brand-burgundy">{{ $absenteismoColaborador->nome }} · {{ $absenteismoColaborador->matricula ?: 'sem matrícula' }}</p>
+                    @else
+                        <p class="mt-1 text-sm text-brand-gray">Todo o efetivo ativo</p>
+                    @endif
+                </div>
+                <span class="rounded-full bg-brand-burgundy-soft px-3 py-1 text-xs font-bold text-brand-burgundy">{{ $absenteismo['dias'] }} dia(s)</span>
+            </div>
+            <div class="mt-6 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-xl bg-red-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-red-700">Faltas injustificadas</p>
+                    <p class="mt-2 text-3xl font-black text-red-700">{{ $absenteismo['ausencias'] }}</p>
+                </div>
+                <div class="rounded-xl bg-brand-gray-soft p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Dias com jornada</p>
+                    <p class="mt-2 text-3xl font-black text-brand-black">{{ $absenteismo['base'] }}</p>
+                </div>
+                <div class="rounded-xl bg-amber-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-amber-700">Taxa</p>
+                    <p class="mt-2 text-3xl font-black text-amber-700">{{ number_format($absenteismo['taxa'], 1, ',', '.') }}%</p>
+                </div>
+            </div>
+            <div class="mt-5 h-3 overflow-hidden rounded-full bg-zinc-100">
+                <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ min(100, $absenteismo['taxa']) }}%"></div>
+            </div>
+            <p class="mt-3 text-sm font-semibold text-brand-gray">
+                Cálculo: {{ $absenteismo['ausencias'] }} faltas injustificadas ÷ {{ $absenteismo['base'] }} dias com registro de jornada (presente, falta ou incompleto).
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3 border-t border-zinc-100 pt-4">
+                <a href="{{ route('rh.frequencia.extrato-faltas', array_filter([
+                    'data_inicio' => $absenteismo['inicio'],
+                    'data_fim' => $absenteismo['fim'],
+                    'colaborador_id' => $absenteismoColaboradorId ?? null,
+                ])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-4 text-sm font-semibold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white">
+                    <i data-lucide="file-text" class="h-4 w-4"></i>
+                    Extrato de faltas
+                </a>
+                @if ($absenteismoColaborador ?? null)
+                    <a href="{{ route('rh.frequencia.apuracao.index', ['colaborador_id' => $absenteismoColaborador->id, 'data_inicio' => $absenteismo['inicio'], 'data_fim' => $absenteismo['fim']]) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black transition hover:bg-zinc-50">
+                        <i data-lucide="clipboard-list" class="h-4 w-4 text-brand-burgundy"></i>
+                        Ver apuração
+                    </a>
+                @endif
+            </div>
+
+        </div>
+        <div class="grid gap-5 md:grid-cols-2">
+            <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div class="border-b border-zinc-200 p-5">
+                    <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Ranking do período</p>
+                    <h2 class="mt-1 text-xl font-bold text-brand-black">Top 5 faltas</h2>
+                    <p class="mt-1 text-sm text-brand-gray">
+                        Mesmo período do absenteísmo:
+                        <strong>{{ \Carbon\Carbon::parse($absenteismo['inicio'])->format('d/m/Y') }}</strong>
+                        a
+                        <strong>{{ \Carbon\Carbon::parse($absenteismo['fim'])->format('d/m/Y') }}</strong>.
+                        @if ($absenteismoColaborador ?? null)
+                            · <strong>{{ $absenteismoColaborador->nome }}</strong>
+                        @endif
+                    </p>
+                </div>
+                <div class="divide-y divide-zinc-100">
+                    @forelse ($ranking as $item)
+                        <div class="flex items-center justify-between gap-3 p-4">
+                            <div>
+                                <p class="font-semibold text-brand-black">{{ $item->colaborador?->nome }}</p>
+                                <p class="text-xs text-brand-gray">{{ $item->colaborador?->cargo ?: 'Cargo não informado' }}</p>
+                            </div>
+                            <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{{ $item->total_faltas }} {{ $item->total_faltas === 1 ? 'falta' : 'faltas' }}</span>
+                        </div>
+                    @empty
+                        <div class="p-5 text-sm text-brand-gray">Nenhuma falta injustificada neste período.</div>
+                    @endforelse
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div class="border-b border-zinc-200 p-5">
+                    <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Ranking do período</p>
+                    <h2 class="mt-1 text-xl font-bold text-brand-black">Top 5 atestados médicos</h2>
+                    <p class="mt-1 text-sm text-brand-gray">
+                        Dias justificados por atestado no mesmo período
+                        (<strong>{{ \Carbon\Carbon::parse($absenteismo['inicio'])->format('d/m/Y') }}</strong>
+                        a
+                        <strong>{{ \Carbon\Carbon::parse($absenteismo['fim'])->format('d/m/Y') }}</strong>).
+                    </p>
+                </div>
+                <div class="divide-y divide-zinc-100">
+                    @forelse ($rankingAtestados as $item)
+                        <div class="flex items-center justify-between gap-3 p-4">
+                            <div>
+                                <p class="font-semibold text-brand-black">{{ $item->colaborador?->nome }}</p>
+                                <p class="text-xs text-brand-gray">{{ $item->colaborador?->cargo ?: 'Cargo não informado' }}</p>
+                            </div>
+                            <span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-800">{{ $item->total_atestados }} {{ $item->total_atestados === 1 ? 'dia' : 'dias' }}</span>
+                        </div>
+                    @empty
+                        <div class="p-5 text-sm text-brand-gray">Nenhum atestado médico registrado neste período.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+
+    <section id="ferramentas" class="mb-5 scroll-mt-4 border-t border-zinc-200 pt-8">
+        <div class="mb-5">
+            <p class="text-xs font-black uppercase tracking-wide text-brand-gray">Uso eventual</p>
+            <h2 class="text-xl font-bold text-brand-black">Importação e relatórios</h2>
+            <p class="mt-1 text-sm text-brand-gray">Importe arquivos do relógio ou gere cartão de ponto em PDF.</p>
+        </div>
+        <div class="grid gap-5 xl:grid-cols-2">
+        <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
+                <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Importação de ponto</p>
+                <h2 class="mt-1 text-xl font-bold text-brand-black">Importar e exportar marcações</h2>
+                <p class="mt-1 text-sm text-brand-gray">Importe a exportação CSV do sistema de ponto (batidas, folgas e justificativas) ou use AFD do relógio. Exporte AFD para outros programas.</p>
+            </div>
+
+            <div class="space-y-6 p-5">
+                <div>
+                    <h3 class="text-sm font-bold text-brand-black">Importar CSV (exportação do ponto)</h3>
+                    <p class="mt-1 text-xs text-brand-gray">Separador <code class="rounded bg-zinc-100 px-1">;</code> — matrícula, CPF, Dia e as quatro marcações. Só grava linhas cuja data estiver no período escolhido.</p>
+                    <form method="POST" action="{{ route('rh.frequencia.importar-csv') }}" enctype="multipart/form-data" class="mt-3 space-y-3">
+                        @csrf
+                        <input type="hidden" name="escopo_colaboradores" value="todos">
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
+                                <input type="date" name="data_inicio" value="{{ old('data_inicio', request('csv_data_inicio', $exportInicio)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
+                            </label>
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
+                                <input type="date" name="data_fim" value="{{ old('data_fim', request('csv_data_fim', $exportFim)) }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10">
+                            </label>
+                        </div>
+                        <div class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo CSV</span>
+                                <input type="file" name="arquivo" accept=".csv,.txt,text/csv" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-emerald-700 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
+                            </label>
+                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+                                <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
+                                Importar CSV
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="border-t border-zinc-100 pt-5">
+                    <h3 class="text-sm font-bold text-brand-black">Importar AFD</h3>
+                    <form method="POST" action="{{ route('rh.frequencia.importar-afd') }}" enctype="multipart/form-data" class="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                        @csrf
+                        <label class="space-y-2">
+                            <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Arquivo AFD</span>
+                            <input type="file" name="arquivo" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-brand-gray outline-none file:mr-3 file:rounded-md file:border-0 file:bg-brand-burgundy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white">
+                        </label>
+                        <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-5 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                            <i data-lucide="upload-cloud" class="h-4 w-4"></i>
+                            Importar
+                        </button>
+                    </form>
+                </div>
+
+                <div class="border-t border-zinc-100 pt-5">
+                    <h3 class="text-sm font-bold text-brand-black">Exportar AFD</h3>
+                    <p class="mt-1 text-xs text-brand-gray">Gera um arquivo <code class="rounded bg-zinc-100 px-1">.txt</code> com registro tipo 3 (Portaria 1510). Usa PIS, ou matrícula/CPF se o PIS não estiver cadastrado.</p>
+                    <form method="GET" action="{{ route('rh.frequencia.exportar-afd') }}" class="mt-3 space-y-3">
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data início</span>
+                                <input type="date" name="data_inicio" value="{{ $exportInicio }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            </label>
+                            <label class="space-y-2">
+                                <span class="text-xs font-bold uppercase tracking-wide text-brand-gray">Data fim</span>
+                                <input type="date" name="data_fim" value="{{ $exportFim }}" required class="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                            </label>
+                            <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-5 text-sm font-bold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white">
+                                <i data-lucide="download" class="h-4 w-4"></i>
+                                Exportar AFD
+                            </button>
+                        </div>
+                        <input type="hidden" name="data" value="{{ $data }}">
+                        <input type="hidden" name="mes" value="{{ $mes }}">
+                        @if (request('busca'))
+                            <label class="flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-gray">
+                                <input type="checkbox" name="filtrar_busca" value="1" checked class="rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20">
+                                <span>Aplicar busca da listagem: «{{ request('busca') }}»</span>
+                            </label>
+                            <input type="hidden" name="busca" value="{{ request('busca') }}">
+                        @endif
+                    </form>
+                </div>
+            </div>
+        </div>
+    @include('rh.frequencia._cartao_ponto')
+        </div>
+    </section>
+
 @endsection

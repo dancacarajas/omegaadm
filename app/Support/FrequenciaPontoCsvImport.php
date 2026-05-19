@@ -4,6 +4,9 @@ namespace App\Support;
 
 use App\Models\Colaborador;
 use App\Models\FrequenciaRegistro;
+use App\Support\EscalaPontoRegras;
+use App\Support\FeriadoPontoService;
+use App\Support\Rh\ColaboradorVinculoPonto;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -133,7 +136,13 @@ class FrequenciaPontoCsvImport
                     continue;
                 }
 
-                $attrs = $this->montarRegistro($linha);
+                if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $linha['data'])) {
+                    $ignorados++;
+
+                    continue;
+                }
+
+                $attrs = $this->montarRegistro($linha, $colaborador, $linha['data']);
                 FrequenciaRegistro::query()->updateOrCreate(
                     [
                         'colaborador_id' => $colaborador->id,
@@ -213,9 +222,9 @@ class FrequenciaPontoCsvImport
      * @param  list<string|null>  $row
      * @return array<string, mixed>
      */
-    private function montarRegistro(array $linha): array
+    private function montarRegistro(array $linha, Colaborador $colaborador, string $dataYmd): array
     {
-        $status = $this->resolverStatus($linha);
+        $status = $this->resolverStatus($linha, $colaborador, $dataYmd);
         $textoJustificativa = $this->resolverTextoJustificativa($linha);
 
         $base = [
@@ -257,7 +266,7 @@ class FrequenciaPontoCsvImport
      *     saida_2: string|null
      * }  $linha
      */
-    private function resolverStatus(array $linha): string
+    private function resolverStatus(array $linha, Colaborador $colaborador, string $dataYmd): string
     {
         foreach ($linha['celulas'] as $celula) {
             if ($this->celulaIndicaFolga($celula)) {
@@ -283,6 +292,16 @@ class FrequenciaPontoCsvImport
         ]);
 
         $qtd = count($horarios);
+
+        if ($qtd === 0) {
+            if (app(EscalaPontoRegras::class)->diaAbonadoPorFolgaEscala($colaborador, $dataYmd)) {
+                return 'folga';
+            }
+
+            if (app(FeriadoPontoService::class)->diaAbonadoPorFeriado($dataYmd)) {
+                return 'justificado';
+            }
+        }
 
         return match (true) {
             $qtd >= 4 => 'presente',
@@ -392,7 +411,7 @@ class FrequenciaPontoCsvImport
     {
         $this->indiceColaboradores = [];
 
-        foreach (Colaborador::query()->get(['id', 'matricula', 'cpf', 'pis']) as $colaborador) {
+        foreach (Colaborador::query()->get(['id', 'matricula', 'cpf', 'pis', 'data_admissao', 'data_demissao']) as $colaborador) {
             foreach (['matricula', 'cpf', 'pis'] as $campo) {
                 $chave = $this->normalizarDocumento($colaborador->getAttribute($campo));
                 if ($chave !== '') {
