@@ -13,6 +13,7 @@ use App\Support\EscalaPontoRegras;
 use App\Support\FeriadoPontoService;
 use App\Support\FrequenciaPontoCsvImport;
 use App\Support\Rh\AbsenteismoPeriodo;
+use App\Support\Rh\ExtratoAusenciasPeriodo;
 use App\Support\Rh\ExtratoFaltasPeriodo;
 use App\Support\Rh\ColaboradorVinculoPonto;
 use App\Support\Rh\FrequenciaRegistroReconciliacao;
@@ -225,7 +226,14 @@ class FrequenciaController extends Controller
             $colaboradorId
         );
 
-        $extrato = app(ExtratoFaltasPeriodo::class)->montar($dataInicio, $dataFim, $colaboradorId);
+        $naturezaFiltro = (string) $request->input('natureza', ExtratoAusenciasPeriodo::NATUREZA_TODAS);
+
+        $extrato = app(ExtratoAusenciasPeriodo::class)->montar(
+            $dataInicio,
+            $dataFim,
+            $colaboradorId,
+            $naturezaFiltro
+        );
 
         $colaboradorFiltro = $colaboradorId
             ? Colaborador::query()->find($colaboradorId)
@@ -238,11 +246,13 @@ class FrequenciaController extends Controller
 
         return view('rh.frequencia.extrato-faltas', [
             'extrato' => $extrato,
+            'absenteismo' => $extrato['absenteismo'],
             'dataInicio' => $dataInicio,
             'dataFim' => $dataFim,
             'colaboradorId' => $colaboradorId,
             'colaboradorFiltro' => $colaboradorFiltro,
             'colaboradoresAtivos' => $colaboradoresAtivos,
+            'naturezaFiltro' => $extrato['natureza_filtro'],
             'mes' => $mes,
         ]);
     }

@@ -326,6 +326,43 @@ class FrequenciaCalculo
         return self::normalizarHora($valor);
     }
 
+    /** Atraso na entrada em relação à escala do colaborador (minutos). */
+    public static function minutosAtrasoRegistro(FrequenciaRegistro $registro): int
+    {
+        $colaborador = $registro->colaborador;
+        if ($colaborador === null) {
+            return 0;
+        }
+
+        $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
+        if ($diaEscala === null) {
+            return 0;
+        }
+
+        $ymd = $registro->data instanceof CarbonInterface
+            ? $registro->data->format('Y-m-d')
+            : Carbon::parse((string) $registro->data)->format('Y-m-d');
+
+        $previsto = self::normalizarHorarioBanco($diaEscala->entrada_1);
+        $real = self::normalizarHorarioBanco($registro->entrada_1);
+        if ($previsto === null || $real === null) {
+            return 0;
+        }
+
+        try {
+            $a = Carbon::parse("{$ymd} {$previsto}");
+            $b = Carbon::parse("{$ymd} {$real}");
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        if ($b->lte($a)) {
+            return 0;
+        }
+
+        return (int) $a->diffInMinutes($b);
+    }
+
     private static function normalizarHora(mixed $valor): ?string
     {
         if ($valor instanceof CarbonInterface) {

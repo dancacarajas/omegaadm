@@ -26,8 +26,15 @@ class AbsenteismoPeriodoTest extends TestCase
             'status' => 'ativo',
         ]);
 
+        FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colab->id,
+            'data' => '2026-03-21',
+            'status' => 'presente',
+            'entrada_1' => '08:00:00',
+            'saida_1' => '17:00:00',
+            'origem' => 'csv_ponto',
+        ]);
         foreach ([
-            ['2026-03-21', 'presente'],
             ['2026-03-22', 'justificado'],
             ['2026-03-23', 'folga'],
             ['2026-03-24', 'falta'],
@@ -43,8 +50,9 @@ class AbsenteismoPeriodoTest extends TestCase
         $resultado = app(AbsenteismoPeriodo::class)->calcular('2026-03-21', '2026-03-24');
 
         $this->assertSame(1, $resultado['ausencias']);
-        $this->assertSame(2, $resultado['base']);
-        $this->assertSame(50.0, $resultado['taxa']);
+        $this->assertSame(3, $resultado['base']);
+        $this->assertSame(66.7, $resultado['taxa_geral']);
+        $this->assertSame(33.3, $resultado['taxa_injustificada']);
     }
 
     public function test_filtra_absenteismo_por_colaborador(): void
@@ -110,7 +118,8 @@ class AbsenteismoPeriodoTest extends TestCase
                 'absenteismo_calcular' => 1,
             ]))
             ->assertOk()
-            ->assertSee('0,0%', false);
+            ->assertSee('50,0%', false)
+            ->assertSee('Absenteísmo geral', false);
     }
 
     public function test_extrato_faltas_agrupa_por_colaborador(): void
@@ -164,7 +173,7 @@ class AbsenteismoPeriodoTest extends TestCase
                 'data_fim' => '2026-03-24',
             ]))
             ->assertOk()
-            ->assertSee('Extrato de faltas injustificadas', false)
+            ->assertSee('Extrato de ausências', false)
             ->assertSee('Ana', false)
             ->assertSee('24/03/2026', false);
 
@@ -175,7 +184,7 @@ class AbsenteismoPeriodoTest extends TestCase
                 'absenteismo_calcular' => 1,
             ]))
             ->assertOk()
-            ->assertSee('Extrato de faltas', false);
+            ->assertSee('Extrato de ausências', false);
     }
 
     public function test_nao_conta_falta_antes_da_data_admissao(): void
@@ -374,5 +383,46 @@ class AbsenteismoPeriodoTest extends TestCase
             ->count();
 
         $this->assertSame(1, $ranking);
+    }
+
+    public function test_calcular_para_contrato_filtra_centro_custo(): void
+    {
+        $noContrato = Colaborador::query()->create([
+            'nome' => 'Fora',
+            'matricula' => '9',
+            'status' => 'ativo',
+            'centro_custo' => 'OUTRO',
+        ]);
+        $no286 = Colaborador::query()->create([
+            'nome' => 'No 286',
+            'matricula' => '8',
+            'status' => 'ativo',
+            'centro_custo' => '286',
+        ]);
+
+        foreach ([$noContrato, $no286] as $c) {
+            FrequenciaRegistro::query()->create([
+                'colaborador_id' => $c->id,
+                'data' => '2026-03-21',
+                'status' => 'falta',
+                'origem' => 'grade',
+            ]);
+            FrequenciaRegistro::query()->create([
+                'colaborador_id' => $c->id,
+                'data' => '2026-03-22',
+                'status' => 'justificado',
+                'origem' => 'csv_ponto',
+            ]);
+        }
+
+        $geral = app(AbsenteismoPeriodo::class)->calcular('2026-03-21', '2026-03-22');
+        $contrato = app(AbsenteismoPeriodo::class)->calcularParaContrato('2026-03-21', '2026-03-22', ['286']);
+
+        $this->assertSame(2, $geral['ausencias']);
+        $this->assertSame(1, $contrato['ausencias']);
+        $this->assertSame(2, $contrato['base']);
+        $this->assertSame(100.0, $contrato['taxa_geral']);
+        $this->assertSame(50.0, $contrato['taxa_injustificada']);
+        $this->assertSame(100.0, $contrato['taxa']);
     }
 }

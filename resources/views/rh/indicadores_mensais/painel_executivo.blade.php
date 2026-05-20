@@ -8,8 +8,10 @@
     @php
         use Carbon\Carbon;
         $competenciaRotulo = Carbon::parse($competenciaYm.'-01')->format('m/Y');
-        $periodoRotulo = $periodoInicio->format('d/m').' a '.$periodoFim->format('d/m');
+        $periodoRotulo = $periodoInicio->format('d/m/Y').' a '.$periodoFim->copy()->startOfDay()->format('d/m/Y');
         $dataLimiteRotulo = $periodoFim->format('d/m/Y');
+        $periodoInicioInput = $periodoInicioInput ?? $periodoInicio->toDateString();
+        $periodoFimInput = $periodoFimInput ?? $periodoFim->copy()->startOfDay()->toDateString();
         $json = fn ($value) => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $evolucaoTe = $evolucaoTransferencias ?? ['entrada' => 0, 'saida' => 0];
         $evolucaoEntradasTotal = (int) ($resumoEfetivo['admitidos'] ?? 0) + (int) ($evolucaoTe['entrada'] ?? 0);
@@ -68,7 +70,8 @@
                 <p class="mt-2 text-sm text-zinc-500">Cadastre contratos ativos ou ajuste permissões para visualizar indicadores.</p>
             </div>
         @else
-            <form method="get" action="{{ route('rh.indicadores-mensais.painel-executivo') }}" class="flex flex-col gap-4 border-b border-zinc-100 bg-white px-6 py-5 sm:flex-row sm:flex-wrap sm:items-end sm:px-8">
+            <form id="form-painel-indicadores-rh" method="get" action="{{ route('rh.indicadores-mensais.painel-executivo') }}" class="flex flex-col gap-4 border-b border-zinc-100 bg-white px-6 py-5 sm:px-8">
+                <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
                 <label class="block min-w-[220px] flex-1">
                     <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">Contrato (centro de custo)</span>
                     <select name="contrato" class="h-12 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm focus:border-[#600020] focus:outline-none focus:ring-2 focus:ring-[#600020]/15">
@@ -82,14 +85,33 @@
                         @endforeach
                     </select>
                 </label>
-                <label class="block w-full sm:w-52">
-                    <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">Competência</span>
-                    <input type="month" name="competencia" value="{{ $competenciaYm }}" class="h-12 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm focus:border-[#600020] focus:outline-none focus:ring-2 focus:ring-[#600020]/15">
+                <label class="block w-full sm:w-44">
+                    <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">Período inicial</span>
+                    <input type="date" name="periodo_inicio" value="{{ $periodoInicioInput }}" required class="h-12 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm focus:border-[#600020] focus:outline-none focus:ring-2 focus:ring-[#600020]/15">
                 </label>
+                <label class="block w-full sm:w-44">
+                    <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">Período final</span>
+                    <input type="date" name="periodo_fim" value="{{ $periodoFimInput }}" required class="h-12 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm focus:border-[#600020] focus:outline-none focus:ring-2 focus:ring-[#600020]/15">
+                </label>
+                <label class="block w-full sm:w-44">
+                    <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">Competência (atalho)</span>
+                    <input type="month" name="competencia" id="input-competencia-painel-rh" value="{{ $competenciaYm }}" class="h-12 w-full rounded-xl border border-[#E0E0E0] bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm focus:border-[#600020] focus:outline-none focus:ring-2 focus:ring-[#600020]/15">
+                </label>
+                <div class="flex flex-wrap gap-2 sm:pb-0.5">
                 <button type="submit" class="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#600020] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4a0018]">
                     <i data-lucide="refresh-cw" class="h-4 w-4" stroke-width="1.5"></i>
-                    Atualizar
+                    Atualizar período
                 </button>
+                <button type="submit" name="usar_mes_competencia" value="1" class="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#600020]/30 bg-white px-5 text-sm font-semibold text-[#600020] shadow-sm transition hover:bg-[#600020]/5">
+                    <i data-lucide="calendar" class="h-4 w-4" stroke-width="1.5"></i>
+                    Usar mês da competência
+                </button>
+                </div>
+                </div>
+                <p class="text-xs leading-relaxed text-zinc-500">
+                    Os indicadores de todos os cards abaixo usam o <strong class="text-zinc-700">período inicial e final</strong> informados (efetivo, frequência, absenteísmo, jornada e plano de ação).
+                    Use <strong class="text-zinc-700">Usar mês da competência</strong> para o intervalo do 1º ao último dia do mês selecionado.
+                </p>
             </form>
 
             <div class="border-b border-amber-200/90 bg-amber-50/80 px-6 py-3.5 text-xs leading-relaxed text-amber-950 sm:px-8">
@@ -589,8 +611,9 @@
                 </div>
 
                 <p class="border-b border-zinc-100 px-6 py-2.5 text-[11px] leading-relaxed text-zinc-500 sm:px-8">
-                    <strong class="text-zinc-700">Horas previstas</strong> usam dias úteis do recorte × 8 h × efetivo médio (inicial/final).
-                    <strong class="text-zinc-700">Horas de ausência</strong> são estimativa a partir das ocorrências contabilizadas.
+                    <strong class="text-zinc-700">Absenteísmo geral</strong> = horas de ausência (justificadas + injustificadas, incluindo atestados) ÷ horas previstas × 100.
+                    <strong class="text-zinc-700">Horas previstas</strong> somam a jornada do dia na escala ou padrão de 8 h. Folgas e feriados não entram.
+                    Atestados e abonos impactam a operação e entram no indicador; a folha pode abonar sem desconto.
                 </p>
 
                 <div class="px-6 pb-10 pt-8 sm:px-8">
@@ -642,27 +665,31 @@
                                         <i data-lucide="clock" class="h-5 w-5" stroke-width="1.5"></i>
                                     </div>
                                     <p class="text-xs font-bold text-zinc-900">Horas previstas</p>
-                                    <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ number_format((int) $af['horasPrevistas'], 0, ',', '.') }}</p>
+                                    <p class="text-[10px] text-zinc-500">Jornada no período</p>
+                                    <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ number_format((float) $af['horasPrevistas'], 1, ',', '.') }}</p>
                                 </div>
                                 <div class="flex flex-1 flex-col items-center gap-2 px-3 py-5 text-center sm:px-4">
                                     <div class="flex h-11 w-11 items-center justify-center rounded-full bg-rose-100 text-[#600020]">
                                         <i data-lucide="circle-alert" class="h-5 w-5" stroke-width="1.5"></i>
                                     </div>
                                     <p class="text-xs font-bold text-zinc-900">Horas de ausência</p>
-                                    <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ number_format((int) $af['horasAusencia'], 0, ',', '.') }}</p>
+                                    <p class="text-[10px] text-zinc-500">Geral (justif. + injustif.)</p>
+                                    <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ number_format((float) $af['horasAusencia'], 1, ',', '.') }}</p>
                                 </div>
                                 <div class="flex flex-1 flex-col items-center gap-2 px-3 py-5 text-center sm:px-4">
                                     <div class="flex h-11 w-11 items-center justify-center rounded-full bg-rose-100 text-[#600020]">
                                         <i data-lucide="calendar-x" class="h-5 w-5" stroke-width="1.5"></i>
                                     </div>
-                                    <p class="text-xs font-bold text-zinc-900">Dias perdidos</p>
+                                    <p class="text-xs font-bold text-zinc-900">Dias falta injustificada</p>
+                                    <p class="text-[10px] text-zinc-500">Folha / disciplinar</p>
                                     <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ (int) $af['diasPerdidos'] }}</p>
                                 </div>
                                 <div class="flex flex-1 flex-col items-center gap-2 px-3 py-5 text-center sm:px-4">
                                     <div class="flex h-11 w-11 items-center justify-center rounded-full bg-rose-100 text-[#600020]">
                                         <i data-lucide="clipboard-list" class="h-5 w-5" stroke-width="1.5"></i>
                                     </div>
-                                    <p class="text-xs font-bold text-zinc-900">Ocorrências totais</p>
+                                    <p class="text-xs font-bold text-zinc-900">Registros de ocorrência</p>
+                                    <p class="text-[10px] text-zinc-500">Sem duplicar categorias</p>
                                     <p class="text-xl font-bold tabular-nums text-[#600020] sm:text-2xl">{{ (int) $af['ocorrenciasTotais'] }}</p>
                                 </div>
                             </div>
@@ -690,7 +717,8 @@
                                     </div>
                                 </div>
                                 <div class="flex h-full min-h-[11rem] flex-col rounded-xl border border-[#E0E0E0] bg-white p-6 shadow-sm">
-                                    <h4 class="text-center text-base font-bold text-zinc-900">Absenteísmo mensal</h4>
+                                    <h4 class="text-center text-base font-bold text-zinc-900">Absenteísmo geral</h4>
+                                    <p class="mt-1 text-center text-[10px] text-zinc-500">Horas ausência ÷ horas previstas</p>
                                     <div class="mt-5 flex flex-1 items-center justify-center gap-6 sm:gap-8">
                                         <div
                                             class="relative h-[7.25rem] w-[7.25rem] shrink-0 rounded-full p-[2.5px]"
@@ -706,6 +734,23 @@
                                             </div>
                                         </div>
                                         <p class="text-[2.125rem] font-bold leading-none tabular-nums text-[#600020] sm:text-[2.25rem]">{{ $af['absLabel'] }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div class="flex flex-col rounded-xl border border-[#E0E0E0] bg-white px-4 py-6 text-center shadow-sm sm:py-7">
+                                    <h4 class="text-center text-sm font-bold text-zinc-900">Absenteísmo justificado</h4>
+                                    <div class="mt-4 flex flex-1 flex-col items-center justify-center gap-3">
+                                        <p class="text-3xl font-bold tabular-nums leading-none text-[#600020]">{{ $af['absJustificadaLabel'] ?? '—' }}</p>
+                                        <p class="text-[10px] text-zinc-500">{{ number_format((float) ($af['horasAusenciaJustificada'] ?? 0), 1, ',', '.') }} h</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col rounded-xl border border-[#E0E0E0] bg-white px-4 py-6 text-center shadow-sm sm:py-7">
+                                    <h4 class="text-center text-sm font-bold text-zinc-900">Absenteísmo injustificado</h4>
+                                    <div class="mt-4 flex flex-1 flex-col items-center justify-center gap-3">
+                                        <p class="text-3xl font-bold tabular-nums leading-none text-[#600020]">{{ $af['absInjustificadaLabel'] ?? '—' }}</p>
+                                        <p class="text-[10px] text-zinc-500">{{ number_format((float) ($af['horasAusenciaInjustificada'] ?? 0), 1, ',', '.') }} h</p>
                                     </div>
                                 </div>
                             </div>
@@ -1148,4 +1193,24 @@
     @if (! ($semContratosAtivos ?? false) && ($chartResumoPeriodo ?? null))
         <script type="application/json" id="chart-rh-resumo-periodo">{!! $json($chartResumoPeriodo) !!}</script>
     @endif
+
+    @unless ($semContratosAtivos ?? false)
+        <script>
+            (function () {
+                const competencia = document.getElementById('input-competencia-painel-rh');
+                const inicio = document.querySelector('#form-painel-indicadores-rh [name="periodo_inicio"]');
+                const fim = document.querySelector('#form-painel-indicadores-rh [name="periodo_fim"]');
+                if (!competencia || !inicio || !fim) return;
+
+                competencia.addEventListener('change', function () {
+                    const ym = competencia.value;
+                    if (!ym) return;
+                    const [y, m] = ym.split('-').map(Number);
+                    const ultimo = new Date(y, m, 0).getDate();
+                    inicio.value = ym + '-01';
+                    fim.value = ym + '-' + String(ultimo).padStart(2, '0');
+                });
+            })();
+        </script>
+    @endunless
 @endsection

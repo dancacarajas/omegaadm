@@ -6,29 +6,37 @@ use App\Models\FrequenciaRegistro;
 use Carbon\Carbon;
 
 /**
- * Taxa de absenteísmo no período: somente faltas injustificadas (status falta)
- * sobre dias com jornada registrada (presente, falta ou incompleto).
- * Folgas e justificativas (abono, atestado, mobilização etc.) não entram no cálculo.
+ * Absenteísmo gerencial por horas: ausências (justificadas + injustificadas) ÷ horas previstas × 100.
  */
 class AbsenteismoPeriodo
 {
-    /** @var list<string> */
-    private const STATUS_BASE = ['presente', 'falta', 'incompleto'];
-
     /**
-     * @return array{
-     *     inicio: string,
-     *     fim: string,
-     *     dias: int,
-     *     ausencias: int,
-     *     base: int,
-     *     taxa: float,
-     *     colaborador_id: int|null,
-     *     escopo: string
-     * }
+     * @return array<string, mixed>
      */
     public function calcular(Carbon|string $inicio, Carbon|string $fim, ?int $colaboradorId = null): array
     {
+        return $this->calcularComEscopo($inicio, $fim, $colaboradorId, null);
+    }
+
+    /**
+     * @param  list<string>  $identificadoresContrato
+     * @return array<string, mixed>
+     */
+    public function calcularParaContrato(Carbon|string $inicio, Carbon|string $fim, array $identificadoresContrato): array
+    {
+        return $this->calcularComEscopo($inicio, $fim, null, $identificadoresContrato);
+    }
+
+    /**
+     * @param  list<string>|null  $identificadoresContrato
+     * @return array<string, mixed>
+     */
+    private function calcularComEscopo(
+        Carbon|string $inicio,
+        Carbon|string $fim,
+        ?int $colaboradorId,
+        ?array $identificadoresContrato
+    ): array {
         $inicioCarbon = $inicio instanceof Carbon ? $inicio->copy()->startOfDay() : Carbon::parse($inicio)->startOfDay();
         $fimCarbon = $fim instanceof Carbon ? $fim->copy()->startOfDay() : Carbon::parse($fim)->startOfDay();
 
@@ -40,29 +48,24 @@ class AbsenteismoPeriodo
         $fimStr = $fimCarbon->toDateString();
         $diasPeriodo = max(1, $inicioCarbon->diffInDays($fimCarbon, false) + 1);
 
-        $baseQuery = FrequenciaRegistro::query()
-            ->whereDate('data', '>=', $inicioStr)
-            ->whereDate('data', '<=', $fimStr)
-            ->whereHas('colaborador', function ($q) use ($colaboradorId) {
-                $q->where('status', 'ativo');
-                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($q);
-                if ($colaboradorId !== null) {
-                    $q->where('id', $colaboradorId);
-                }
-            });
+        $query = AbsenteismoPeriodoProcessador::queryRegistros($inicioStr, $fimStr, $colaboradorId, $identificadoresContrato);
 
-        $ausencias = (clone $baseQuery)->where('status', 'falta')->count();
-        $base = (clone $baseQuery)->whereIn('status', self::STATUS_BASE)->count();
+        $processado = AbsenteismoPeriodoProcessador::processar($query->cursor());
 
-        return [
-            'inicio' => $inicioStr,
-            'fim' => $fimStr,
-            'dias' => $diasPeriodo,
-            'ausencias' => $ausencias,
-            'base' => $base,
-            'taxa' => $base > 0 ? round(($ausencias / $base) * 100, 1) : 0.0,
-            'colaborador_id' => $colaboradorId,
-            'escopo' => $colaboradorId !== null ? 'colaborador' : 'efetivo',
-        ];
+        $escopo = 'efetivo';
+        if ($colaboradorId !== null) {
+            $escopo = 'colaborador';
+        } elseif ($identificadoresContrato !== null && $identificadoresContrato !== []) {
+            $escopo = 'contrato';
+        }
+
+        return AbsenteismoPeriodoProcessador::totaisParaResumoAbsenteismo(
+            $processado['totais'],
+            $inicioStr,
+            $fimStr,
+            $diasPeriodo,
+            $colaboradorId,
+            $escopo
+        );
     }
 }

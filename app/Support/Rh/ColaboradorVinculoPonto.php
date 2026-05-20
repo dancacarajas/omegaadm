@@ -34,12 +34,17 @@ class ColaboradorVinculoPonto
      */
     public static function aplicarFiltroRegistroNaData(Builder $colaboradorQuery): void
     {
-        $colaboradorQuery->where(function ($w) {
+        $driver = $colaboradorQuery->getConnection()->getDriverName();
+        $colunaDataRegistro = $driver === 'sqlite'
+            ? "date(frequencia_registros.data)"
+            : 'frequencia_registros.data';
+
+        $colaboradorQuery->where(function ($w) use ($colunaDataRegistro) {
             $w->whereNull('data_admissao')
-                ->orWhereColumn('data_admissao', '<=', 'frequencia_registros.data');
-        })->where(function ($w) {
+                ->orWhereRaw("date(data_admissao) <= {$colunaDataRegistro}");
+        })->where(function ($w) use ($colunaDataRegistro) {
             $w->whereNull('data_demissao')
-                ->orWhereColumn('data_demissao', '>=', 'frequencia_registros.data');
+                ->orWhereRaw("date(data_demissao) >= {$colunaDataRegistro}");
         });
     }
 }

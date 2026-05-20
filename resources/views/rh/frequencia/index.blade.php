@@ -338,14 +338,14 @@
         <div class="rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
             <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Gestão do período</p>
             <h2 class="text-xl font-bold text-brand-black">Absenteísmo e rankings</h2>
-            <p class="mt-1 text-sm text-brand-gray">Defina o período com <strong>Calcular taxa</strong>. Os rankings de faltas e atestados usam as mesmas datas.</p>
+            <p class="mt-1 text-sm text-brand-gray">Defina o período com <strong>Calcular taxa</strong>. Os rankings usam as mesmas datas. Por padrão considera <strong>todo o efetivo ativo</strong>; no Painel Executivo (Indicadores mensais) o recorte é por <strong>contrato</strong>.</p>
         </div>
         <div class="grid gap-5 xl:grid-cols-[.95fr_1.05fr]">
         <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
             <div class="border-b border-zinc-200 p-5">
                 <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Absenteísmo</p>
                 <h2 class="mt-1 text-xl font-bold text-brand-black">Taxa por período</h2>
-                <p class="mt-1 text-sm text-brand-gray">Conta apenas faltas injustificadas. Folgas, abonos e justificativas do ponto não entram no cálculo.</p>
+                <p class="mt-1 text-sm text-brand-gray">Indicador gerencial por horas: atestados e abonos entram no absenteísmo geral; folgas e feriados não. A folha pode tratar faltas injustificadas à parte.</p>
             </div>
             <form method="GET" class="grid gap-3 p-5">
                 <input type="hidden" name="data" value="{{ $data }}">
@@ -399,25 +399,32 @@
                 </div>
                 <span class="rounded-full bg-brand-burgundy-soft px-3 py-1 text-xs font-bold text-brand-burgundy">{{ $absenteismo['dias'] }} dia(s)</span>
             </div>
-            <div class="mt-6 grid gap-4 sm:grid-cols-3">
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl bg-amber-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-amber-700">Absenteísmo geral</p>
+                    <p class="mt-2 text-3xl font-black text-amber-700">{{ number_format($absenteismo['taxa_geral'] ?? $absenteismo['taxa'], 1, ',', '.') }}%</p>
+                    <p class="mt-1 text-[11px] text-amber-800">{{ number_format($absenteismo['horas_ausencia_geral'] ?? 0, 1, ',', '.') }}h ÷ {{ number_format($absenteismo['horas_previstas'] ?? 0, 1, ',', '.') }}h</p>
+                </div>
+                <div class="rounded-xl bg-blue-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-blue-800">Justificado</p>
+                    <p class="mt-2 text-3xl font-black text-blue-900">{{ number_format($absenteismo['taxa_justificada'] ?? 0, 1, ',', '.') }}%</p>
+                    <p class="mt-1 text-[11px] text-blue-800">{{ number_format($absenteismo['horas_ausencia_justificada'] ?? 0, 1, ',', '.') }}h</p>
+                </div>
                 <div class="rounded-xl bg-red-50 p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-red-700">Faltas injustificadas</p>
-                    <p class="mt-2 text-3xl font-black text-red-700">{{ $absenteismo['ausencias'] }}</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-red-700">Injustificado</p>
+                    <p class="mt-2 text-3xl font-black text-red-700">{{ number_format($absenteismo['taxa_injustificada'] ?? 0, 1, ',', '.') }}%</p>
+                    <p class="mt-1 text-[11px] text-red-800">{{ $absenteismo['ausencias'] }} dia(s) · {{ number_format($absenteismo['horas_ausencia_injustificada'] ?? 0, 1, ',', '.') }}h</p>
                 </div>
                 <div class="rounded-xl bg-brand-gray-soft p-4">
                     <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Dias com jornada</p>
                     <p class="mt-2 text-3xl font-black text-brand-black">{{ $absenteismo['base'] }}</p>
                 </div>
-                <div class="rounded-xl bg-amber-50 p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-amber-700">Taxa</p>
-                    <p class="mt-2 text-3xl font-black text-amber-700">{{ number_format($absenteismo['taxa'], 1, ',', '.') }}%</p>
-                </div>
             </div>
             <div class="mt-5 h-3 overflow-hidden rounded-full bg-zinc-100">
-                <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ min(100, $absenteismo['taxa']) }}%"></div>
+                <div class="h-full rounded-full bg-brand-burgundy" style="width: {{ min(100, $absenteismo['taxa_geral'] ?? $absenteismo['taxa']) }}%"></div>
             </div>
             <p class="mt-3 text-sm font-semibold text-brand-gray">
-                Cálculo: {{ $absenteismo['ausencias'] }} faltas injustificadas ÷ {{ $absenteismo['base'] }} dias com registro de jornada (presente, falta ou incompleto).
+                Absenteísmo geral = horas de ausência (atestados, abonos, faltas, atrasos) ÷ horas previstas. Folgas e feriados não entram.
             </p>
             <div class="mt-4 flex flex-wrap gap-3 border-t border-zinc-100 pt-4">
                 <a href="{{ route('rh.frequencia.extrato-faltas', array_filter([
@@ -426,7 +433,7 @@
                     'colaborador_id' => $absenteismoColaboradorId ?? null,
                 ])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-4 text-sm font-semibold text-brand-burgundy transition hover:bg-brand-burgundy hover:text-white">
                     <i data-lucide="file-text" class="h-4 w-4"></i>
-                    Extrato de faltas
+                    Extrato de ausências
                 </a>
                 @if ($absenteismoColaborador ?? null)
                     <a href="{{ route('rh.frequencia.apuracao.index', ['colaborador_id' => $absenteismoColaborador->id, 'data_inicio' => $absenteismo['inicio'], 'data_fim' => $absenteismo['fim']]) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black transition hover:bg-zinc-50">

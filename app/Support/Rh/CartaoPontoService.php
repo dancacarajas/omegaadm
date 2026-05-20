@@ -241,7 +241,7 @@ class CartaoPontoService
         $minutosFalta = FrequenciaCalculo::faltaEfetivaMinutos($minutosFalta);
 
         $minutosNormais = min($minutosTrabalhado, max(0, $minutosPrevistas));
-        $minutosAtraso = $this->minutosAtraso($registro, $diaEscala, $dia->format('Y-m-d'));
+        $minutosAtraso = FrequenciaCalculo::minutosAtrasoRegistro($registro);
 
         $status = (string) ($registro->status ?? 'falta');
         $diaFalta = $status === 'falta' ? 1 : 0;
@@ -571,29 +571,4 @@ class CartaoPontoService
         };
     }
 
-    private function minutosAtraso(FrequenciaRegistro $registro, ?HorarioEscalaDia $diaEscala, string $ymd): int
-    {
-        if ($diaEscala === null) {
-            return 0;
-        }
-
-        $previsto = FrequenciaCalculo::normalizarHorarioBanco($diaEscala->entrada_1);
-        $real = FrequenciaCalculo::normalizarHorarioBanco($registro->entrada_1);
-        if ($previsto === null || $real === null) {
-            return 0;
-        }
-
-        try {
-            $a = Carbon::parse("{$ymd} {$previsto}");
-            $b = Carbon::parse("{$ymd} {$real}");
-        } catch (\Throwable) {
-            return 0;
-        }
-
-        if ($b->lte($a)) {
-            return 0;
-        }
-
-        return (int) $a->diffInMinutes($b);
-    }
 }

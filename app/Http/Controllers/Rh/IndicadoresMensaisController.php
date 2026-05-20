@@ -8,7 +8,9 @@ use App\Models\Contrato;
 use App\Models\FrequenciaRegistro;
 use App\Services\Rh\MovimentacaoEfetivoPeriodo;
 use App\Support\ContratoAccess;
+use App\Support\Rh\AbsenteismoPeriodo;
 use App\Support\Rh\ColaboradorQueryPorContratoPainel;
+use App\Support\Rh\ColaboradorVinculoPonto;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,14 +41,18 @@ class IndicadoresMensaisController extends Controller
             ->values();
 
         if ($contratosAtivos->isEmpty() || $tokensContratoPermitidos->isEmpty()) {
+            $periodoVazio = $this->resolverPeriodo($request);
+
             return view('rh.indicadores_mensais.painel_executivo', [
                 'semContratosAtivos' => true,
                 'contratosAtivos' => $contratosAtivos,
                 'contratoCentro' => '',
                 'contratoLabel' => '—',
-                'competenciaYm' => now()->format('Y-m'),
-                'periodoInicio' => now()->startOfMonth(),
-                'periodoFim' => now()->endOfDay(),
+                'competenciaYm' => $periodoVazio['competenciaYm'],
+                'periodoInicio' => $periodoVazio['inicio'],
+                'periodoFim' => $periodoVazio['fim'],
+                'periodoInicioInput' => $periodoVazio['inicioInput'],
+                'periodoFimInput' => $periodoVazio['fimInput'],
                 'resumoEfetivo' => ['efetivo_inicial' => 0, 'admitidos' => 0, 'desligados' => 0, 'efetivo_final' => 0],
                 'chartResumoPeriodo' => null,
                 'evolucaoWaterfallLayout' => null,
@@ -77,21 +83,11 @@ class IndicadoresMensaisController extends Controller
             $contratoCentro = trim((string) ($primeiro?->centro_custo ?: $primeiro?->numero ?: $primeiro?->nome ?: ''));
         }
 
-        $competenciaRaw = (string) $request->get('competencia', now()->format('Y-m'));
-        try {
-            $compCarbon = Carbon::createFromFormat('Y-m', $competenciaRaw)->startOfMonth();
-        } catch (\Throwable) {
-            $compCarbon = now()->startOfMonth();
-        }
-
-        $periodoInicio = $compCarbon->copy()->startOfMonth();
-        $periodoFim = $compCarbon->copy()->endOfMonth();
-        if ($periodoFim->isFuture()) {
-            $periodoFim = now()->endOfDay();
-            if ($periodoFim->lt($periodoInicio)) {
-                $periodoFim = $compCarbon->copy()->endOfMonth();
-            }
-        }
+        $periodo = $this->resolverPeriodo($request);
+        $periodoInicio = $periodo['inicio'];
+        $periodoFim = $periodo['fim'];
+        $compCarbon = $periodo['competencia'];
+        $periodoLabel = $periodo['rotulo'];
 
         $contratoModel = $contratosAtivos->first(function ($c) use ($contratoCentro) {
             foreach ([$c->centro_custo, $c->numero, $c->nome] as $campo) {
@@ -122,24 +118,30 @@ class IndicadoresMensaisController extends Controller
         $chartResumoPeriodo = $this->chartResumoPeriodo($resumoEfetivo);
 
         $freqStats = $this->frequenciaNoPeriodo($identificadoresColaborador, $periodoInicio, $periodoFim);
-        $kpisRh = $this->kpisQuadroExecutivoFromFreq($resumoEfetivo['efetivo_final'], $freqStats);
-        $indicadoresFaixa = $this->indicadoresFaixaCircular($resumoEfetivo, $freqStats);
-        $leituraExecutiva = $this->textoLeituraExecutiva($contratoLabel, $compCarbon, $resumoEfetivo, $freqStats);
-        $pontosAtencao = $this->listaPontosAtencao($resumoEfetivo, $freqStats);
+        $absenteismoPeriodo = app(AbsenteismoPeriodo::class)->calcularParaContrato(
+            $periodoInicio,
+            $periodoFim,
+            $identificadoresColaborador
+        );
+        $kpisRh = $this->kpisQuadroExecutivoFromFreq($resumoEfetivo['efetivo_final'], $freqStats, $absenteismoPeriodo);
+        $indicadoresFaixa = $this->indicadoresFaixaCircular($resumoEfetivo, $freqStats, $absenteismoPeriodo);
+        $leituraExecutiva = $this->textoLeituraExecutiva($contratoLabel, $periodoLabel, $resumoEfetivo, $freqStats);
+        $pontosAtencao = $this->listaPontosAtencao($resumoEfetivo, $freqStats, $absenteismoPeriodo);
         $variacaoEfetivo = $this->variacaoEfetivoCard($resumoEfetivo);
         $evolucaoTransferencias = ['entrada' => 0, 'saida' => 0];
         $evolucaoWaterfallLayout = $this->evolucaoWaterfallLayout($resumoEfetivo, $evolucaoTransferencias);
-        $leituraEvolucaoEfetivo = $this->textoLeituraEvolucaoEfetivo($contratoLabel, $compCarbon, $resumoEfetivo, $evolucaoTransferencias);
+        $leituraEvolucaoEfetivo = $this->textoLeituraEvolucaoEfetivo($contratoLabel, $periodoLabel, $resumoEfetivo, $evolucaoTransferencias);
         $pontosAtencaoEvolucao = $this->listaPontosAtencaoEvolucaoEfetivo();
-        $turnoverMovimentacoes = $this->turnoverMovimentacoesViewModel($resumoEfetivo, $evolucaoTransferencias, $contratoLabel, $compCarbon);
+        $turnoverMovimentacoes = $this->turnoverMovimentacoesViewModel($resumoEfetivo, $evolucaoTransferencias, $contratoLabel, $periodoLabel);
         $absenteismoFrequencia = $this->absenteismoFrequenciaViewModel(
             $resumoEfetivo,
             $freqStats,
+            $absenteismoPeriodo,
             $identificadoresColaborador,
             $periodoInicio,
             $periodoFim,
             $contratoLabel,
-            $compCarbon
+            $periodoLabel
         );
         $jornadaPontoHorasExtras = $this->jornadaPontoHorasExtrasViewModel(
             $resumoEfetivo,
@@ -148,14 +150,14 @@ class IndicadoresMensaisController extends Controller
             $periodoInicio,
             $periodoFim,
             $contratoLabel,
-            $compCarbon
+            $periodoLabel
         );
         $planoAcaoRh = $this->planoAcaoRhViewModel(
             $resumoEfetivo,
             $freqStats,
             $periodoFim,
             $contratoLabel,
-            $compCarbon,
+            $periodoLabel,
             $absenteismoFrequencia,
             $jornadaPontoHorasExtras
         );
@@ -168,6 +170,8 @@ class IndicadoresMensaisController extends Controller
             'competenciaYm' => $compCarbon->format('Y-m'),
             'periodoInicio' => $periodoInicio,
             'periodoFim' => $periodoFim,
+            'periodoInicioInput' => $periodo['inicioInput'],
+            'periodoFimInput' => $periodo['fimInput'],
             'resumoEfetivo' => $resumoEfetivo,
             'chartResumoPeriodo' => $chartResumoPeriodo,
             'kpisRh' => $kpisRh,
@@ -184,6 +188,116 @@ class IndicadoresMensaisController extends Controller
             'jornadaPontoHorasExtras' => $jornadaPontoHorasExtras,
             'planoAcaoRh' => $planoAcaoRh,
         ]);
+    }
+
+    /**
+     * @return array{
+     *     inicio: \Carbon\Carbon,
+     *     fim: \Carbon\Carbon,
+     *     competencia: \Carbon\Carbon,
+     *     competenciaYm: string,
+     *     inicioInput: string,
+     *     fimInput: string,
+     *     rotulo: string
+     * }
+     */
+    private function resolverPeriodo(Request $request): array
+    {
+        if ($request->boolean('usar_mes_competencia')) {
+            return $this->periodoDaCompetencia((string) $request->get('competencia', now()->format('Y-m')));
+        }
+
+        if ($request->filled('periodo_inicio') && $request->filled('periodo_fim')) {
+            try {
+                $inicio = Carbon::parse($request->string('periodo_inicio'))->startOfDay();
+                $fim = Carbon::parse($request->string('periodo_fim'))->startOfDay();
+                if ($fim->lt($inicio)) {
+                    [$inicio, $fim] = [$fim->copy()->startOfDay(), $inicio->copy()->startOfDay()];
+                }
+
+                return $this->montarPeriodo($inicio, $fim);
+            } catch (\Throwable) {
+                // segue para competência
+            }
+        }
+
+        return $this->periodoDaCompetencia((string) $request->get('competencia', now()->format('Y-m')));
+    }
+
+    /**
+     * @return array{
+     *     inicio: \Carbon\Carbon,
+     *     fim: \Carbon\Carbon,
+     *     competencia: \Carbon\Carbon,
+     *     competenciaYm: string,
+     *     inicioInput: string,
+     *     fimInput: string,
+     *     rotulo: string
+     * }
+     */
+    private function periodoDaCompetencia(string $competenciaRaw): array
+    {
+        try {
+            $compCarbon = Carbon::createFromFormat('Y-m', $competenciaRaw)->startOfMonth();
+        } catch (\Throwable) {
+            $compCarbon = now()->startOfMonth();
+        }
+
+        return $this->montarPeriodo(
+            $compCarbon->copy()->startOfMonth(),
+            $compCarbon->copy()->endOfMonth()
+        );
+    }
+
+    /**
+     * @return array{
+     *     inicio: \Carbon\Carbon,
+     *     fim: \Carbon\Carbon,
+     *     competencia: \Carbon\Carbon,
+     *     competenciaYm: string,
+     *     inicioInput: string,
+     *     fimInput: string,
+     *     rotulo: string
+     * }
+     */
+    private function montarPeriodo(Carbon $inicio, Carbon $fim): array
+    {
+        $periodoInicio = $inicio->copy()->startOfDay();
+        $fimDia = $fim->copy()->startOfDay();
+        $periodoFim = $fimDia->copy()->endOfDay();
+
+        if ($periodoFim->isFuture()) {
+            $periodoFim = now()->endOfDay();
+            if ($periodoFim->lt($periodoInicio)) {
+                $periodoFim = $fimDia->copy()->endOfDay();
+            }
+        }
+
+        $compCarbon = $periodoInicio->copy()->startOfMonth();
+
+        return [
+            'inicio' => $periodoInicio,
+            'fim' => $periodoFim,
+            'competencia' => $compCarbon,
+            'competenciaYm' => $compCarbon->format('Y-m'),
+            'inicioInput' => $periodoInicio->toDateString(),
+            'fimInput' => $fimDia->toDateString(),
+            'rotulo' => $this->rotuloPeriodo($periodoInicio, $fimDia),
+        ];
+    }
+
+    private function rotuloPeriodo(Carbon $inicio, Carbon $fim): string
+    {
+        $ini = $inicio->copy()->startOfDay();
+        $fimD = $fim->copy()->startOfDay();
+        $mesCheio = $ini->isSameDay($ini->copy()->startOfMonth())
+            && $fimD->isSameDay($ini->copy()->endOfMonth());
+
+        if ($mesCheio) {
+            return $ini->format('m/Y');
+        }
+
+        return $ini->format('d/m/Y').' a '.$fimD->format('d/m/Y');
     }
 
     /**
@@ -295,9 +409,9 @@ class IndicadoresMensaisController extends Controller
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
      * @param  array{entrada: int, saida: int}  $transf
      */
-    private function textoLeituraEvolucaoEfetivo(string $contratoLabel, Carbon $competencia, array $resumo, array $transf): string
+    private function textoLeituraEvolucaoEfetivo(string $contratoLabel, string $periodoLabel, array $resumo, array $transf): string
     {
-        $m = $competencia->format('m/Y');
+        $m = $periodoLabel;
         $ent = (int) $resumo['admitidos'] + (int) ($transf['entrada'] ?? 0);
         $sai = (int) $resumo['desligados'] + (int) ($transf['saida'] ?? 0);
         $fin = (int) $resumo['efetivo_final'];
@@ -411,20 +525,19 @@ class IndicadoresMensaisController extends Controller
     }
 
     /**
-     * @return array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}
+     * @return array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int, base_jornada: int, folgas: int}
      */
     private function frequenciaNoPeriodo(array $identificadoresCentroColab, Carbon $ini, Carbon $fim): array
     {
-        $ids = ColaboradorQueryPorContratoPainel::aplicar(Colaborador::query(), $identificadoresCentroColab)
-            ->pluck('id');
-
-        if ($ids->isEmpty()) {
-            return ['total' => 0, 'presentes' => 0, 'justificados' => 0, 'faltas' => 0, 'incompletos' => 0];
-        }
-
         $base = FrequenciaRegistro::query()
-            ->whereIn('colaborador_id', $ids)
-            ->whereBetween('data', [$ini->toDateString(), $fim->toDateString()]);
+            ->whereBetween('data', [$ini->toDateString(), $fim->toDateString()])
+            ->whereHas('colaborador', function ($q) use ($identificadoresCentroColab) {
+                $q->where('status', 'ativo');
+                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($q);
+                ColaboradorQueryPorContratoPainel::aplicar($q, $identificadoresCentroColab);
+            });
+
+        $baseJornada = (clone $base)->whereIn('status', ['presente', 'falta', 'incompleto']);
 
         return [
             'total' => (clone $base)->count(),
@@ -432,6 +545,8 @@ class IndicadoresMensaisController extends Controller
             'justificados' => (clone $base)->where('status', 'justificado')->count(),
             'faltas' => (clone $base)->where('status', 'falta')->count(),
             'incompletos' => (clone $base)->where('status', 'incompleto')->count(),
+            'base_jornada' => (clone $baseJornada)->count(),
+            'folgas' => (clone $base)->where('status', 'folga')->count(),
         ];
     }
 
@@ -439,11 +554,14 @@ class IndicadoresMensaisController extends Controller
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      * @return list<array{title: string, value: string, icon: string}>
      */
-    private function kpisQuadroExecutivoFromFreq(int $efetivoFinal, array $f): array
+    /**
+     * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
+     */
+    private function kpisQuadroExecutivoFromFreq(int $efetivoFinal, array $f, array $absenteismo): array
     {
-        $total = $f['total'];
-        $frequenciaLabel = $total > 0
-            ? number_format(100 * $f['presentes'] / $total, 1, ',', '.').'%'
+        $baseJornada = (int) ($absenteismo['base'] ?? $f['base_jornada'] ?? 0);
+        $frequenciaLabel = $baseJornada > 0
+            ? number_format(100 * ($absenteismo['presentes'] ?? $f['presentes']) / $baseJornada, 1, ',', '.').'%'
             : '—';
         $pendencias = $f['faltas'] + $f['incompletos'];
 
@@ -462,16 +580,20 @@ class IndicadoresMensaisController extends Controller
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      * @return list<array{label: string, value: string, icon: string}>
      */
-    private function indicadoresFaixaCircular(array $resumo, array $f): array
+    /**
+     * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
+     */
+    private function indicadoresFaixaCircular(array $resumo, array $f, array $absenteismo): array
     {
         $mediaEfetivo = max(1, (int) round(($resumo['efetivo_inicial'] + $resumo['efetivo_final']) / 2));
         $turnover = $mediaEfetivo > 0
             ? round(($resumo['desligados'] / $mediaEfetivo) * 100, 1)
             : 0.0;
 
+        $baseJornada = (int) ($absenteismo['base'] ?? 0);
+        $freqPct = $baseJornada > 0 ? round(100 * ($absenteismo['presentes'] ?? 0) / $baseJornada, 1) : null;
+        $absPct = $baseJornada > 0 ? (float) ($absenteismo['taxa'] ?? 0.0) : null;
         $total = $f['total'];
-        $freqPct = $total > 0 ? round(100 * $f['presentes'] / $total, 1) : null;
-        $absPct = $total > 0 ? round(100 * ($f['faltas'] + $f['justificados']) / $total, 1) : null;
         $regPct = $total > 0 ? round(100 * ($f['presentes'] + $f['justificados']) / $total, 1) : null;
 
         $fmt = fn (?float $v) => $v === null ? '—' : number_format($v, 1, ',', '.').'%';
@@ -488,9 +610,9 @@ class IndicadoresMensaisController extends Controller
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      */
-    private function textoLeituraExecutiva(string $contratoLabel, Carbon $competencia, array $resumo, array $f): string
+    private function textoLeituraExecutiva(string $contratoLabel, string $periodoLabel, array $resumo, array $f): string
     {
-        $m = $competencia->format('m/Y');
+        $m = $periodoLabel;
 
         return 'Este painel consolida, para o contrato '.$contratoLabel.' na competência '.$m.', a movimentação de efetivo '
             .'(inicial '.$resumo['efetivo_inicial'].', admitidos '.$resumo['admitidos'].', desligados '.$resumo['desligados'].', final '.$resumo['efetivo_final'].') '
@@ -502,7 +624,10 @@ class IndicadoresMensaisController extends Controller
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      * @return list<string>
      */
-    private function listaPontosAtencao(array $resumo, array $f): array
+    /**
+     * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
+     */
+    private function listaPontosAtencao(array $resumo, array $f, array $absenteismo): array
     {
         $pend = $f['faltas'] + $f['incompletos'];
         $out = [];
@@ -519,12 +644,11 @@ class IndicadoresMensaisController extends Controller
             $out[] = 'Desligamentos superaram admissões no período: revisar plano de sucessão e estabilidade da equipe.';
         }
 
-        $total = $f['total'];
-        $freqPct = $total > 0 ? 100 * $f['presentes'] / $total : 100.0;
-        if ($freqPct < 98 && $total > 0) {
-            $out[] = 'Elevar frequência acima de 98% (atualmente '.number_format($freqPct, 1, ',', '.').'% sobre registros de ponto).';
+        $taxaGeral = (float) ($absenteismo['taxa_geral'] ?? $absenteismo['taxa'] ?? 0.0);
+        if ($taxaGeral > 2 && ($absenteismo['base'] ?? 0) > 0) {
+            $out[] = 'Absenteísmo geral em '.number_format($taxaGeral, 1, ',', '.').'% — revisar atestados, abonos e faltas no período.';
         } else {
-            $out[] = 'Manter frequência acima de 98% nos registros de ponto do contrato.';
+            $out[] = 'Manter absenteísmo geral dentro da meta acordada para o contrato.';
         }
 
         return array_slice($out, 0, 3);
@@ -538,7 +662,7 @@ class IndicadoresMensaisController extends Controller
      * @param  array{entrada: int, saida: int}  $transf
      * @return array<string, mixed>
      */
-    private function turnoverMovimentacoesViewModel(array $resumo, array $transf, string $contratoLabel, Carbon $comp): array
+    private function turnoverMovimentacoesViewModel(array $resumo, array $transf, string $contratoLabel, string $periodoLabel): array
     {
         $adm = (int) ($resumo['admitidos'] ?? 0);
         $des = (int) ($resumo['desligados'] ?? 0);
@@ -584,7 +708,7 @@ class IndicadoresMensaisController extends Controller
             ['label' => 'Saldo do período', 'value' => $saldoLabel, 'icon' => 'scale'],
         ];
 
-        $m = $comp->format('m/Y');
+        $m = $periodoLabel;
         $leitura = 'No contrato '.$contratoLabel.' ('.$m.') registaram-se '.$totalEventos.' movimentações no período '
             .'(admissões '.$adm.', desligamentos '.$des.', transferências '.($te + $ts).'). '
             .'O turnover mensal estimado sobre efetivo médio é '.$turnoverLabel.', com saldo de efetivo de '.$saldoLabel.' colaboradores em relação ao início do recorte.';
@@ -618,42 +742,44 @@ class IndicadoresMensaisController extends Controller
     }
 
     /**
-     * @return array{faltas_justificadas: int, faltas_injustificadas: int, atestados: int, atrasos: int, saidas_antecipadas: int}
+     * Ocorrências mutuamente exclusivas por registro de ponto (sem contar o mesmo dia em duas categorias).
+     *
+     * @return array{
+     *     faltas_injustificadas: int,
+     *     atestados: int,
+     *     abonos_mobilizacao: int,
+     *     outras_justificadas: int,
+     *     atrasos: int,
+     *     total: int
+     * }
      */
     private function frequenciaOcorrenciasBreakdown(array $identificadoresColab, Carbon $ini, Carbon $fim): array
     {
-        $ids = ColaboradorQueryPorContratoPainel::aplicar(Colaborador::query(), $identificadoresColab)->pluck('id');
-        if ($ids->isEmpty()) {
-            return [
-                'faltas_justificadas' => 0,
-                'faltas_injustificadas' => 0,
-                'atestados' => 0,
-                'atrasos' => 0,
-                'saidas_antecipadas' => 0,
-            ];
-        }
-
         $base = FrequenciaRegistro::query()
-            ->whereIn('colaborador_id', $ids)
-            ->whereBetween('data', [$ini->toDateString(), $fim->toDateString()]);
-
-        $atestados = (clone $base)->where('status', 'justificado')->where('justificativa_tipo', 'atestado')->count();
-        $faltasJust = (clone $base)->where('status', 'justificado')
-            ->where(function ($q) {
-                $q->where('justificativa_tipo', '!=', 'atestado')->orWhereNull('justificativa_tipo');
-            })
-            ->count();
+            ->whereDate('data', '>=', $ini->toDateString())
+            ->whereDate('data', '<=', $fim->toDateString())
+            ->whereHas('colaborador', function ($q) use ($identificadoresColab) {
+                $q->where('status', 'ativo');
+                ColaboradorVinculoPonto::aplicarFiltroRegistroNaData($q);
+                ColaboradorQueryPorContratoPainel::aplicar($q, $identificadoresColab);
+            });
 
         $faltasInjust = (clone $base)->where('status', 'falta')->count();
+        $atestados = (clone $base)->atestadoMedico()->count();
+        $abonos = (clone $base)->where('status', 'justificado')->where('justificativa_tipo', 'abono')->count();
+        $justificadosTotal = (clone $base)->where('status', 'justificado')->count();
+        $outrasJust = max(0, $justificadosTotal - $atestados - $abonos);
         $atrasos = (clone $base)->where('status', 'incompleto')->count();
-        $saidasAnt = (clone $base)->where('justificativa_tipo', 'abono')->count();
+
+        $total = $faltasInjust + $atestados + $abonos + $outrasJust + $atrasos;
 
         return [
-            'faltas_justificadas' => (int) $faltasJust,
             'faltas_injustificadas' => (int) $faltasInjust,
             'atestados' => (int) $atestados,
+            'abonos_mobilizacao' => (int) $abonos,
+            'outras_justificadas' => (int) $outrasJust,
             'atrasos' => (int) $atrasos,
-            'saidas_antecipadas' => (int) $saidasAnt,
+            'total' => (int) $total,
         ];
     }
 
@@ -665,56 +791,60 @@ class IndicadoresMensaisController extends Controller
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      * @return array<string, mixed>
      */
+    /**
+     * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismoPeriodo
+     */
     private function absenteismoFrequenciaViewModel(
         array $resumo,
         array $f,
+        array $absenteismoPeriodo,
         array $identificadoresColab,
         Carbon $periodoInicio,
         Carbon $periodoFim,
         string $contratoLabel,
-        Carbon $comp
+        string $periodoLabel
     ): array {
         $brk = $this->frequenciaOcorrenciasBreakdown($identificadoresColab, $periodoInicio, $periodoFim);
 
-        $fj = $brk['faltas_justificadas'];
         $fi = $brk['faltas_injustificadas'];
         $at = $brk['atestados'];
+        $abonos = $brk['abonos_mobilizacao'];
+        $fj = $brk['outras_justificadas'];
         $atr = $brk['atrasos'];
-        $sa = $brk['saidas_antecipadas'];
 
-        $vals = [$fj, $fi, $at, $atr, $sa];
+        $vals = [$fj, $fi, $at, $abonos, $atr];
         $maxBar = max(1, ...$vals);
         $pct = static fn (int $v): float => round(100 * $v / $maxBar, 1);
 
         $rosaMedio = '#c97d8f';
 
         $ocorrenciasBarras = [
-            ['label' => 'Faltas justificadas', 'value' => $fj, 'pct' => $pct($fj), 'hex' => '#600020'],
+            ['label' => 'Outras justificativas', 'value' => $fj, 'pct' => $pct($fj), 'hex' => '#600020'],
             ['label' => 'Faltas injustificadas', 'value' => $fi, 'pct' => $pct($fi), 'hex' => $rosaMedio],
             ['label' => 'Atestados', 'value' => $at, 'pct' => $pct($at), 'hex' => $rosaMedio],
-            ['label' => 'Atrasos', 'value' => $atr, 'pct' => $pct($atr), 'hex' => '#600020'],
-            ['label' => 'Saídas antecipadas', 'value' => $sa, 'pct' => $pct($sa), 'hex' => '#fce8ef'],
+            ['label' => 'Abonos / mobilização', 'value' => $abonos, 'pct' => $pct($abonos), 'hex' => '#fce8ef'],
+            ['label' => 'Registros incompletos', 'value' => $atr, 'pct' => $pct($atr), 'hex' => '#600020'],
         ];
 
-        $ocorrenciasTotais = array_sum($vals);
+        $ocorrenciasTotais = $brk['total'];
 
-        $diasUteis = $this->diasUteisNoPeriodo($periodoInicio, $periodoFim);
-        $mediaHeadcount = max(1, (int) round(((int) $resumo['efetivo_inicial'] + (int) $resumo['efetivo_final']) / 2));
-        $horasPrevistas = $diasUteis * 8 * $mediaHeadcount;
+        $baseJornada = (int) ($absenteismoPeriodo['base'] ?? 0);
+        $horasPrevistas = (float) ($absenteismoPeriodo['horas_previstas'] ?? 0);
+        $horasAusenciaGeral = (float) ($absenteismoPeriodo['horas_ausencia_geral'] ?? 0);
+        $horasAusenciaJustificada = (float) ($absenteismoPeriodo['horas_ausencia_justificada'] ?? 0);
+        $horasAusenciaInjustificada = (float) ($absenteismoPeriodo['horas_ausencia_injustificada'] ?? 0);
 
-        $horasAusencia = min(
-            $horasPrevistas,
-            $fi * 8 + $atr * 4 + $at * 8 + $fj * 4 + $sa * 2
-        );
-
-        $diasPerdidos = (int) max(0, round($horasAusencia / 8));
-
-        $total = $f['total'];
-        $freqGeralPct = $total > 0 ? round(100 * $f['presentes'] / $total, 1) : null;
-        $absMensalPct = $total > 0 ? min(100.0, round(100 * ($f['faltas'] + $f['justificados'] + $f['incompletos']) / $total, 1)) : null;
+        $freqGeralPct = $horasPrevistas > 0
+            ? round(100 * max(0, $horasPrevistas - $horasAusenciaGeral) / $horasPrevistas, 1)
+            : null;
+        $absMensalPct = $horasPrevistas > 0 ? (float) ($absenteismoPeriodo['taxa_geral'] ?? $absenteismoPeriodo['taxa'] ?? 0.0) : null;
+        $absJustificadaPct = $horasPrevistas > 0 ? (float) ($absenteismoPeriodo['taxa_justificada'] ?? 0.0) : null;
+        $absInjustificadaPct = $horasPrevistas > 0 ? (float) ($absenteismoPeriodo['taxa_injustificada'] ?? 0.0) : null;
 
         $freqLabel = $freqGeralPct === null ? '—' : number_format($freqGeralPct, 1, ',', '.').'%';
         $absLabel = $absMensalPct === null ? '—' : number_format($absMensalPct, 1, ',', '.').'%';
+        $absJustLabel = $absJustificadaPct === null ? '—' : number_format($absJustificadaPct, 1, ',', '.').'%';
+        $absInjustLabel = $absInjustificadaPct === null ? '—' : number_format($absInjustificadaPct, 1, ',', '.').'%';
 
         $impacto = 'Baixo';
         if ($absMensalPct !== null) {
@@ -727,27 +857,40 @@ class IndicadoresMensaisController extends Controller
 
         $presencaMediaLabel = $freqLabel;
 
-        $m = $comp->format('m/Y');
-        $leitura = 'Consolidado do contrato '.$contratoLabel.' ('.$m.'): frequência geral '.$freqLabel
-            .', absenteísmo mensal '.$absLabel.' sobre registos de ponto no período. '
-            .'Foram contabilizadas '.$ocorrenciasTotais.' ocorrências distintas (justificadas, injustificadas, atestados, atrasos e abonos).';
+        $m = $periodoLabel;
+        $leitura = 'Consolidado do contrato '.$contratoLabel.' ('.$m.'): absenteísmo geral '.$absLabel
+            .' (horas de ausência ÷ horas previstas). Justificado: '.$absJustLabel
+            .' ('.number_format($horasAusenciaJustificada, 1, ',', '.').'h). Injustificado: '.$absInjustLabel
+            .' ('.number_format($horasAusenciaInjustificada, 1, ',', '.').'h). '
+            .'Atestados e abonos entram no indicador gerencial por impacto na operação, mesmo quando abonam a folha. '
+            .'No período: '.$ocorrenciasTotais.' ocorrência(s) em '.$baseJornada.' dia(s) com jornada prevista.';
 
         $pontos = [
-            'Monitorar recorrência de atrasos.',
-            'Acompanhar faltas justificadas por equipe.',
-            'Manter absenteísmo abaixo de 2%.',
+            $atr > 0
+                ? 'Conferir '.$atr.' registro(s) incompleto(s) no período.'
+                : 'Manter rotina de conferência de registros incompletos.',
+            $horasAusenciaJustificada > 0
+                ? 'Acompanhar '.number_format($horasAusenciaJustificada, 1, ',', '.').'h de ausência justificada (atestados, abonos etc.).'
+                : 'Sem horas de ausência justificada no recorte.',
+            'Manter absenteísmo injustificado abaixo de 2% e absenteísmo geral dentro da meta do contrato.',
         ];
 
         return [
             'ocorrenciasBarras' => $ocorrenciasBarras,
             'ocorrenciasTotais' => $ocorrenciasTotais,
             'horasPrevistas' => $horasPrevistas,
-            'horasAusencia' => $horasAusencia,
-            'diasPerdidos' => $diasPerdidos,
+            'horasAusencia' => $horasAusenciaGeral,
+            'horasAusenciaJustificada' => $horasAusenciaJustificada,
+            'horasAusenciaInjustificada' => $horasAusenciaInjustificada,
+            'diasPerdidos' => (int) ($absenteismoPeriodo['ausencias'] ?? 0),
             'freqGeralPct' => $freqGeralPct ?? 0.0,
             'absMensalPct' => $absMensalPct ?? 0.0,
+            'absJustificadaPct' => $absJustificadaPct ?? 0.0,
+            'absInjustificadaPct' => $absInjustificadaPct ?? 0.0,
             'freqLabel' => $freqLabel,
             'absLabel' => $absLabel,
+            'absJustificadaLabel' => $absJustLabel,
+            'absInjustificadaLabel' => $absInjustLabel,
             'presencaMediaLabel' => $presencaMediaLabel,
             'impactoOperacional' => $impacto,
             'leitura' => $leitura,
@@ -771,7 +914,7 @@ class IndicadoresMensaisController extends Controller
         Carbon $periodoInicio,
         Carbon $periodoFim,
         string $contratoLabel,
-        Carbon $comp
+        string $periodoLabel
     ): array {
         $brk = $this->frequenciaOcorrenciasBreakdown($identificadoresColab, $periodoInicio, $periodoFim);
         $diasUteis = $this->diasUteisNoPeriodo($periodoInicio, $periodoFim);
@@ -788,7 +931,7 @@ class IndicadoresMensaisController extends Controller
             $brk['atrasos'] * 2
             + $incomp * 2.5
             + $presentes * 0.12
-            + $brk['saidas_antecipadas'] * 0.5
+            + $brk['abonos_mobilizacao'] * 0.5
         );
         $horasRealizadas = (int) max($horasPrevistas, min((int) round($horasPrevistas * 1.08), $horasPrevistas + max(0, $deltaRealiz)));
 
@@ -859,8 +1002,8 @@ class IndicadoresMensaisController extends Controller
             ['label' => 'Regularização de ponto', 'value' => $regPontoLabel, 'icon' => 'shield-check'],
         ];
 
-        $m = $comp->format('m/Y');
-        $leitura = 'O período registrou '.$totalHorasExtrasLabel.' de horas extras (estimativa operacional a partir do saldo entre jornada prevista e realizada e da repartição por causa). '
+        $m = $periodoLabel;
+        $leitura = 'O período ('.$m.') registrou '.$totalHorasExtrasLabel.' de horas extras (estimativa operacional a partir do saldo entre jornada prevista e realizada e da repartição por causa). '
             .'Jornada prevista '.$fmtH($horasPrevistas).' e jornada realizada '.$fmtH($horasRealizadas).', com aderência de '.$aderenciaLabel.'. '
             .'Foram conferidos '.$pontosConferidos.' pontos, '.$comOcorrencia.' com ocorrência, '.$regularizados.' regularizados e '.$pendentes.' pendente(s).';
 
@@ -904,7 +1047,7 @@ class IndicadoresMensaisController extends Controller
         array $f,
         Carbon $periodoFim,
         string $contratoLabel,
-        Carbon $comp,
+        string $periodoLabel,
         array $absenteismo,
         array $jornada
     ): array {
@@ -1011,8 +1154,8 @@ class IndicadoresMensaisController extends Controller
             ['key' => 'conclusao', 'label' => 'Conclusão', 'value' => $conclusaoLabel, 'icon' => 'target'],
         ];
 
-        $m = $comp->format('m/Y');
-        $leitura = 'O plano de ação do contrato '.$contratoLabel.' na competência '.$m.' prioriza a regularização de ponto, o acompanhamento de horas extras e a estabilidade da frequência. '
+        $m = $periodoLabel;
+        $leitura = 'O plano de ação do contrato '.$contratoLabel.' no período '.$m.' prioriza a regularização de ponto, o acompanhamento de horas extras e a estabilidade da frequência. '
             .'Com '.$tot.' ações mapeadas, a taxa de conclusão no recorte é de '.$conclusaoLabel.', refletindo pendências operacionais (ponto, jornada e absenteísmo) alinhadas aos indicadores do painel. '
             .'Recomenda-se manter ritmo de revisão quinzenal com liderança e registrar evidências à medida que cada item for encerrado.';
 
