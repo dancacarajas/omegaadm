@@ -156,7 +156,9 @@ final class AbsenteismoHorasRegistro
         string $status
     ): int {
         if ($status === 'incompleto' && $trabalhadas === 0) {
-            return FrequenciaCalculo::faltaEfetivaMinutos($previstas);
+            $tolerancia = FrequenciaCalculo::toleranciaFaltaEfetiva($registro, $previstas);
+
+            return FrequenciaCalculo::faltaEfetivaMinutos($previstas, $tolerancia);
         }
 
         $saldo = max(0, $previstas - $trabalhadas);
@@ -164,14 +166,17 @@ final class AbsenteismoHorasRegistro
             return 0;
         }
 
-        if ($status === 'presente') {
+        $tolerancia = FrequenciaCalculo::toleranciaFaltaEfetiva($registro, $previstas);
+        $injustificada = FrequenciaCalculo::faltaEfetivaMinutos($saldo, $tolerancia);
+
+        if ($injustificada > 0 && $status === 'presente' && ! FrequenciaCalculo::registroTemPontoCompleto($registro)) {
             $atraso = FrequenciaCalculo::minutosAtrasoRegistro($registro);
             if ($saldo <= $atraso + FrequenciaCalculo::toleranciaMinutosFalta()) {
                 return 0;
             }
         }
 
-        return FrequenciaCalculo::faltaEfetivaMinutos($saldo);
+        return $injustificada;
     }
 
     private static function minutosAusenciaDia(int $previstas, int $trabalhadas, bool $diaInteiroSeSemBatida): int

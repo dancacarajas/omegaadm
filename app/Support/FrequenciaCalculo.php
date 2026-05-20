@@ -21,13 +21,39 @@ class FrequenciaCalculo
         return max(0, (int) env('RH_FREQUENCIA_TOLERANCIA_FALTA_MINUTOS', 10));
     }
 
-    public static function faltaEfetivaMinutos(?int $minutosFalta): int
+    public static function registroTemPontoCompleto(FrequenciaRegistro $registro): bool
+    {
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            if (self::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Com as 4 batidas do dia, tolera pequena diferença entre jornada da escala e horas trabalhadas (ex.: ~30 min).
+     */
+    public static function toleranciaFaltaEfetiva(FrequenciaRegistro $registro, int $jornadaPrevistaMinutos): int
+    {
+        $base = self::toleranciaMinutosFalta();
+        if ($jornadaPrevistaMinutos <= 0 || ! self::registroTemPontoCompleto($registro)) {
+            return $base;
+        }
+
+        return max($base, (int) round($jornadaPrevistaMinutos * 0.05));
+    }
+
+    public static function faltaEfetivaMinutos(?int $minutosFalta, ?int $toleranciaMinutos = null): int
     {
         if ($minutosFalta === null || $minutosFalta <= 0) {
             return 0;
         }
 
-        return $minutosFalta <= self::toleranciaMinutosFalta() ? 0 : $minutosFalta;
+        $limite = $toleranciaMinutos ?? self::toleranciaMinutosFalta();
+
+        return $minutosFalta <= $limite ? 0 : $minutosFalta;
     }
 
     /**

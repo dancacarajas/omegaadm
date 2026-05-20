@@ -238,10 +238,14 @@ class CartaoPontoService
             $minutosFalta = 0;
         }
 
-        $minutosFalta = FrequenciaCalculo::faltaEfetivaMinutos($minutosFalta);
+        $toleranciaFalta = FrequenciaCalculo::toleranciaFaltaEfetiva($registro, $minutosPrevistas);
+        $minutosFalta = FrequenciaCalculo::faltaEfetivaMinutos($minutosFalta, $toleranciaFalta);
 
         $minutosNormais = min($minutosTrabalhado, max(0, $minutosPrevistas));
         $minutosAtraso = FrequenciaCalculo::minutosAtrasoRegistro($registro);
+        if (FrequenciaCalculo::registroTemPontoCompleto($registro) && $minutosFalta === 0) {
+            $minutosAtraso = 0;
+        }
 
         $status = (string) ($registro->status ?? 'falta');
         $diaFalta = $status === 'falta' ? 1 : 0;
