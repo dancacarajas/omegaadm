@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\HorarioEscala;
 use App\Models\SsmaTstRegistro;
+use App\Support\Rh\EfetivoResumoCards;
 use App\Support\SimpleSpreadsheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -43,13 +44,7 @@ class ColaboradorController extends Controller
 
         $funcoes = $this->funcoesDistintas();
 
-        $resumoEfetivo = [
-            'cadastros_total' => Colaborador::query()->count(),
-            'ativos' => Colaborador::query()->where('status', 'ativo')->count(),
-            'afastados' => Colaborador::query()->where('status', 'afastado')->count(),
-            'desligados' => Colaborador::query()->where('status', 'desligado')->count(),
-            'mobilizacao_concluida' => Colaborador::query()->where('mobilizacao_status', 'mobilizacao_concluida')->count(),
-        ];
+        $resumoEfetivo = EfetivoResumoCards::paraTelaEfetivo();
 
         return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'resumoEfetivo'));
     }

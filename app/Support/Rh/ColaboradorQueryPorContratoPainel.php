@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Considera: {@see Colaborador::$centro_custo}, {@see Colaborador::$tipo_contrato},
  * vínculo {@see Colaborador::$recrutamento_vaga_id} quando a vaga tem o mesmo {@see RecrutamentoVaga::$contrato},
- * e menção numérica em {@see Colaborador::$local_trabalho} (ex.: obra 286).
+ * menção numérica em {@see Colaborador::$local_trabalho} (ex.: obra 286)
+ * e escala de horários cujo nome referencia o contrato (ex.: "CT 286" com centro de custo vazio).
  * Usa TRIM e equivalência numérica (286 = 0286).
  */
 final class ColaboradorQueryPorContratoPainel
@@ -50,7 +51,26 @@ final class ColaboradorQueryPorContratoPainel
                     }
                 });
             });
+
+            $outer->orWhereHas('horarioEscala', function (Builder $eq) use ($tokens) {
+                $eq->where(function (Builder $w) use ($tokens) {
+                    foreach ($tokens as $t) {
+                        $w->orWhere(function (Builder $x) use ($t) {
+                            self::aplicarTokenEmNomeEscala($x, $t);
+                        });
+                    }
+                });
+            });
         });
+    }
+
+    private static function aplicarTokenEmNomeEscala(Builder $x, string $t): void
+    {
+        $x->whereRaw('TRIM(COALESCE(nome, \'\')) = ?', [$t]);
+
+        if (strlen($t) >= 2) {
+            $x->orWhere('nome', 'like', '%'.$t.'%');
+        }
     }
 
     private static function aplicarTokenEmColunasColaborador(Builder $g, string $t, string $castNum): void

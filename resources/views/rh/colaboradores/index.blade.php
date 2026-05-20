@@ -40,7 +40,7 @@
         </div>
     @endif
 
-    <section class="mb-5 grid gap-4 md:grid-cols-4">
+    <section class="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between">
                 <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">
@@ -49,7 +49,12 @@
                 <span class="rounded-full bg-brand-burgundy-soft px-2.5 py-1 text-xs font-bold text-brand-burgundy">RH</span>
             </div>
             <p class="mt-5 text-sm font-semibold text-brand-gray">Colaboradores ativos</p>
-            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['ativos'] }}</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['efetivo_operacional'] }}</p>
+            @if ($resumoEfetivo['tem_contrato_ref'])
+                <p class="mt-1 text-xs text-brand-gray">
+                    Contrato {{ $resumoEfetivo['contrato_label'] }}: {{ $resumoEfetivo['efetivo_contrato'] }} na data
+                </p>
+            @endif
         </article>
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-gray-soft text-brand-black">
@@ -58,12 +63,19 @@
             <p class="mt-5 text-sm font-semibold text-brand-gray">Cadastros no sistema</p>
             <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['cadastros_total'] }}</p>
         </article>
-        <article class="rounded-xl border border-zinc-200 bg-brand-gray p-5 text-white shadow-sm">
-            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-white/20 text-white">
-                <i data-lucide="file-text" class="h-5 w-5"></i>
+        <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
+                <i data-lucide="user-x" class="h-5 w-5"></i>
             </div>
-            <p class="mt-5 text-sm font-semibold text-white/80">Módulo</p>
-            <p class="mt-1 text-3xl font-bold">Efetivo</p>
+            <p class="mt-5 text-sm font-semibold text-brand-gray">Desligados</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['desligados'] }}</p>
+        </article>
+        <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-amber-800">
+                <i data-lucide="heart-pulse" class="h-5 w-5"></i>
+            </div>
+            <p class="mt-5 text-sm font-semibold text-brand-gray">Afastado INSS</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['afastados'] }}</p>
         </article>
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">

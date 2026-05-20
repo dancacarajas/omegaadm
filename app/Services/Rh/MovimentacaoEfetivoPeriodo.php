@@ -50,21 +50,21 @@ final class MovimentacaoEfetivoPeriodo
     }
 
     /**
-     * Efetivo na data D: admitido até D e não demitido até D.
-     * Sem data de admissão: considera ativos/afastados cadastrados até D (alinhado ao efetivo operacional).
+     * Efetivo na data D: colaboradores com status ativo, admitidos até D e sem demissão até D.
+     * Afastados e desligados não entram (efetivo operacional = 21 cadastros − 1 desligado − 1 afastado).
      */
     private function contarEfetivoNaData(Carbon $data): int
     {
         $d = $data->toDateString();
 
         $q = $this->base()
+            ->where('status', 'ativo')
             ->where(function ($w) use ($d) {
                 $w->where(function ($a) use ($d) {
                     $a->whereNotNull('data_admissao')
                         ->whereDate('data_admissao', '<=', $d);
                 })->orWhere(function ($a) use ($d) {
                     $a->whereNull('data_admissao')
-                        ->whereIn('status', ['ativo', 'afastado'])
                         ->whereDate('created_at', '<=', $d);
                 });
             })
