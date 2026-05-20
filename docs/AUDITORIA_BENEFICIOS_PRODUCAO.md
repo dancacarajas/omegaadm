@@ -24,7 +24,7 @@
 
 ## Correções aplicadas (definitivas)
 
-1. **`.htaccess` na raiz** — qualquer pedido (GET/POST) que não for arquivo real vai para `index.php` (igual fluxo local).
+1. **`.htaccess` na raiz** — rotas `/public/rh/...` vão para `index.php` (a pasta `public/` no disco não pode bloquear o rewrite).
 2. **`index.php` na raiz** — já existia; carrega `public/index.php`.
 3. **Rota única** — `Route::match(['get','post'], 'beneficios/{beneficio}', ...)` (mesma URL para ler e salvar).
 4. **Formulários** — `action="{{ request()->url() }}"` (POST exatamente para a URL que o navegador já abriu).
