@@ -60,9 +60,10 @@ final class HorarioEscalaSemanalAlternada
 
     public static function templateDia(HorarioEscala $escala): ?HorarioEscalaDia
     {
-        $escala->loadMissing('dias');
-
-        return $escala->dias->firstWhere('dia_semana', self::TEMPLATE_DIA_SEMANA);
+        return HorarioEscalaDia::query()
+            ->where('horario_escala_id', $escala->id)
+            ->where('dia_semana', self::TEMPLATE_DIA_SEMANA)
+            ->first();
     }
 
     public static function diaNaData(Colaborador $colaborador, CarbonInterface|string $data): ?HorarioEscalaDia

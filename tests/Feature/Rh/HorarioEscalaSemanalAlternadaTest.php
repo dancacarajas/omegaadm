@@ -129,4 +129,64 @@ class HorarioEscalaSemanalAlternadaTest extends TestCase
         $this->assertSame('rotativa_semanal', $escala->tipo);
         $this->assertSame('2026-05-04', $escala->data_inicio_ciclo->toDateString());
     }
+
+    public function test_update_rotativa_semanal_persiste_horarios_no_banco(): void
+    {
+        $escala = HorarioEscala::create([
+            'nome' => 'Motoristas',
+            'tipo' => 'rotativa_semanal',
+            'ciclo_dias' => 14,
+            'data_inicio_ciclo' => '2026-04-20',
+            'status' => 'ativo',
+        ]);
+
+        HorarioEscalaDia::create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $payload = [
+            'nome' => 'Motoristas',
+            'tipo' => 'rotativa_semanal',
+            'status' => 'ativo',
+            'data_inicio_ciclo' => '2026-04-20',
+            'dias' => [
+                1 => [
+                    'entrada_1' => '07:30',
+                    'saida_1' => '12:00',
+                    'entrada_2' => '13:00',
+                    'saida_2' => '17:30',
+                    'almoco_livre' => '0',
+                    'compensado' => '0',
+                    'neutro' => '0',
+                    'noturno' => '0',
+                ],
+            ],
+        ];
+
+        $response = $this->put(route('rh.horarios.update', $escala), $payload);
+
+        $response->assertRedirect(route('rh.horarios.edit', $escala));
+
+        $dia = HorarioEscalaDia::query()
+            ->where('horario_escala_id', $escala->id)
+            ->where('dia_semana', 1)
+            ->first();
+
+        $this->assertNotNull($dia);
+        $this->assertSame('07:30:00', substr((string) $dia->entrada_1, 0, 8));
+        $this->assertSame('17:30:00', substr((string) $dia->saida_2, 0, 8));
+        $this->assertSame(1, HorarioEscalaDia::query()->where('horario_escala_id', $escala->id)->count());
+
+        $template = HorarioEscalaSemanalAlternada::templateDia($escala->fresh());
+        $this->assertNotNull($template);
+        $this->assertSame('07:30', substr((string) $template->entrada_1, 0, 5));
+    }
 }

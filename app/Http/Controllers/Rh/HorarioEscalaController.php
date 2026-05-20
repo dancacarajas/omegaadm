@@ -81,15 +81,22 @@ class HorarioEscalaController extends Controller
 
         DB::transaction(function () use ($request, $horario_escala, $data, $dias, $tipo) {
             $horario_escala->update($data);
-            $horario_escala->dias()->delete();
             $this->syncDias($horario_escala, $dias);
             $this->syncColaboradores($horario_escala, $request->input('escala_colaboradores', []), $tipo);
             $this->syncExcecoes($horario_escala, $request);
         });
 
+        $horario_escala->refresh();
+        $horario_escala->load('dias');
+
+        $template = $horario_escala->isRotativaSemanal()
+            ? HorarioEscalaSemanalAlternada::templateDia($horario_escala)
+            : $horario_escala->dias->first();
+
         return redirect()
-            ->route('rh.horarios.index')
-            ->with('success', 'Cadastro de horários atualizado.');
+            ->route('rh.horarios.edit', $horario_escala)
+            ->with('success', 'Cadastro de horários atualizado.')
+            ->with('horario_gravado_resumo', $template?->textoGrade() ?? 'Sem jornada gravada');
     }
 
     public function destroy(HorarioEscala $horario_escala)
@@ -200,6 +207,12 @@ class HorarioEscalaController extends Controller
      */
     private function syncDias(HorarioEscala $escala, array $dias): void
     {
+        HorarioEscalaDia::query()
+            ->where('horario_escala_id', $escala->id)
+            ->delete();
+
+        $escala->unsetRelation('dias');
+
         foreach ($dias as $diaSemana => $campos) {
             HorarioEscalaDia::create([
                 'horario_escala_id' => $escala->id,
@@ -214,6 +227,8 @@ class HorarioEscalaController extends Controller
                 'noturno' => (bool) ($campos['noturno'] ?? false),
             ]);
         }
+
+        $escala->load('dias');
     }
 
     /**
@@ -270,13 +285,15 @@ class HorarioEscalaController extends Controller
                 (int) $row['colaborador_id'] => (int) ($row['ciclo_offset'] ?? 0),
             ]);
 
-        Colaborador::query()
-            ->where('horario_escala_id', $escala->id)
-            ->when($vinculados->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $vinculados->keys()))
-            ->update([
-                'horario_escala_id' => null,
-                'horario_escala_ciclo_offset' => 0,
-            ]);
+        if ($vinculados->isNotEmpty()) {
+            Colaborador::query()
+                ->where('horario_escala_id', $escala->id)
+                ->whereNotIn('id', $vinculados->keys())
+                ->update([
+                    'horario_escala_id' => null,
+                    'horario_escala_ciclo_offset' => 0,
+                ]);
+        }
 
         $maxOffset = $tipo === 'rotativa_semanal'
             ? 1

@@ -16,6 +16,15 @@
     };
 @endphp
 
+@if (session('success'))
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <p class="font-semibold">{{ session('success') }}</p>
+        @if (session('horario_gravado_resumo'))
+            <p class="mt-1 text-emerald-800">Horário gravado no banco: <strong>{{ session('horario_gravado_resumo') }}</strong></p>
+        @endif
+    </div>
+@endif
+
 <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
     <h2 class="text-lg font-bold text-brand-black">Dados gerais</h2>
     <p class="mt-1 text-sm text-brand-gray">Identifique a escala e o status de uso no sistema.</p>
@@ -72,7 +81,8 @@
     </div>
     <div class="mt-5">
         <label for="data_inicio_ciclo_semanal" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Segunda-feira da semana 1</label>
-        <input type="date" name="data_inicio_ciclo" id="data_inicio_ciclo_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}" class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
+        <input type="hidden" name="data_inicio_ciclo" id="data_inicio_ciclo_hidden_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}">
+        <input type="date" id="data_inicio_ciclo_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}" class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
         @error('data_inicio_ciclo')
             <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
         @enderror
@@ -285,8 +295,13 @@
                 const rotSem = tipo === 'rotativa_semanal';
                 rotativaBox?.classList.toggle('hidden', !rot);
                 rotativaSemanalBox?.classList.toggle('hidden', !rotSem);
+                const hiddenInicioSemanal = document.getElementById('data_inicio_ciclo_hidden_semanal');
                 inicioRotativa?.toggleAttribute('disabled', !rot);
                 inicioSemanal?.toggleAttribute('disabled', !rotSem);
+                hiddenInicioSemanal?.toggleAttribute('disabled', !rotSem);
+                if (rotSem && inicioSemanal && hiddenInicioSemanal) {
+                    hiddenInicioSemanal.value = inicioSemanal.value;
+                }
                 const notTh = padraoBtn?.closest('th');
                 if (notTh) notTh.classList.toggle('hidden', rot || rotSem);
                 const titulo = document.querySelector('[data-horario-grade-titulo]');
@@ -325,6 +340,12 @@
 
             tipoSel?.addEventListener('change', applyTipoUi);
             cicloInput?.addEventListener('change', updateCicloRows);
+            inicioSemanal?.addEventListener('change', () => {
+                const hidden = document.getElementById('data_inicio_ciclo_hidden_semanal');
+                if (hidden && inicioSemanal) {
+                    hidden.value = inicioSemanal.value;
+                }
+            });
 
             function refresh() {
                 let semana = 0;
@@ -411,6 +432,36 @@
                     refresh();
                 });
             });
+
+            function prepareFormSubmit() {
+                const tipo = tipoSel?.value || 'semanal';
+                const rot = tipo === 'rotativa';
+                const rotSem = tipo === 'rotativa_semanal';
+                const max = rotSem
+                    ? 1
+                    : (rot ? Math.min(14, Math.max(2, parseInt(cicloInput?.value || '2', 10))) : 7);
+
+                table.querySelectorAll('tbody tr[data-horario-dia-row]').forEach((tr) => {
+                    const d = parseInt(tr.getAttribute('data-horario-dia-row'), 10);
+                    const ativo = d <= max;
+                    tr.querySelectorAll('input, select').forEach((inp) => {
+                        if (ativo) {
+                            inp.removeAttribute('disabled');
+                        } else {
+                            inp.setAttribute('disabled', 'disabled');
+                        }
+                    });
+                });
+
+                if (rotSem && inicioSemanal) {
+                    const hidden = document.getElementById('data_inicio_ciclo_hidden_semanal');
+                    if (hidden) {
+                        hidden.value = inicioSemanal.value;
+                    }
+                }
+            }
+
+            document.querySelector('form[data-horario-escala-form]')?.addEventListener('submit', prepareFormSubmit);
 
             applyTipoUi();
             refresh();
