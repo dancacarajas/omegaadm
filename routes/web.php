@@ -379,6 +379,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
         Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])->name('efetivo.movimentacoes.destroy');
+        Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');
         Route::post('efetivo/excluir-massa', [ColaboradorController::class, 'destroyMassa'])->name('efetivo.excluir-massa');

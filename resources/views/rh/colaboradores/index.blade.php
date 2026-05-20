@@ -5,6 +5,10 @@
 @section('page-title', 'Efetivo')
 
 @section('actions')
+    <a href="{{ route('rh.efetivo.exportar-excel', request()->only(['busca', 'cargo', 'ordenacao'])) }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
+        <i data-lucide="download" class="h-4 w-4"></i>
+        Exportar Excel
+    </a>
     <a href="{{ route('rh.efetivo.modelo-importacao') }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
         <i data-lucide="file-spreadsheet" class="h-4 w-4"></i>
         Modelo

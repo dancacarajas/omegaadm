@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\HorarioEscala;
 use App\Models\SsmaTstRegistro;
+use App\Support\Rh\EfetivoExcelExport;
 use App\Support\Rh\EfetivoResumoCards;
 use App\Support\SimpleSpreadsheet;
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +23,30 @@ class ColaboradorController extends Controller
     {
         $ordenacao = $request->input('ordenacao', 'recentes');
 
-        $colaboradores = Colaborador::query()
+        $colaboradores = $this->queryEfetivoListagem($request)
+            ->paginate(10)
+            ->withQueryString();
+
+        $funcoes = $this->funcoesDistintas();
+
+        $resumoEfetivo = EfetivoResumoCards::paraTelaEfetivo();
+
+        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'resumoEfetivo'));
+    }
+
+    public function exportarExcel(Request $request)
+    {
+        $colaboradores = $this->queryEfetivoListagem($request)->get();
+        $resumo = EfetivoResumoCards::paraTelaEfetivo();
+
+        return EfetivoExcelExport::download($colaboradores, $resumo);
+    }
+
+    private function queryEfetivoListagem(Request $request): Builder
+    {
+        $ordenacao = $request->input('ordenacao', 'recentes');
+
+        return Colaborador::query()
             ->with('horarioEscala')
             ->when($request->filled('busca'), function ($query) use ($request) {
                 $busca = trim((string) $request->input('busca'));
@@ -38,15 +63,7 @@ class ColaboradorController extends Controller
                 $ordenacao === 'alfabetica',
                 fn ($query) => $query->orderBy('nome'),
                 fn ($query) => $query->latest()
-            )
-            ->paginate(10)
-            ->withQueryString();
-
-        $funcoes = $this->funcoesDistintas();
-
-        $resumoEfetivo = EfetivoResumoCards::paraTelaEfetivo();
-
-        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'resumoEfetivo'));
+            );
     }
 
     public function create()
