@@ -444,6 +444,8 @@
             </div>
 
         </div>
+        </div>
+
         <div class="grid gap-5 md:grid-cols-2">
             <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
                 <div class="border-b border-zinc-200 p-5">
