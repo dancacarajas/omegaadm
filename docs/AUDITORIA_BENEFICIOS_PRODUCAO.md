@@ -10,6 +10,20 @@
 | POST (Vincular / Salvar / Excluir) | **Mesma URL** `POST /rh/beneficios/1` → `BeneficioController@show` delega para `BeneficioColaboradorController@store` |
 | Apache | Não interfere; tudo vai para `public/index.php` |
 
+## Verificação externa (2026-05-20, commit `930071f`)
+
+| Teste | Resultado | Significado |
+|-------|-----------|-------------|
+| `GET /public/rh/beneficios/1` | **302** → login | Rota existe (não é 404) |
+| `POST /public/rh/beneficios/1` (sem CSRF) | **419** Page Expired | Laravel casou `rh/beneficios/{id}` (não é 404) |
+| `route:list` local | `GET\|POST\|HEAD rh/beneficios/{beneficio}` | OK |
+
+**Deploy no servidor:** `git pull origin main` + `php artisan optimize:clear` (ver `scripts/atualizar-producao.sh`).
+
+**No navegador logado:** Salvar/Excluir/Vincular devem retornar **302** (redirect) com sessão válida; **419** só se CSRF expirado.
+
+---
+
 ## O que acontecia em produção (`https://omegaadm.feston.net.br/public/rh/beneficios/1`)
 
 | Item | Produção (antes do fix) |
