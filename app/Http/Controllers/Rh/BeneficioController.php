@@ -46,6 +46,10 @@ class BeneficioController extends Controller
 
     public function show(Request $request, Beneficio $beneficio)
     {
+        if ($request->isMethod('POST')) {
+            return app(BeneficioColaboradorController::class)->store($request, $beneficio);
+        }
+
         $beneficio->load(['colaboradores.colaborador']);
 
         $ordenacao = $request->input('ordenacao', 'alfabetica');

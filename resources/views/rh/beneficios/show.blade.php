@@ -17,6 +17,8 @@
 
 @section('content')
     @php
+        /** POST na mesma URL que o navegador já abriu (crítico em produção com /public na URL). */
+        $urlGestaoBeneficio = request()->url();
         $total = $beneficio->colaboradores->count();
         $comDireito = $beneficio->colaboradores->where('tem_direito', true)->count();
         $cartoesPendentes = $beneficio->colaboradores->where('tem_direito', true)->where('cartao_entregue', false)->count();
@@ -67,7 +69,7 @@
             <p class="mt-1 text-sm text-brand-gray">Adicione quem tem direito a este benefício e acompanhe a entrega do cartão.</p>
         </div>
 
-        <form method="POST" action="{{ route('rh.beneficios.colaboradores.store', $beneficio) }}" class="grid gap-4 p-5 lg:grid-cols-[1.3fr_repeat(3,auto)] lg:items-end">
+        <form method="POST" action="{{ $urlGestaoBeneficio }}" class="grid gap-4 p-5 lg:grid-cols-[1.3fr_repeat(3,auto)] lg:items-end">
             @csrf
             <label>
                 <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Colaborador</span>
@@ -160,101 +162,88 @@
         </form>
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1120px] text-left text-sm">
-                <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
-                    <tr>
-                        <th class="px-5 py-4">Colaborador</th>
-                        <th class="px-5 py-4">Direito</th>
-                        <th class="px-5 py-4">Cartão</th>
-                        <th class="px-5 py-4">Ativo</th>
-                        <th class="px-5 py-4">Direito / Entrega</th>
-                        <th class="px-5 py-4">Cartão / Obs.</th>
-                        <th class="px-5 py-4 text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-100">
-                    @forelse ($colaboradoresVinculados as $vinculo)
-                        @php $formVinculo = 'vinculo-form-' . $vinculo->id; @endphp
-                        <tr class="align-top">
-                            <td class="px-5 py-4">
-                                <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
-                                <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
-                            </td>
-                            <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
-                                <input form="{{ $formVinculo }}" type="hidden" name="tem_direito" value="0">
-                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
-                                    Tem direito
-                                </label>
-                            </td>
-                            <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="cartao_entregue" value="0">
-                                <label class="inline-flex items-center gap-2 text-sm font-semibold {{ $vinculo->tem_direito && ! $vinculo->cartao_entregue ? 'text-brand-burgundy' : 'text-brand-black' }}">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
-                                    {{ $vinculo->cartao_entregue ? 'Entregue' : 'Pendente' }}
-                                </label>
-                            </td>
-                            <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="beneficio_ativo" value="0">
-                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
-                                    Ativo
-                                </label>
-                            </td>
-                            <td class="px-5 py-4">
-                                <div class="grid gap-3">
-                                    <div>
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Direito (admissao)</p>
-                                        <p class="mt-1 text-sm font-semibold text-brand-black">
-                                            {{ $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: 'Admissao nao informada') }}
-                                        </p>
-                                    </div>
-                                    <label>
-                                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Entrega do cartao</span>
-                                        <input form="{{ $formVinculo }}" type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 rounded-lg border border-zinc-200 px-2 text-xs">
-                                    </label>
-                                </div>
-                            </td>
-                            <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
-                                <textarea form="{{ $formVinculo }}" name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
-                            </td>
-                            <td class="px-5 py-4">
-                                <form id="{{ $formVinculo }}" method="POST" action="{{ route('rh.beneficios.colaboradores.store', $beneficio) }}">
-                                    @csrf
-                                </form>
-                                <div class="flex flex-col justify-end gap-2 sm:flex-row">
-                                    <button type="submit" form="{{ $formVinculo }}" name="acao" value="salvar" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
-                                        <i data-lucide="save" class="h-4 w-4"></i>
-                                        Salvar
-                                    </button>
-                                    <button type="submit" form="{{ $formVinculo }}" name="acao" value="excluir" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black" onclick="return confirm('Remover este colaborador do benefício?')">
-                                        <i data-lucide="trash-2" class="h-4 w-4"></i>
-                                        Excluir
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-5 py-12 text-center">
-                                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
-                                    <i data-lucide="users" class="h-7 w-7"></i>
-                                </div>
-                                <p class="mt-4 text-base font-bold text-brand-black">Nenhum colaborador vinculado.</p>
-                                <p class="mt-1 text-sm text-brand-gray">
-                                    @if ($filtrosAtivos)
-                                        Nenhum colaborador encontrado com os filtros aplicados.
-                                    @else
-                                        Selecione um colaborador acima para iniciar o controle deste benefício.
-                                    @endif
-                                </p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="min-w-[1120px] text-sm">
+            <div class="grid grid-cols-[minmax(140px,1.2fr)_repeat(3,minmax(100px,0.7fr))_minmax(160px,1fr)_minmax(160px,1fr)_minmax(140px,0.8fr)] gap-2 border-b border-zinc-200 bg-white px-5 py-4 text-xs font-bold uppercase tracking-wide text-brand-gray">
+                <span>Colaborador</span>
+                <span>Direito</span>
+                <span>Cartão</span>
+                <span>Ativo</span>
+                <span>Direito / Entrega</span>
+                <span>Cartão / Obs.</span>
+                <span class="text-right">Ações</span>
+            </div>
+            @forelse ($colaboradoresVinculados as $vinculo)
+                <form method="POST" action="{{ $urlGestaoBeneficio }}" class="grid grid-cols-[minmax(140px,1.2fr)_repeat(3,minmax(100px,0.7fr))_minmax(160px,1fr)_minmax(160px,1fr)_minmax(140px,0.8fr)] gap-2 border-b border-zinc-100 px-5 py-4 align-top">
+                    @csrf
+                    <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
+                    <div>
+                        <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
+                        <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
+                    </div>
+                    <div>
+                        <input type="hidden" name="tem_direito" value="0">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                            <input type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
+                            Tem direito
+                        </label>
+                    </div>
+                    <div>
+                        <input type="hidden" name="cartao_entregue" value="0">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold {{ $vinculo->tem_direito && ! $vinculo->cartao_entregue ? 'text-brand-burgundy' : 'text-brand-black' }}">
+                            <input type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
+                            {{ $vinculo->cartao_entregue ? 'Entregue' : 'Pendente' }}
+                        </label>
+                    </div>
+                    <div>
+                        <input type="hidden" name="beneficio_ativo" value="0">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                            <input type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
+                            Ativo
+                        </label>
+                    </div>
+                    <div class="grid gap-3">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Direito (admissao)</p>
+                            <p class="mt-1 text-sm font-semibold text-brand-black">
+                                {{ $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: 'Admissao nao informada') }}
+                            </p>
+                        </div>
+                        <label>
+                            <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Entrega do cartao</span>
+                            <input type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs">
+                        </label>
+                    </div>
+                    <div>
+                        <input name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
+                        <textarea name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
+                    </div>
+                    <div class="flex flex-col justify-end gap-2 sm:flex-row">
+                        <button type="submit" name="acao" value="salvar" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
+                            <i data-lucide="save" class="h-4 w-4"></i>
+                            Salvar
+                        </button>
+                        <button type="submit" name="acao" value="excluir" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black" onclick="return confirm('Remover este colaborador do benefício?')">
+                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                            Excluir
+                        </button>
+                    </div>
+                </form>
+            @empty
+                <div class="px-5 py-12 text-center">
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
+                        <i data-lucide="users" class="h-7 w-7"></i>
+                    </div>
+                    <p class="mt-4 text-base font-bold text-brand-black">Nenhum colaborador vinculado.</p>
+                    <p class="mt-1 text-sm text-brand-gray">
+                        @if ($filtrosAtivos)
+                            Nenhum colaborador encontrado com os filtros aplicados.
+                        @else
+                            Selecione um colaborador acima para iniciar o controle deste benefício.
+                        @endif
+                    </p>
+                </div>
+            @endforelse
+        </div>
         </div>
     </section>
 @endsection

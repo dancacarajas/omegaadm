@@ -25,7 +25,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->post(route('rh.beneficios.colaboradores.store', $beneficio), [
+            ->post(route('rh.beneficios.show', $beneficio), [
             'colaborador_id' => $colaborador->id,
             'tem_direito' => '1',
             'cartao_entregue' => '0',
@@ -54,7 +54,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->post(route('rh.beneficios.colaboradores.store', $beneficio), [
+            ->post(route('rh.beneficios.show', $beneficio), [
                 'vinculo_id' => $vinculo->id,
                 'acao' => 'salvar',
                 'cartao_entregue' => '1',
@@ -80,7 +80,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->post(route('rh.beneficios.colaboradores.store', $beneficio), [
+            ->post(route('rh.beneficios.show', $beneficio), [
                 'vinculo_id' => $vinculo->id,
                 'acao' => 'excluir',
             ]);
@@ -159,7 +159,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
             'colaborador_id' => $colaborador->id,
         ]);
 
-        $this->actingAs($user)->post(route('rh.beneficios.colaboradores.store', $beneficioA), [
+        $this->actingAs($user)->post(route('rh.beneficios.show', $beneficioA), [
             'vinculo_id' => $vinculo->id,
             'acao' => 'salvar',
             'tem_direito' => '1',

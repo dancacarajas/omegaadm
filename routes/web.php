@@ -372,8 +372,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
-        // POST na mesma URL da tela (GET show) — evita 404 em /colaboradores e /vinculos no servidor
-        Route::post('beneficios/{beneficio}', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
+        // GET e POST na mesma URL (/rh/beneficios/{id}) — igual ao localhost:2080
+        Route::match(['get', 'post'], 'beneficios/{beneficio}', [BeneficioController::class, 'show'])->name('beneficios.show');
         // Legado (URLs antigas em cache do navegador)
         Route::post('beneficios/{beneficio}/vinculos', [BeneficioColaboradorController::class, 'store']);
         Route::post('beneficios/{beneficio}/vinculos/{vinculo}', [BeneficioColaboradorController::class, 'manage']);
@@ -390,7 +390,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
         });
-        Route::resource('beneficios', BeneficioController::class);
+        Route::resource('beneficios', BeneficioController::class)->except(['show']);
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
