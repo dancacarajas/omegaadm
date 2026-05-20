@@ -4,6 +4,8 @@ namespace Tests\Feature\Rh;
 
 use App\Models\Colaborador;
 use App\Models\FrequenciaRegistro;
+use App\Models\HorarioEscala;
+use App\Models\HorarioEscalaDia;
 use App\Support\Rh\AbsenteismoPeriodo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -65,6 +67,46 @@ class AbsenteismoHorasTest extends TestCase
         ]);
 
         $r = app(AbsenteismoPeriodo::class)->calcular('2026-03-21', '2026-03-21');
+
+        $this->assertSame(0.0, $r['horas_ausencia_injustificada']);
+        $this->assertSame(0.0, $r['taxa_injustificada']);
+        $this->assertSame(0, $r['ausencias']);
+    }
+
+    public function test_presente_com_csv_parcial_e_escala_nao_gera_horas_injustificadas_fantasma(): void
+    {
+        $escala = HorarioEscala::query()->create([
+            'nome' => 'Motorista',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+        HorarioEscalaDia::query()->create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '07:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '20:30:00',
+        ]);
+
+        $colab = Colaborador::query()->create([
+            'nome' => 'Motorista',
+            'matricula' => '022281',
+            'status' => 'ativo',
+            'horario_escala_id' => $escala->id,
+        ]);
+
+        // Padrão CSV: entrada + saída final; intervalo vem da escala na apuração.
+        FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colab->id,
+            'data' => '2026-04-06',
+            'status' => 'presente',
+            'entrada_1' => '07:31:00',
+            'saida_2' => '20:30:00',
+            'origem' => 'csv_ponto',
+        ]);
+
+        $r = app(AbsenteismoPeriodo::class)->calcular('2026-04-06', '2026-04-06');
 
         $this->assertSame(0.0, $r['horas_ausencia_injustificada']);
         $this->assertSame(0.0, $r['taxa_injustificada']);

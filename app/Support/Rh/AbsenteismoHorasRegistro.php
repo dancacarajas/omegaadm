@@ -41,14 +41,14 @@ final class AbsenteismoHorasRegistro
             return $zeros;
         }
 
-        $resumo = FrequenciaCalculo::resumo($registro);
+        $status = (string) ($registro->status ?? 'falta');
+        $resumo = self::resumoParaCalculo($registro, $status);
         $previstas = (int) ($resumo['jornada_esperada_minutos'] ?? 0);
         if ($previstas <= 0) {
             return $zeros;
         }
 
         $trabalhadas = (int) ($resumo['trabalhadas'] ?? 0);
-        $status = (string) ($registro->status ?? 'falta');
 
         if ($status === 'justificado') {
             $ausencia = self::minutosAusenciaDia($previstas, $trabalhadas, true);
@@ -73,9 +73,7 @@ final class AbsenteismoHorasRegistro
         }
 
         if (in_array($status, ['presente', 'incompleto'], true)) {
-            $falta = FrequenciaCalculo::faltaEfetivaMinutos(max(0, $previstas - $trabalhadas));
-            $atraso = FrequenciaCalculo::faltaEfetivaMinutos(FrequenciaCalculo::minutosAtrasoRegistro($registro));
-            $injustificada = $falta + $atraso;
+            $injustificada = self::minutosInjustificadosPresente($registro, $previstas, $trabalhadas, $status);
 
             return [
                 'previstas_minutos' => $previstas,
@@ -86,6 +84,94 @@ final class AbsenteismoHorasRegistro
         }
 
         return $zeros;
+    }
+
+    /**
+     * Mesma base da apuração: CSV com só entrada/saída final usa intervalo da escala para horas trabalhadas.
+     *
+     * @return array<string, mixed>
+     */
+    private static function resumoParaCalculo(FrequenciaRegistro $registro, string $status): array
+    {
+        $resumo = FrequenciaCalculo::resumo($registro);
+
+        if (! in_array($status, ['presente', 'incompleto'], true)) {
+            return $resumo;
+        }
+
+        if (! self::deveCompletarBatidasComEscala($registro, (int) ($resumo['trabalhadas'] ?? 0))) {
+            return $resumo;
+        }
+
+        return FrequenciaCalculo::resumoComFallbackEscala($registro);
+    }
+
+    private static function deveCompletarBatidasComEscala(FrequenciaRegistro $registro, int $trabalhadas): bool
+    {
+        if ($registro->colaborador?->horarioEscalaDiaNaData($registro->data) === null) {
+            return false;
+        }
+
+        if ($trabalhadas === 0 && self::registroTemAlgumaBatida($registro)) {
+            return true;
+        }
+
+        $diaEscala = $registro->colaborador->horarioEscalaDiaNaData($registro->data);
+        if ($diaEscala === null) {
+            return false;
+        }
+
+        $escalaTemIntervalo = ! FrequenciaCalculo::horarioArmazenadoVazio($diaEscala->saida_1)
+            && ! FrequenciaCalculo::horarioArmazenadoVazio($diaEscala->entrada_2);
+
+        if (! $escalaTemIntervalo) {
+            return false;
+        }
+
+        $intervaloVazioNoRegistro = FrequenciaCalculo::horarioArmazenadoVazio($registro->saida_1)
+            || FrequenciaCalculo::horarioArmazenadoVazio($registro->entrada_2);
+
+        return $intervaloVazioNoRegistro
+            && ! FrequenciaCalculo::horarioArmazenadoVazio($registro->entrada_1);
+    }
+
+    private static function registroTemAlgumaBatida(FrequenciaRegistro $registro): bool
+    {
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            if (! FrequenciaCalculo::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Absenteísmo gerencial: só horas não trabalhadas (não soma atraso de entrada se o dia foi cumprido).
+     */
+    private static function minutosInjustificadosPresente(
+        FrequenciaRegistro $registro,
+        int $previstas,
+        int $trabalhadas,
+        string $status
+    ): int {
+        if ($status === 'incompleto' && $trabalhadas === 0) {
+            return FrequenciaCalculo::faltaEfetivaMinutos($previstas);
+        }
+
+        $saldo = max(0, $previstas - $trabalhadas);
+        if ($saldo <= 0) {
+            return 0;
+        }
+
+        if ($status === 'presente') {
+            $atraso = FrequenciaCalculo::minutosAtrasoRegistro($registro);
+            if ($saldo <= $atraso + FrequenciaCalculo::toleranciaMinutosFalta()) {
+                return 0;
+            }
+        }
+
+        return FrequenciaCalculo::faltaEfetivaMinutos($saldo);
     }
 
     private static function minutosAusenciaDia(int $previstas, int $trabalhadas, bool $diaInteiroSeSemBatida): int
