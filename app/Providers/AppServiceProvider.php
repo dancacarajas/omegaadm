@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ColaboradorBeneficio;
 use App\Models\SsmaAmbientalRegistro;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +24,18 @@ class AppServiceProvider extends ServiceProvider
     {
         Route::bind('ambiental', function (string $value): SsmaAmbientalRegistro {
             return SsmaAmbientalRegistro::query()->findOrFail((int) $value);
+        });
+
+        Route::bind('vinculo', function (string $value, $route): ColaboradorBeneficio {
+            $query = ColaboradorBeneficio::query()->whereKey((int) $value);
+
+            $beneficio = $route->parameter('beneficio');
+            if ($beneficio !== null) {
+                $beneficioId = is_object($beneficio) ? $beneficio->getKey() : (int) $beneficio;
+                $query->where('beneficio_id', $beneficioId);
+            }
+
+            return $query->firstOrFail();
         });
     }
 }

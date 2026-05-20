@@ -14,13 +14,18 @@ class BeneficioColaboradorController extends Controller
     public function store(Request $request, Beneficio $beneficio)
     {
         $data = $this->validatedData($request, $beneficio);
-        $data['beneficio_id'] = $beneficio->id;
-        $data['data_direito'] = Colaborador::findOrFail($data['colaborador_id'])->data_admissao;
+        $colaborador = Colaborador::query()->findOrFail($data['colaborador_id']);
 
-        ColaboradorBeneficio::create($data);
+        ColaboradorBeneficio::create([
+            ...$data,
+            'beneficio_id' => $beneficio->id,
+            'data_direito' => $colaborador->data_admissao,
+            'tem_direito' => $request->boolean('tem_direito'),
+            'cartao_entregue' => $request->boolean('cartao_entregue'),
+            'beneficio_ativo' => $request->boolean('beneficio_ativo'),
+        ]);
 
-        return redirect()
-            ->route('rh.beneficios.show', $beneficio)
+        return $this->redirectAposAcao($beneficio)
             ->with('success', 'Colaborador vinculado ao beneficio com sucesso.');
     }
 
@@ -28,10 +33,15 @@ class BeneficioColaboradorController extends Controller
     {
         abort_unless($vinculo->beneficio_id === $beneficio->id, 404);
 
-        $vinculo->update($this->validatedData($request, $beneficio, $vinculo));
+        $payload = $this->validatedData($request, $beneficio, $vinculo);
+        $vinculo->update([
+            ...$payload,
+            'tem_direito' => $request->boolean('tem_direito'),
+            'cartao_entregue' => $request->boolean('cartao_entregue'),
+            'beneficio_ativo' => $request->boolean('beneficio_ativo'),
+        ]);
 
-        return redirect()
-            ->route('rh.beneficios.show', $beneficio)
+        return $this->redirectAposAcao($beneficio)
             ->with('success', 'Situacao do beneficio atualizada.');
     }
 
@@ -41,9 +51,20 @@ class BeneficioColaboradorController extends Controller
 
         $vinculo->delete();
 
-        return redirect()
-            ->route('rh.beneficios.show', $beneficio)
+        return $this->redirectAposAcao($beneficio)
             ->with('success', 'Vinculo removido do beneficio.');
+    }
+
+    private function redirectAposAcao(Beneficio $beneficio): \Illuminate\Http\RedirectResponse
+    {
+        $anterior = url()->previous();
+        $destino = route('rh.beneficios.show', $beneficio);
+
+        if ($anterior !== '' && $anterior !== url()->current() && str_contains($anterior, '/rh/beneficios/')) {
+            return redirect()->to($anterior);
+        }
+
+        return redirect()->to($destino);
     }
 
     private function validatedData(Request $request, Beneficio $beneficio, ?ColaboradorBeneficio $vinculo = null): array

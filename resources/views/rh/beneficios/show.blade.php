@@ -101,6 +101,64 @@
             <p class="mt-1 text-sm text-brand-gray">Use esta lista para cobrar pendencias de cartao e ativacao do beneficio.</p>
         </div>
 
+        @php
+            $filtrosAtivos = $busca !== '' || $ordenacao !== 'alfabetica' || $cartao !== 'todos';
+        @endphp
+        <form method="GET" action="{{ route('rh.beneficios.show', $beneficio) }}" class="border-b border-zinc-100 p-5">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                <label class="space-y-1.5 lg:col-span-4">
+                    <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Buscar por nome</span>
+                    <span class="relative block">
+                        <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
+                        <input name="busca" value="{{ $busca }}" placeholder="Nome, matrícula ou cargo…" class="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                    </span>
+                </label>
+                <label class="space-y-1.5 lg:col-span-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Cartão</span>
+                    <select name="cartao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="todos" @selected($cartao === 'todos')>Todos</option>
+                        <option value="entregue" @selected($cartao === 'entregue')>Entregue</option>
+                        <option value="pendente" @selected($cartao === 'pendente')>Pendente</option>
+                    </select>
+                </label>
+                <label class="space-y-1.5 lg:col-span-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Ordenar por</span>
+                    <select name="ordenacao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                        <option value="alfabetica" @selected($ordenacao === 'alfabetica')>Ordem alfabética (A–Z)</option>
+                        <option value="recentes" @selected($ordenacao === 'recentes')>Mais recentes</option>
+                    </select>
+                </label>
+                <div class="flex gap-2 sm:col-span-2 lg:col-span-2">
+                    <button type="submit" class="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
+                        <i data-lucide="search" class="h-4 w-4"></i>
+                        Aplicar
+                    </button>
+                    @if ($filtrosAtivos)
+                        <a href="{{ route('rh.beneficios.show', $beneficio) }}" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-gray transition hover:border-zinc-300 hover:text-brand-black" title="Limpar filtros">
+                            <i data-lucide="x" class="h-4 w-4"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+            @if ($filtrosAtivos)
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <span class="text-[11px] font-bold uppercase text-brand-gray">Filtros ativos:</span>
+                    @if ($busca !== '')
+                        <span class="rounded-md bg-brand-burgundy-soft px-2 py-0.5 text-xs font-semibold text-brand-burgundy">Busca: {{ $busca }}</span>
+                    @endif
+                    @if ($cartao === 'entregue')
+                        <span class="rounded-md bg-brand-burgundy-soft px-2 py-0.5 text-xs font-semibold text-brand-burgundy">Cartão entregue</span>
+                    @elseif ($cartao === 'pendente')
+                        <span class="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">Cartão pendente</span>
+                    @endif
+                    @if ($ordenacao === 'recentes')
+                        <span class="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-brand-gray">Mais recentes</span>
+                    @endif
+                    <span class="text-xs text-brand-gray">{{ $colaboradoresVinculados->count() }} de {{ $total }} exibido(s)</span>
+                </div>
+            @endif
+        </form>
+
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1120px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
@@ -115,9 +173,9 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
-                    @forelse ($beneficio->colaboradores as $vinculo)
+                    @forelse ($colaboradoresVinculados as $vinculo)
                         <tr class="align-top">
-                            <form method="POST" action="{{ route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]) }}">
+                            <form id="vinculo-update-{{ $vinculo->id }}" method="POST" action="{{ route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]) }}" class="contents">
                                 @csrf
                                 @method('PUT')
                                 <td class="px-5 py-4">
@@ -160,25 +218,26 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4">
-                                    <input name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
-                                    <textarea name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
+                                    <input form="vinculo-update-{{ $vinculo->id }}" name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
+                                    <textarea form="vinculo-update-{{ $vinculo->id }}" name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
                                 </td>
-                                <td class="px-5 py-4">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
-                                            <i data-lucide="save" class="h-4 w-4"></i>
-                                            Salvar
-                                        </button>
                             </form>
-                                        <form method="POST" action="{{ route('rh.beneficios.colaboradores.destroy', [$beneficio, $vinculo]) }}" onsubmit="return confirm('Remover este colaborador do benefício?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black">
-                                                <i data-lucide="trash-2" class="h-4 w-4"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+                            <td class="px-5 py-4">
+                                <div class="flex flex-col justify-end gap-2 sm:flex-row">
+                                    <button type="submit" form="vinculo-update-{{ $vinculo->id }}" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
+                                        <i data-lucide="save" class="h-4 w-4"></i>
+                                        Salvar
+                                    </button>
+                                    <form method="POST" action="{{ route('rh.beneficios.colaboradores.destroy', [$beneficio, $vinculo]) }}" class="flex-1" onsubmit="return confirm('Remover este colaborador do benefício?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
@@ -187,7 +246,13 @@
                                     <i data-lucide="users" class="h-7 w-7"></i>
                                 </div>
                                 <p class="mt-4 text-base font-bold text-brand-black">Nenhum colaborador vinculado.</p>
-                                <p class="mt-1 text-sm text-brand-gray">Selecione um colaborador acima para iniciar o controle deste benefício.</p>
+                                <p class="mt-1 text-sm text-brand-gray">
+                                    @if ($filtrosAtivos)
+                                        Nenhum colaborador encontrado com os filtros aplicados.
+                                    @else
+                                        Selecione um colaborador acima para iniciar o controle deste benefício.
+                                    @endif
+                                </p>
                             </td>
                         </tr>
                     @endforelse

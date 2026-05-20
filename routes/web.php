@@ -371,10 +371,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
-        Route::resource('beneficios', BeneficioController::class);
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
         Route::put('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'update'])->name('beneficios.colaboradores.update');
         Route::delete('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'destroy'])->name('beneficios.colaboradores.destroy');
+        Route::resource('beneficios', BeneficioController::class);
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
