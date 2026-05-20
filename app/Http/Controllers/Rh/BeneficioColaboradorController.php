@@ -75,6 +75,7 @@ class BeneficioColaboradorController extends Controller
             && $anterior !== url()->current()
             && str_contains($anterior, '/rh/beneficios/')
             && ! str_contains($anterior, '/colaboradores/')
+            && ! str_contains($anterior, '/vinculos')
         ) {
             return redirect()->to($anterior);
         }

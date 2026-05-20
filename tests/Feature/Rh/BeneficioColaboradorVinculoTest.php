@@ -80,10 +80,10 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->post(
-            route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]),
-            ['acao' => 'excluir']
-        );
+            ->post(route('rh.beneficios.colaboradores.store', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'excluir',
+            ]);
 
         $response->assertRedirect(route('rh.beneficios.show', $beneficio));
         $this->assertDatabaseMissing('colaborador_beneficios', ['id' => $vinculo->id]);
