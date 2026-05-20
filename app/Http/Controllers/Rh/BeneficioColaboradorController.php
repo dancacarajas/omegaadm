@@ -60,7 +60,12 @@ class BeneficioColaboradorController extends Controller
         $anterior = url()->previous();
         $destino = route('rh.beneficios.show', $beneficio);
 
-        if ($anterior !== '' && $anterior !== url()->current() && str_contains($anterior, '/rh/beneficios/')) {
+        if (
+            $anterior !== ''
+            && $anterior !== url()->current()
+            && str_contains($anterior, '/rh/beneficios/')
+            && ! str_contains($anterior, '/colaboradores/')
+        ) {
             return redirect()->to($anterior);
         }
 

@@ -54,7 +54,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->put(
+            ->post(
             route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]),
             [
                 'cartao_entregue' => '1',
@@ -81,7 +81,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->delete(
+            ->post(
             route('rh.beneficios.colaboradores.destroy', [$beneficio, $vinculo])
         );
 
@@ -159,7 +159,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
             'colaborador_id' => $colaborador->id,
         ]);
 
-        $this->actingAs($user)->put(
+        $this->actingAs($user)->post(
             route('rh.beneficios.colaboradores.update', [$beneficioA, $vinculo]),
             ['tem_direito' => '1']
         )->assertNotFound();

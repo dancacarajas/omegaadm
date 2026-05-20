@@ -2,7 +2,7 @@
 # Cole no Terminal SSH da Hostinger (hPanel > Sites > Terminal).
 # Ajuste o caminho se a pasta do projeto for outra.
 
-cd ~/domains/omegaadm.feston.net.br/public_html || cd ~/public_html || exit 1
+cd ~/domains/omegaadm.feston.net.br/public_html 2>/dev/null || cd ~/omegaadm 2>/dev/null || cd ~/public_html || exit 1
 
 git pull origin main
 php artisan migrate --force

@@ -174,56 +174,57 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($colaboradoresVinculados as $vinculo)
+                        @php $formVinculo = 'vinculo-update-' . $vinculo->id; @endphp
                         <tr class="align-top">
-                            <form id="vinculo-update-{{ $vinculo->id }}" method="POST" action="{{ route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]) }}" class="contents">
-                                @csrf
-                                <td class="px-5 py-4">
-                                    <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
-                                    <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <input type="hidden" name="tem_direito" value="0">
-                                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                        <input type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
-                                        Tem direito
-                                    </label>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <input type="hidden" name="cartao_entregue" value="0">
-                                    <label class="inline-flex items-center gap-2 text-sm font-semibold {{ $vinculo->tem_direito && ! $vinculo->cartao_entregue ? 'text-brand-burgundy' : 'text-brand-black' }}">
-                                        <input type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
-                                        {{ $vinculo->cartao_entregue ? 'Entregue' : 'Pendente' }}
-                                    </label>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <input type="hidden" name="beneficio_ativo" value="0">
-                                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                        <input type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
-                                        Ativo
-                                    </label>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <div class="grid gap-3">
-                                        <div>
-                                            <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Direito (admissao)</p>
-                                            <p class="mt-1 text-sm font-semibold text-brand-black">
-                                                {{ $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: 'Admissao nao informada') }}
-                                            </p>
-                                        </div>
-                                        <label>
-                                            <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Entrega do cartao</span>
-                                            <input type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 rounded-lg border border-zinc-200 px-2 text-xs">
-                                        </label>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <input form="vinculo-update-{{ $vinculo->id }}" name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
-                                    <textarea form="vinculo-update-{{ $vinculo->id }}" name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
-                                </td>
-                            </form>
                             <td class="px-5 py-4">
+                                <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
+                                <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
+                            </td>
+                            <td class="px-5 py-4">
+                                <input form="{{ $formVinculo }}" type="hidden" name="tem_direito" value="0">
+                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                                    <input form="{{ $formVinculo }}" type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
+                                    Tem direito
+                                </label>
+                            </td>
+                            <td class="px-5 py-4">
+                                <input form="{{ $formVinculo }}" type="hidden" name="cartao_entregue" value="0">
+                                <label class="inline-flex items-center gap-2 text-sm font-semibold {{ $vinculo->tem_direito && ! $vinculo->cartao_entregue ? 'text-brand-burgundy' : 'text-brand-black' }}">
+                                    <input form="{{ $formVinculo }}" type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
+                                    {{ $vinculo->cartao_entregue ? 'Entregue' : 'Pendente' }}
+                                </label>
+                            </td>
+                            <td class="px-5 py-4">
+                                <input form="{{ $formVinculo }}" type="hidden" name="beneficio_ativo" value="0">
+                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                                    <input form="{{ $formVinculo }}" type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
+                                    Ativo
+                                </label>
+                            </td>
+                            <td class="px-5 py-4">
+                                <div class="grid gap-3">
+                                    <div>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Direito (admissao)</p>
+                                        <p class="mt-1 text-sm font-semibold text-brand-black">
+                                            {{ $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: 'Admissao nao informada') }}
+                                        </p>
+                                    </div>
+                                    <label>
+                                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Entrega do cartao</span>
+                                        <input form="{{ $formVinculo }}" type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 rounded-lg border border-zinc-200 px-2 text-xs">
+                                    </label>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4">
+                                <input form="{{ $formVinculo }}" name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
+                                <textarea form="{{ $formVinculo }}" name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
+                            </td>
+                            <td class="px-5 py-4">
+                                <form id="{{ $formVinculo }}" method="POST" action="{{ route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]) }}" class="hidden" aria-hidden="true">
+                                    @csrf
+                                </form>
                                 <div class="flex flex-col justify-end gap-2 sm:flex-row">
-                                    <button type="submit" form="vinculo-update-{{ $vinculo->id }}" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
+                                    <button type="submit" form="{{ $formVinculo }}" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
                                         <i data-lucide="save" class="h-4 w-4"></i>
                                         Salvar
                                     </button>

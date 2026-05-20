@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Beneficio;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
@@ -372,9 +373,11 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
-        // POST puro: hospedagens compartilhadas costumam bloquear PUT/DELETE ou o campo _method
-        Route::match(['put', 'post'], 'beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'update'])->name('beneficios.colaboradores.update');
-        Route::match(['delete', 'post'], 'beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'destroy'])->name('beneficios.colaboradores.destroy');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'update'])->name('beneficios.colaboradores.update');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'destroy'])->name('beneficios.colaboradores.destroy');
+        Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
+            return redirect()->route('rh.beneficios.show', $beneficio);
+        });
         Route::resource('beneficios', BeneficioController::class);
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
