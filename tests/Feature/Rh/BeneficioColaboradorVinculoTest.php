@@ -209,6 +209,60 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ->assertSessionHasErrors('vinculo_id');
     }
 
+    public function test_salvar_vinculo_quando_beneficio_id_vem_como_string_do_banco(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+        $colaborador = Colaborador::query()->create(['nome' => 'Elinaldo', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'tem_direito' => true,
+            'cartao_entregue' => false,
+        ]);
+
+        \DB::table('colaborador_beneficios')->whereKey($vinculo->id)->update(['beneficio_id' => '1']);
+        $vinculo->refresh();
+        $this->assertSame('1', (string) $vinculo->getRawOriginal('beneficio_id'));
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'salvar',
+                'tem_direito' => '1',
+                'cartao_entregue' => '1',
+                'beneficio_ativo' => '1',
+            ])
+            ->assertRedirect(route('rh.beneficios.show', $beneficio))
+            ->assertSessionHasNoErrors();
+
+        $vinculo->refresh();
+        $this->assertTrue($vinculo->cartao_entregue);
+    }
+
+    public function test_excluir_vinculo_elinaldo_cenario(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'VALE ALIMENTAÇÃO', 'status' => 'ativo']);
+        $colaborador = Colaborador::query()->create(['nome' => 'ELINALDO CHAGAS DE OLIVEIRA', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'excluir',
+            ])
+            ->assertRedirect(route('rh.beneficios.show', $beneficio))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('colaborador_beneficios', ['id' => $vinculo->id]);
+    }
+
     public function test_salvar_com_vinculo_id_inexistente_retorna_erro_nao_404(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);

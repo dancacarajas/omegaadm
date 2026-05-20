@@ -50,7 +50,7 @@ class BeneficioColaboradorController extends Controller
 
     public function manage(Request $request, Beneficio $beneficio, ColaboradorBeneficio $vinculo)
     {
-        if ($vinculo->beneficio_id !== $beneficio->id) {
+        if ((int) $vinculo->beneficio_id !== (int) $beneficio->id) {
             throw ValidationException::withMessages([
                 'vinculo_id' => 'Este vínculo não pertence a este benefício.',
             ]);

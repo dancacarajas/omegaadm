@@ -189,9 +189,9 @@
                     @forelse ($colaboradoresVinculados as $vinculo)
                         <form method="POST" action="{{ $urlGestaoBeneficio }}" class="contents">
                             @csrf
-                            <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
                             <tr class="align-top">
                             <td class="px-5 py-4">
+                                <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
                                 <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
                                 <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
                             </td>

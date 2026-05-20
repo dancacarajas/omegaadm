@@ -68,6 +68,16 @@ Causas corrigidas no código (`fe2ec07+`):
 
 Logs (só com `APP_DEBUG=true`): `storage/logs/laravel.log` → `beneficio.show.post`, `beneficio.colaborador.store`.
 
+### Fase 4 — mensagem «Este vínculo não pertence a este benefício»
+
+O POST chegava, mas `manage()` comparava com `!==`:
+
+```php
+$vinculo->beneficio_id !== $beneficio->id  // "1" !== 1 → falso positivo
+```
+
+MySQL/PDO devolve `beneficio_id` como string; o route model binding usa `int`. Corrigido com cast no model e `(int)` na comparação (commit após `bdf6332`).
+
 ---
 
 ### Se o ID existir e ainda der 404

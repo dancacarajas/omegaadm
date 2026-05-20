@@ -19,6 +19,8 @@ class ColaboradorBeneficio extends Model
     ];
 
     protected $casts = [
+        'colaborador_id' => 'integer',
+        'beneficio_id' => 'integer',
         'tem_direito' => 'boolean',
         'cartao_entregue' => 'boolean',
         'beneficio_ativo' => 'boolean',
