@@ -372,25 +372,27 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
-        // GET e POST na mesma URL (/rh/beneficios/{id}) — igual ao localhost:2080
-        Route::match(['get', 'post'], 'beneficios/{beneficio}', [BeneficioController::class, 'show'])->name('beneficios.show');
+        Route::resource('beneficios', BeneficioController::class)->except(['show']);
+        // Gestão: GET e POST na mesma URL (/rh/beneficios/{id}) — {beneficio} só numérico (não captura "create")
+        Route::match(['get', 'post'], 'beneficios/{beneficio}', [BeneficioController::class, 'show'])
+            ->whereNumber('beneficio')
+            ->name('beneficios.show');
         // Legado (URLs antigas em cache do navegador)
-        Route::post('beneficios/{beneficio}/vinculos', [BeneficioColaboradorController::class, 'store']);
-        Route::post('beneficios/{beneficio}/vinculos/{vinculo}', [BeneficioColaboradorController::class, 'manage']);
-        Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store']);
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'manage']);
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'manage']);
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'manage']);
+        Route::post('beneficios/{beneficio}/vinculos', [BeneficioColaboradorController::class, 'store'])->whereNumber('beneficio');
+        Route::post('beneficios/{beneficio}/vinculos/{vinculo}', [BeneficioColaboradorController::class, 'manage'])->whereNumber('beneficio');
+        Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->whereNumber('beneficio');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'manage'])->whereNumber('beneficio');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'manage'])->whereNumber('beneficio');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'manage'])->whereNumber('beneficio');
         Route::get('beneficios/{beneficio}/vinculos', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
-        });
+        })->whereNumber('beneficio');
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}/{legado?}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
-        })->where('legado', 'salvar|excluir');
+        })->whereNumber('beneficio')->where('legado', 'salvar|excluir');
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
-        });
-        Route::resource('beneficios', BeneficioController::class)->except(['show']);
+        })->whereNumber('beneficio');
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');

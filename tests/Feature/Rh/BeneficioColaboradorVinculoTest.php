@@ -13,6 +13,16 @@ class BeneficioColaboradorVinculoTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_create_nao_e_capturado_pela_rota_show(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+
+        $this->actingAs($user)
+            ->get('/rh/beneficios/create')
+            ->assertOk()
+            ->assertSee('Novo benefício', false);
+    }
+
     public function test_show_retorna_404_quando_beneficio_nao_existe(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);
