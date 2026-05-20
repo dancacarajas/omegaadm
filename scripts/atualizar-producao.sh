@@ -12,4 +12,8 @@ echo "--- Rota gestão benefício (deve ser GET|POST) ---"
 php artisan route:list --path=beneficios/ 2>/dev/null | head -8
 
 echo ""
-echo "Pronto. Teste: aba anônima, /rh/beneficios/1, Salvar deve POST na MESMA URL (sem /vinculos)."
+echo "--- Benefícios no banco (diagnóstico 404 GET logado) ---"
+php artisan beneficios:diagnostico 1 2>/dev/null || true
+
+echo ""
+echo "Pronto. Teste pela LISTAGEM /public/rh/beneficios → Ver → Salvar (não force /beneficios/1 sem ID existir)."

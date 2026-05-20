@@ -17,6 +17,55 @@
 
 **Não é problema de migration.** Se a listagem de colaboradores já apareceu, a tabela `colaborador_beneficios` existe.
 
+## Fase 2 (após deploy): GET 404 no navegador logado
+
+Se no servidor:
+
+```text
+POST /public/rh/beneficios/1 → 419   (rota OK)
+GET  /public/rh/beneficios/1 → 302   (sem login → login)
+```
+
+mas **no navegador logado** `GET /public/rh/beneficios/1` → **404**, a rota/rewrite **já está correta**.
+
+Causa mais provável: **model binding** — não existe `beneficios.id = 1` em produção (ou a URL foi digitada com ID do localhost).
+
+O `BeneficioController@show` **não** chama `abort(404)` nem filtra por contrato/empresa. O 404 é o Laravel padrão quando o registro não existe.
+
+### Verificação no SSH
+
+```bash
+php artisan beneficios:diagnostico
+php artisan beneficios:diagnostico 1
+```
+
+Ou:
+
+```bash
+php artisan tinker --execute="echo json_encode(\DB::table('beneficios')->select('id','nome')->orderBy('id')->get());"
+```
+
+### Teste correto no navegador
+
+1. Abrir `https://omegaadm.feston.net.br/public/rh/beneficios`
+2. Clicar **Ver** em um benefício da listagem (ID real do banco)
+3. Salvar / vincular / excluir
+
+Não testar `/beneficios/1` sem confirmar que o ID 1 existe em produção.
+
+### Se o ID existir e ainda der 404
+
+Com `APP_DEBUG=true` temporário:
+
+```text
+/public/rh/beneficios/{id}?debug_beneficio=1
+```
+
+- Se o `dd()` **não** aparecer → binding/rota (improvável após fase 1).
+- Se aparecer → controller/view; revisar logs.
+
+---
+
 ## Por que o sistema “inteiro” funciona e só Benefícios quebra?
 
 **Document root “errado” não obriga tudo a cair.** Várias telas continuam OK porque usam padrões diferentes de URL e POST.

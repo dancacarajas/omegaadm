@@ -13,6 +13,15 @@ class BeneficioColaboradorVinculoTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_show_retorna_404_quando_beneficio_nao_existe(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+
+        $this->actingAs($user)
+            ->get('/rh/beneficios/99999')
+            ->assertNotFound();
+    }
+
     public function test_vincula_colaborador_ao_beneficio(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);

@@ -22,6 +22,16 @@
 
 **No navegador logado:** Salvar/Excluir/Vincular devem retornar **302** (redirect) com sessão válida; **419** só se CSRF expirado.
 
+### Fase 2 — GET 404 logado em `/beneficios/1`
+
+Rota OK (POST 419 no curl). GET 404 logado costuma ser **registro inexistente**:
+
+```bash
+php artisan beneficios:diagnostico 1
+```
+
+Se ID 1 não existir, abrir a listagem e clicar em um benefício real.
+
 ---
 
 ## O que acontecia em produção (`https://omegaadm.feston.net.br/public/rh/beneficios/1`)
