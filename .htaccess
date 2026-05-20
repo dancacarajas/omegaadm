@@ -1,11 +1,18 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Arquivo estático real dentro de public/ (css, js, imagens, build)
+    # Arquivos estáticos reais (css, js, build) dentro de public/
     RewriteCond %{REQUEST_URI} ^/public/(.+)$ [NC]
     RewriteCond %{DOCUMENT_ROOT}/public/%1 -f
     RewriteRule ^public/(.+)$ public/$1 [L]
 
-    # Rotas da aplicação (GET e POST), inclusive /public/rh/... no Hostinger
+    # URLs com /public/ na barra de endereço → front controller DENTRO de public/
+    # (Laravel enxerga path rh/beneficios/1, não public/rh/beneficios/1)
+    RewriteCond %{REQUEST_URI} ^/public/ [NC]
+    RewriteRule ^public/(.*)$ public/index.php [L,QSA]
+
+    # Demais pedidos (sem prefixo /public) → index.php da raiz
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L,QSA]
 </IfModule>

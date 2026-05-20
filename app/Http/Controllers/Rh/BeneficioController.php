@@ -46,6 +46,17 @@ class BeneficioController extends Controller
 
     public function show(Request $request, Beneficio $beneficio)
     {
+        if ($request->boolean('debug_beneficio') && config('app.debug')) {
+            dd([
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'request_uri' => $request->getRequestUri(),
+                'base_url' => $request->getBaseUrl(),
+                'script_name' => $request->server->get('SCRIPT_NAME'),
+                'expected_route' => 'rh/beneficios/'.$beneficio->getKey(),
+            ]);
+        }
+
         if ($request->isMethod('POST')) {
             return app(BeneficioColaboradorController::class)->store($request, $beneficio);
         }

@@ -17,16 +17,96 @@
 
 **Não é problema de migration.** Se a listagem de colaboradores já apareceu, a tabela `colaborador_beneficios` existe.
 
-**Causa raiz mais provável (para o dev validar):**
+## Por que o sistema “inteiro” funciona e só Benefícios quebra?
 
-1. **Document root** no Hostinger aponta para a pasta do projeto (`omegaadm`), não para `omegaadm/public`.
-2. A URL pública inclui o segmento **`/public/`**, mas o Laravel registra rotas como **`rh/beneficios/{id}`** (sem `public`).
-3. O `index.php` na raiz recebia `REQUEST_URI=/public/rh/beneficios/1` → o router procurava rota `public/rh/...` → **404 Not Found** (página padrão Laravel).
-4. `.htaccess` sozinho não corrige o path interno que o PHP/Laravel enxerga.
+**Document root “errado” não obriga tudo a cair.** Várias telas continuam OK porque usam padrões diferentes de URL e POST.
 
-**Correção adicional neste relatório:** normalizar `REQUEST_URI` em `index.php` (raiz) removendo o prefixo `/public` antes do bootstrap.
+| Padrão | Exemplo no projeto | Sensível a `public` no path? |
+|--------|-------------------|------------------------------|
+| POST com `route('rh....')` | Frequência, efetivo, apuração, recrutamento | Menos: o gerador de URL usa `APP_URL` / middleware |
+| POST em rota **fixa** (`.../salvar`, `.../update`, `.../importar`) | `rh.frequencia.apuracao.justificativa`, `rh.efetivo.importar` | Path previsível; rewrite costuma acertar |
+| **Único** `Route::match(['get','post'], ...)` no RH | `beneficios/{beneficio}` → `show()` | **Muito sensível** |
+| Form `action` = `request()->url()` | Só `resources/views/rh/beneficios/show.blade.php` | Repete **exatamente** a URL da barra (`/public/rh/beneficios/1`) |
 
-**Correção estrutural recomendada (Hostinger):** definir **Document Root** = `.../omegaadm/public` para a URL ficar igual ao localhost (sem `/public` no navegador).
+Conclusão para o dev:
+
+1. Não concluir “document root está 100% certo” só porque outros módulos abrem.
+2. Comparar módulos que **fazem POST**, não só GET.
+3. Benefícios é o caso extremo: **GET e POST na mesma URL dinâmica**, vários formulários por linha (`acao`, `vinculo_id`), action copiada da URL atual.
+
+GET pode abrir e POST dar 404 se o rewrite tratar métodos/caminhos de forma diferente ou se o POST não passar pelo mesmo front controller que normaliza o path.
+
+### Se a tela abre (GET) mas Salvar dá 404 (POST)
+
+Isso **não descarta** rewrite, mas obriga a separar dois cenários no `dd()`:
+
+| Resultado do `dd()` no POST | Interpretação |
+|----------------------------|---------------|
+| `path` = `public/rh/beneficios/1` | Rewrite/base path no POST — tese do `/public` no roteamento |
+| `path` = `rh/beneficios/1` | Roteamento OK; investigar deploy (`Route::match` com POST), cache de view/HTML antigo, ou rota não publicada |
+| GET com `?debug_beneficio=1` já mostra `path` = `rh/beneficios/1` | O router **já casa** na leitura da tela; o POST pode estar indo para outra URL (form antigo, proxy, extensão) |
+
+**Pergunta obrigatória para o dev** (copiar/colar):
+
+```text
+Se o problema fosse só document root, por que os demais módulos em POST continuam ok?
+No Benefícios, confirmar no POST Salvar:
+  request()->path()  →  "rh/beneficios/1"  ou  "public/rh/beneficios/1"?
+Com path rh/... o 404 é rota/deploy/método; com public/... é rewrite/base path.
+```
+
+---
+
+## Causa raiz (confirmada na auditoria)
+
+**Não é** botão, banco, migration nem controller.
+
+| O que o navegador envia | O que o Laravel precisa casar |
+|-------------------------|-------------------------------|
+| `POST /public/rh/beneficios/1` (REQUEST_URI) | Rota `rh/beneficios/{beneficio}` |
+
+Se o front controller for o **`index.php` da raiz** sem ajuste, o router pode receber:
+
+```text
+request()->path() = "public/rh/beneficios/1"   ← NÃO existe rota assim → 404
+```
+
+O correto após o fix:
+
+```text
+request()->path() = "rh/beneficios/1"
+request()->getRequestUri() = "/public/rh/beneficios/1"   ← pode manter /public na URL pública
+```
+
+### Confirmação no servidor (dd temporário)
+
+Com `APP_DEBUG=true`, abrir:
+
+```text
+https://omegaadm.feston.net.br/public/rh/beneficios/1?debug_beneficio=1
+```
+
+Valores esperados no `dd()`:
+
+| Campo | Esperado |
+|-------|----------|
+| `path` | `rh/beneficios/1` |
+| `request_uri` | `/public/rh/beneficios/1` |
+| `script_name` | `/public/index.php` |
+
+Se `path` vier `public/rh/beneficios/1`, o rewrite ainda está errado.
+
+### Correção em código (commit mais recente)
+
+1. **`.htaccess` raiz:** URLs `/public/...` vão para **`public/index.php`** (não só `index.php` da raiz).
+2. **`index.php` raiz:** fallback que remove `/public` do `REQUEST_URI` se a requisição cair na raiz.
+3. **Rota** dentro do grupo `Route::prefix('rh')` → URI registrada `rh/beneficios/{beneficio}`.
+
+### Correção definitiva (infra — recomendada)
+
+**Document root** = `omegaadm/public` e `APP_URL=https://omegaadm.feston.net.br` **sem** `/public`.
+
+URL final: `https://omegaadm.feston.net.br/rh/beneficios/1` (igual localhost).
 
 ---
 

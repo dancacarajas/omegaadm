@@ -148,6 +148,36 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ->assertDontSee('Colab Beta', false);
     }
 
+    public function test_post_com_script_name_public_index_casa_rota_rh(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+        $colaborador = Colaborador::query()->create(['nome' => 'Ana', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'tem_direito' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->call(
+                'POST',
+                '/rh/beneficios/'.$beneficio->id,
+                [
+                    'vinculo_id' => $vinculo->id,
+                    'acao' => 'salvar',
+                    'tem_direito' => '1',
+                ],
+                [],
+                [],
+                [
+                    'SCRIPT_NAME' => '/public/index.php',
+                    'REQUEST_URI' => '/public/rh/beneficios/'.$beneficio->id,
+                ]
+            )
+            ->assertRedirect(route('rh.beneficios.show', $beneficio));
+    }
+
     public function test_nao_atualiza_vinculo_de_outro_beneficio(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);

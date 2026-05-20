@@ -17,8 +17,8 @@
 
 @section('content')
     @php
-        /** POST na mesma URL que o navegador já abriu (crítico em produção com /public na URL). */
-        $urlGestaoBeneficio = request()->url();
+        /** Mesmo padrão dos demais módulos RH: route() + ForceRequestRootUrl (/public em produção). */
+        $urlGestaoBeneficio = route('rh.beneficios.show', $beneficio);
         $total = $beneficio->colaboradores->count();
         $comDireito = $beneficio->colaboradores->where('tem_direito', true)->count();
         $cartoesPendentes = $beneficio->colaboradores->where('tem_direito', true)->where('cartao_entregue', false)->count();

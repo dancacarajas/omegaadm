@@ -17,4 +17,6 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
+($fixPublicRequestUri = require __DIR__.'/../bootstrap/fix-public-request-uri.php')();
+
 $app->handleRequest(Request::capture());
