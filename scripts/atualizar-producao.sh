@@ -6,9 +6,9 @@ cd ~/domains/omegaadm.feston.net.br/public_html 2>/dev/null || cd ~/omegaadm 2>/
 
 git pull origin main
 php artisan migrate --force
+php artisan optimize:clear
 php artisan route:clear
 php artisan config:clear
 php artisan view:clear
-php artisan cache:clear
 
 echo "Pronto. Teste salvar um vinculo em /rh/beneficios/1"

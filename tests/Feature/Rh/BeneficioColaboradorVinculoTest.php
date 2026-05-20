@@ -82,7 +82,8 @@ class BeneficioColaboradorVinculoTest extends TestCase
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
             ->post(
-            route('rh.beneficios.colaboradores.destroy', [$beneficio, $vinculo])
+            route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]),
+            ['acao' => 'excluir']
         );
 
         $response->assertRedirect(route('rh.beneficios.show', $beneficio));

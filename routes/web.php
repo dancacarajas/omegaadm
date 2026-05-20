@@ -373,8 +373,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'update'])->name('beneficios.colaboradores.update');
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'destroy'])->name('beneficios.colaboradores.destroy');
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'manage'])->name('beneficios.colaboradores.update');
+        Route::get('beneficios/{beneficio}/colaboradores/{vinculo}/{legado}', function (Beneficio $beneficio) {
+            return redirect()->route('rh.beneficios.show', $beneficio);
+        })->where('legado', 'salvar|excluir');
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
         });

@@ -29,9 +29,16 @@ class BeneficioColaboradorController extends Controller
             ->with('success', 'Colaborador vinculado ao beneficio com sucesso.');
     }
 
-    public function update(Request $request, Beneficio $beneficio, ColaboradorBeneficio $vinculo)
+    public function manage(Request $request, Beneficio $beneficio, ColaboradorBeneficio $vinculo)
     {
         abort_unless($vinculo->beneficio_id === $beneficio->id, 404);
+
+        if ($request->input('acao') === 'excluir') {
+            $vinculo->delete();
+
+            return $this->redirectAposAcao($beneficio)
+                ->with('success', 'Vinculo removido do beneficio.');
+        }
 
         $payload = $this->validatedData($request, $beneficio, $vinculo);
         $vinculo->update([
@@ -43,16 +50,6 @@ class BeneficioColaboradorController extends Controller
 
         return $this->redirectAposAcao($beneficio)
             ->with('success', 'Situacao do beneficio atualizada.');
-    }
-
-    public function destroy(Beneficio $beneficio, ColaboradorBeneficio $vinculo)
-    {
-        abort_unless($vinculo->beneficio_id === $beneficio->id, 404);
-
-        $vinculo->delete();
-
-        return $this->redirectAposAcao($beneficio)
-            ->with('success', 'Vinculo removido do beneficio.');
     }
 
     private function redirectAposAcao(Beneficio $beneficio): \Illuminate\Http\RedirectResponse
