@@ -198,10 +198,12 @@
                                     <th class="px-2 py-2 text-center">Ent. 2</th>
                                     <th class="px-2 py-2 text-center">Sai. 2</th>
                                     <th class="px-2 py-2 text-center">Total trab.</th>
+                                    <th class="px-2 py-2 text-center">H. previstas</th>
                                     <th class="px-2 py-2 text-center">Dia falta</th>
                                     <th class="px-2 py-2 text-center">Horas falta</th>
+                                    <th class="px-2 py-2 text-center" title="Atraso na 1ª entrada (informativo)">Atraso bruto</th>
                                     <th class="px-2 py-2 text-center">Horas extras</th>
-                                    <th class="px-2 py-2 text-center">Faltas/atrasos</th>
+                                    <th class="px-2 py-2 text-center" title="Desconto do dia = horas falta (não soma atraso)">Desconto</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-zinc-100">
@@ -268,22 +270,26 @@
                                             </form>
                                         @endif
                                         <td class="px-2 py-2 text-center text-brand-black">{{ $linha['total_trabalhado'] ?: '—' }}</td>
+                                        <td class="px-2 py-2 text-center text-brand-gray">{{ $linha['horas_previstas'] ?: '—' }}</td>
                                         <td class="px-2 py-2 text-center {{ ($linha['dia_falta'] ?? '') !== '' ? 'text-red-600 font-semibold' : '' }}">{{ $linha['dia_falta'] ?: '—' }}</td>
                                         <td class="px-2 py-2 text-center {{ ($linha['horas_falta'] ?? '') !== '' ? 'text-red-600' : '' }}">{{ $linha['horas_falta'] ?: '—' }}</td>
+                                        <td class="px-2 py-2 text-center {{ ($linha['horas_atraso'] ?? '') !== '' ? 'text-amber-700' : '' }}">{{ $linha['horas_atraso'] ?: '—' }}</td>
                                         <td class="px-2 py-2 text-center text-brand-black">{{ $linha['extras_total'] ?: '—' }}</td>
-                                        <td class="px-2 py-2 text-center text-brand-black">{{ $linha['falta_atraso'] ?: '—' }}</td>
+                                        <td class="px-2 py-2 text-center {{ ($linha['falta_atraso'] ?? '') !== '' ? 'text-red-600 font-semibold' : 'text-brand-black' }}">{{ $linha['falta_atraso'] ?: '—' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot class="bg-zinc-100 text-xs font-bold text-brand-black">
                                 <tr>
                                     <td class="sticky left-0 z-10 bg-zinc-100 px-3 py-2">TOTAL</td>
-                                    <td colspan="6"></td>
+                                    <td colspan="7"></td>
                                     <td class="px-2 py-2 text-center">{{ $cartao['totais']['trabalhado'] ?: '—' }}</td>
+                                    <td class="px-2 py-2 text-center">{{ $cartao['totais']['previstas'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['dia_falta'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['horas_falta'] ?: '—' }}</td>
+                                    <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['horas_atraso'] ?: '—' }}</td>
                                     <td class="px-2 py-2 text-center">{{ $cartao['totais']['extras'] ?: '—' }}</td>
-                                    <td class="px-2 py-2 text-center">{{ $cartao['totais']['falta_atraso'] ?: '—' }}</td>
+                                    <td class="px-2 py-2 text-center text-red-600">{{ $cartao['totais']['falta_atraso'] ?: '—' }}</td>
                                 </tr>
                             </tfoot>
                         </table>

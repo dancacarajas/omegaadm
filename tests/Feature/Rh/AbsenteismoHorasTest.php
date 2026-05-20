@@ -73,7 +73,7 @@ class AbsenteismoHorasTest extends TestCase
         $this->assertSame(0, $r['ausencias']);
     }
 
-    public function test_presente_com_quatro_batidas_e_pequena_diferenca_na_jornada_nao_e_injustificada(): void
+    public function test_presente_com_quatro_batidas_conta_apenas_deficit_real_em_horas(): void
     {
         $escala = HorarioEscala::query()->create([
             'nome' => 'Motorista',
@@ -109,7 +109,7 @@ class AbsenteismoHorasTest extends TestCase
 
         $r = app(AbsenteismoPeriodo::class)->calcular('2026-04-06', '2026-04-06');
 
-        $this->assertSame(0.0, $r['horas_ausencia_injustificada']);
+        $this->assertSame(0.5, $r['horas_ausencia_injustificada']);
         $this->assertSame(0, $r['ausencias']);
     }
 
@@ -148,8 +148,8 @@ class AbsenteismoHorasTest extends TestCase
 
         $r = app(AbsenteismoPeriodo::class)->calcular('2026-04-06', '2026-04-06');
 
-        $this->assertSame(0.0, $r['horas_ausencia_injustificada']);
-        $this->assertSame(0.0, $r['taxa_injustificada']);
+        $this->assertSame(0.5, $r['horas_ausencia_injustificada']);
+        $this->assertGreaterThan(0.0, $r['taxa_injustificada']);
         $this->assertSame(0, $r['ausencias']);
     }
 

@@ -89,7 +89,7 @@ final class AbsenteismoPeriodoProcessador
             $ausenciaJustMin += $justMin;
             $ausenciaInjustMin += $injustMin;
 
-            if ($injustMin > 0) {
+            if ($injustMin > 0 && self::contaComoDiaFaltaIntegral($registro, $injustMin, $h['previstas_minutos'])) {
                 $diasInjustificados++;
             }
             if ($justMin > 0) {
@@ -211,6 +211,20 @@ final class AbsenteismoPeriodoProcessador
             'taxa_injustificada' => $taxaInjustificada,
             'total_ocorrencias' => $colecao->count(),
         ];
+    }
+
+    private static function contaComoDiaFaltaIntegral(
+        FrequenciaRegistro $registro,
+        int $injustMin,
+        int $previstasMin
+    ): bool {
+        if ($injustMin <= 0 || $previstasMin <= 0) {
+            return false;
+        }
+
+        $metricas = ApuracaoPontoMetricas::calcular($registro);
+
+        return $metricas['dia_falta_integral'];
     }
 
     private static function diaSemanaCurto(Carbon $data): string

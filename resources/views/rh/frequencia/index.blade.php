@@ -413,7 +413,7 @@
                 <div class="rounded-xl bg-red-50 p-4">
                     <p class="text-xs font-bold uppercase tracking-wide text-red-700">Injustificado</p>
                     <p class="mt-2 text-3xl font-black text-red-700">{{ number_format($absenteismo['taxa_injustificada'] ?? 0, 1, ',', '.') }}%</p>
-                    <p class="mt-1 text-[11px] text-red-800">{{ $absenteismo['ausencias'] }} dia(s) · {{ number_format($absenteismo['horas_ausencia_injustificada'] ?? 0, 1, ',', '.') }}h</p>
+                    <p class="mt-1 text-[11px] text-red-800">{{ $absenteismo['ausencias'] }} dia(s) integ. · {{ number_format($absenteismo['horas_ausencia_injustificada'] ?? 0, 1, ',', '.') }}h</p>
                 </div>
                 <div class="rounded-xl bg-brand-gray-soft p-4">
                     <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Dias com jornada</p>

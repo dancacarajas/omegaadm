@@ -32,19 +32,6 @@ class FrequenciaCalculo
         return true;
     }
 
-    /**
-     * Com as 4 batidas do dia, tolera pequena diferença entre jornada da escala e horas trabalhadas (ex.: ~30 min).
-     */
-    public static function toleranciaFaltaEfetiva(FrequenciaRegistro $registro, int $jornadaPrevistaMinutos): int
-    {
-        $base = self::toleranciaMinutosFalta();
-        if ($jornadaPrevistaMinutos <= 0 || ! self::registroTemPontoCompleto($registro)) {
-            return $base;
-        }
-
-        return max($base, (int) round($jornadaPrevistaMinutos * 0.05));
-    }
-
     public static function faltaEfetivaMinutos(?int $minutosFalta, ?int $toleranciaMinutos = null): int
     {
         if ($minutosFalta === null || $minutosFalta <= 0) {
@@ -110,12 +97,83 @@ class FrequenciaCalculo
     /**
      * Resumo usando horários da escala nos campos ainda vazios (útil antes de gravar ou quando o registro é parcial).
      */
+    public static function registroTemAlgumaBatida(FrequenciaRegistro $registro): bool
+    {
+        foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            if (! self::horarioArmazenadoVazio($registro->getAttribute($campo))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Preenche intervalo vazio (almoço) com horários da escala para calcular horas trabalhadas corretamente.
+     */
+    public static function deveCompletarIntervaloComEscala(FrequenciaRegistro $registro, int $trabalhadasBrutas): bool
+    {
+        $colaborador = $registro->colaborador;
+        if ($colaborador === null) {
+            return false;
+        }
+
+        $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
+        if ($diaEscala === null) {
+            return false;
+        }
+
+        if (! self::registroTemBatidaCompletaEntradaSaidaFinal($registro)) {
+            return false;
+        }
+
+        $escalaTemIntervalo = ! self::horarioArmazenadoVazio($diaEscala->saida_1)
+            && ! self::horarioArmazenadoVazio($diaEscala->entrada_2);
+
+        if (! $escalaTemIntervalo) {
+            return false;
+        }
+
+        return self::horarioArmazenadoVazio($registro->saida_1)
+            || self::horarioArmazenadoVazio($registro->entrada_2);
+    }
+
+    /** Entrada inicial e saída final preenchidas (não presume jornada só com batidas parciais). */
+    public static function registroTemBatidaCompletaEntradaSaidaFinal(FrequenciaRegistro $registro): bool
+    {
+        return ! self::horarioArmazenadoVazio($registro->entrada_1)
+            && ! self::horarioArmazenadoVazio($registro->saida_2);
+    }
+
+    /**
+     * Resumo usado na apuração, absenteísmo e frequência — única fonte com fallback de escala quando aplicável.
+     */
+    public static function resumoParaApuracao(FrequenciaRegistro $registro): array
+    {
+        $resumo = self::resumo($registro);
+        $status = (string) ($registro->status ?? 'falta');
+
+        if (! in_array($status, ['presente', 'incompleto'], true)) {
+            return $resumo;
+        }
+
+        $trabalhadasBrutas = (int) ($resumo['trabalhadas'] ?? 0);
+        if (! self::deveCompletarIntervaloComEscala($registro, $trabalhadasBrutas)) {
+            return $resumo;
+        }
+
+        return self::resumoComFallbackEscala($registro);
+    }
+
+    /**
+     * Só preenche intervalo de almoço ausente (saida_1 / entrada_2) — não fabrica entrada/saída do dia.
+     */
     public static function resumoComFallbackEscala(FrequenciaRegistro $registro): array
     {
         $clone = clone $registro;
         $dia = $registro->colaborador?->horarioEscalaDiaNaData($registro->data);
         if ($dia) {
-            foreach (['entrada_1', 'saida_1', 'entrada_2', 'saida_2'] as $campo) {
+            foreach (['saida_1', 'entrada_2'] as $campo) {
                 if (self::horarioArmazenadoVazio($clone->getAttribute($campo))) {
                     $prev = $dia->getAttribute($campo);
                     if (! self::horarioArmazenadoVazio($prev)) {
@@ -234,73 +292,140 @@ class FrequenciaCalculo
     }
 
     /**
-     * Horas extras: saldo acima da jornada prevista + minutos fora da escala (entrada antes / saída depois).
+     * Horas extras: somente saldo trabalhado acima da jornada (após tolerância diária).
      */
     public static function minutosExtras(FrequenciaRegistro $registro, ?int $trabalhadas = null, ?int $jornada = null): int
     {
         $trabalhadas ??= self::minutosTrabalhados($registro);
         $jornada ??= self::jornadaMinutosParaRegistro($registro);
         $saldo = max(0, $trabalhadas - $jornada);
-        $foraEscala = self::minutosExtrasForaDaEscala($registro);
 
-        return max($saldo, $foraEscala);
+        return self::faltaEfetivaMinutos($saldo > 0 ? $saldo : null, self::toleranciaMinutosFalta());
     }
 
-    /**
-     * Minutos de entrada antes do previsto ou saída final após o previsto (batida real vs. escala).
-     */
-    public static function minutosExtrasForaDaEscala(FrequenciaRegistro $registro): int
+    /** Entrada antes do previsto (informativo; não vira extra automaticamente). */
+    public static function minutosEntradaAntecipada(FrequenciaRegistro $registro): int
     {
         $colaborador = $registro->colaborador;
-        if (! $colaborador) {
+        if ($colaborador === null) {
             return 0;
         }
 
         $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
-        if (! $diaEscala) {
+        if ($diaEscala === null) {
             return 0;
         }
 
-        // Dia sem saída final: não projeta horário da escala nem conta extra antecipada/tardia.
-        if (self::horarioArmazenadoVazio($registro->saida_2)) {
+        $ymd = self::ymdRegistro($registro);
+        $previsto = self::normalizarHorarioBanco($diaEscala->entrada_1);
+        $real = self::primeiraEntradaRegistro($registro);
+        if ($previsto === null || $real === null) {
             return 0;
         }
 
-        $ymd = $registro->data instanceof CarbonInterface
+        try {
+            $a = Carbon::parse("{$ymd} {$previsto}");
+            $b = Carbon::parse("{$ymd} {$real}");
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        if ($b->gte($a)) {
+            return 0;
+        }
+
+        return (int) $b->diffInMinutes($a);
+    }
+
+    /** Saída após o previsto (última saída válida vs. escala). */
+    public static function minutosSaidaPosterior(FrequenciaRegistro $registro): int
+    {
+        $colaborador = $registro->colaborador;
+        if ($colaborador === null) {
+            return 0;
+        }
+
+        $diaEscala = $colaborador->horarioEscalaDiaNaData($registro->data);
+        if ($diaEscala === null) {
+            return 0;
+        }
+
+        $ymd = self::ymdRegistro($registro);
+        $previsto = self::ultimaSaidaPrevistaEscala($diaEscala);
+        $real = self::ultimaSaidaRegistro($registro);
+        if ($previsto === null || $real === null) {
+            return 0;
+        }
+
+        try {
+            $a = Carbon::parse("{$ymd} {$previsto}");
+            $b = Carbon::parse("{$ymd} {$real}");
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        if ($b->lte($a)) {
+            return 0;
+        }
+
+        return (int) $a->diffInMinutes($b);
+    }
+
+    public static function primeiraEntradaRegistro(FrequenciaRegistro $registro): ?string
+    {
+        $ymd = self::ymdRegistro($registro);
+        $candidatos = [];
+        foreach (['entrada_1', 'entrada_2'] as $campo) {
+            $h = self::normalizarHorarioBanco($registro->getAttribute($campo));
+            if ($h !== null) {
+                $candidatos[] = Carbon::parse("{$ymd} {$h}");
+            }
+        }
+
+        if ($candidatos === []) {
+            return null;
+        }
+
+        return collect($candidatos)->min()->format('H:i:s');
+    }
+
+    public static function ultimaSaidaRegistro(FrequenciaRegistro $registro): ?string
+    {
+        $ymd = self::ymdRegistro($registro);
+        $candidatos = [];
+        foreach (['saida_1', 'saida_2'] as $campo) {
+            $h = self::normalizarHorarioBanco($registro->getAttribute($campo));
+            if ($h !== null) {
+                $candidatos[] = Carbon::parse("{$ymd} {$h}");
+            }
+        }
+
+        if ($candidatos === []) {
+            return null;
+        }
+
+        return collect($candidatos)->max()->format('H:i:s');
+    }
+
+    private static function ultimaSaidaPrevistaEscala(HorarioEscalaDia $diaEscala): ?string
+    {
+        $saidas = array_filter([
+            self::normalizarHorarioBanco($diaEscala->saida_1),
+            self::normalizarHorarioBanco($diaEscala->saida_2),
+        ]);
+
+        if ($saidas === []) {
+            return null;
+        }
+
+        return collect($saidas)->sort()->last();
+    }
+
+    private static function ymdRegistro(FrequenciaRegistro $registro): string
+    {
+        return $registro->data instanceof CarbonInterface
             ? $registro->data->format('Y-m-d')
-            : Carbon::parse($registro->data)->format('Y-m-d');
-
-        $extras = 0;
-
-        $previstoEntrada = self::normalizarHorarioBanco($diaEscala->entrada_1);
-        $realEntrada = self::normalizarHorarioBanco($registro->entrada_1);
-        if ($previstoEntrada !== null && $realEntrada !== null) {
-            try {
-                $a = Carbon::parse("{$ymd} {$previstoEntrada}");
-                $b = Carbon::parse("{$ymd} {$realEntrada}");
-                if ($b->lt($a)) {
-                    $extras += (int) $b->diffInMinutes($a);
-                }
-            } catch (\Throwable) {
-                // ignora horário inválido
-            }
-        }
-
-        $previstoSaida = self::normalizarHorarioBanco($diaEscala->saida_2);
-        $realSaida = self::normalizarHorarioBanco($registro->saida_2);
-        if ($previstoSaida !== null && $realSaida !== null) {
-            try {
-                $a = Carbon::parse("{$ymd} {$previstoSaida}");
-                $b = Carbon::parse("{$ymd} {$realSaida}");
-                if ($b->gt($a)) {
-                    $extras += (int) $a->diffInMinutes($b);
-                }
-            } catch (\Throwable) {
-                // ignora horário inválido
-            }
-        }
-
-        return $extras;
+            : Carbon::parse((string) $registro->data)->format('Y-m-d');
     }
 
     private static function diaEscalaTemJornada(HorarioEscalaDia $dia): bool
@@ -370,7 +495,7 @@ class FrequenciaCalculo
             : Carbon::parse((string) $registro->data)->format('Y-m-d');
 
         $previsto = self::normalizarHorarioBanco($diaEscala->entrada_1);
-        $real = self::normalizarHorarioBanco($registro->entrada_1);
+        $real = self::primeiraEntradaRegistro($registro);
         if ($previsto === null || $real === null) {
             return 0;
         }

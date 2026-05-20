@@ -63,6 +63,7 @@ class CartaoPontoService
                 'noturno' => 0,
                 'previstas' => 0,
                 'dia_falta' => 0,
+                'ocorrencias_falta' => 0,
                 'horas_falta' => 0,
                 'horas_atraso' => 0,
                 'falta_atraso' => 0,
@@ -81,6 +82,7 @@ class CartaoPontoService
                 $totais['noturno'] += $linha['minutos_noturno'];
                 $totais['previstas'] += $linha['minutos_previstas'];
                 $totais['dia_falta'] += (int) ($linha['minutos_dia_falta'] ?? 0);
+                $totais['ocorrencias_falta'] = ($totais['ocorrencias_falta'] ?? 0) + (($linha['tem_ocorrencia_falta'] ?? false) ? 1 : 0);
                 $totais['horas_falta'] += $linha['minutos_falta'];
                 $totais['horas_atraso'] += $linha['minutos_atraso'];
                 $totais['falta_atraso'] += $linha['minutos_falta_atraso'];
@@ -102,10 +104,16 @@ class CartaoPontoService
                     'horas_falta' => $totais['horas_falta'] > 0
                         ? FrequenciaCalculo::formatarMinutosRelogio($totais['horas_falta'])
                         : '',
-                    'horas_atraso' => FrequenciaCalculo::formatarMinutosRelogio($totais['horas_atraso']),
-                    'falta_atraso' => FrequenciaCalculo::formatarMinutosRelogio($totais['falta_atraso']),
+                    'horas_atraso' => $totais['horas_atraso'] > 0
+                        ? FrequenciaCalculo::formatarMinutosRelogio($totais['horas_atraso'])
+                        : '',
+                    'falta_atraso' => $totais['falta_atraso'] > 0
+                        ? FrequenciaCalculo::formatarMinutosRelogio($totais['falta_atraso'])
+                        : '',
                     'atestado' => '',
-                    'extras' => FrequenciaCalculo::formatarMinutosRelogio($totais['extras']),
+                    'extras' => $totais['extras'] > 0
+                        ? FrequenciaCalculo::formatarMinutosRelogio($totais['extras'])
+                        : '',
                 ],
             ];
         }
@@ -198,11 +206,11 @@ class CartaoPontoService
         }
 
         if (! $registro) {
-            return $this->linhaVazia($dia, $temJornada, $ymd);
+            return $this->linhaVazia($colaborador, $dia, $temJornada, $ymd);
         }
 
         if ($registro->status === 'falta' && ! $this->registroTemBatidas($registro)) {
-            return $this->linhaVazia($dia, $temJornada, $ymd, $registro);
+            return $this->linhaVazia($colaborador, $dia, $temJornada, $ymd, $registro);
         }
 
         return $this->linhaComBatidas($colaborador, $dia, $registro, $diaEscala, $ymd);
@@ -221,39 +229,24 @@ class CartaoPontoService
         $registro->setRelation('colaborador', $colaborador);
 
         $sufixo = $this->sufixoOrigem($registro->origem);
-        $batidaCompleta = $this->registroTemBatidaCompleta($registro);
-        $resumo = FrequenciaCalculo::resumo($registro);
-        $minutosTrabalhado = (int) $resumo['trabalhadas'];
+        $m = ApuracaoPontoMetricas::calcular($registro);
 
-        if ($batidaCompleta && $minutosTrabalhado === 0) {
-            $resumo = FrequenciaCalculo::resumoComFallbackEscala($registro);
-            $minutosTrabalhado = (int) $resumo['trabalhadas'];
-        }
-
-        $minutosPrevistas = (int) $resumo['jornada_esperada_minutos'];
-        $minutosExtras = (int) $resumo['extras'];
-        $minutosFalta = $resumo['falta'] !== null ? (int) $resumo['falta'] : 0;
-
-        if (! $batidaCompleta && $minutosTrabalhado === 0 && in_array($registro->status, ['presente', 'incompleto'], true)) {
-            $minutosFalta = 0;
-        }
-
-        $toleranciaFalta = FrequenciaCalculo::toleranciaFaltaEfetiva($registro, $minutosPrevistas);
-        $minutosFalta = FrequenciaCalculo::faltaEfetivaMinutos($minutosFalta, $toleranciaFalta);
-
+        $minutosTrabalhado = $m['trabalhadas'];
+        $minutosPrevistas = $m['previstas'];
+        $minutosFalta = $m['minutos_falta'];
+        $minutosAtrasoBruto = $m['atraso_bruto'];
+        $minutosAtrasoDescontavel = $m['atraso_descontavel'];
+        $minutosExtras = $m['minutos_extras'];
         $minutosNormais = min($minutosTrabalhado, max(0, $minutosPrevistas));
-        $minutosAtraso = FrequenciaCalculo::minutosAtrasoRegistro($registro);
-        if (FrequenciaCalculo::registroTemPontoCompleto($registro) && $minutosFalta === 0) {
-            $minutosAtraso = 0;
-        }
+        $totalDesconto = $m['total_desconto'];
 
         $status = (string) ($registro->status ?? 'falta');
-        $diaFalta = $status === 'falta' ? 1 : 0;
+        $diaFaltaIntegral = $m['dia_falta_integral'] ? 1 : 0;
         $atestado = $status === 'justificado' && $registro->justificativa_tipo === 'atestado' ? '1' : '';
 
         $tipoVisual = match (true) {
-            $status === 'falta' => 'falta',
-            $minutosFalta > 0 => 'falta',
+            $status === 'falta' && $diaFaltaIntegral > 0 => 'falta',
+            $m['tem_ocorrencia_falta'] => 'falta',
             $status === 'incompleto' => 'incompleto',
             default => 'normal',
         };
@@ -263,7 +256,7 @@ class CartaoPontoService
             'registro_id' => $registro->id,
             'status' => $status,
             'tipo_visual' => $tipoVisual,
-            'apurado' => $status !== 'falta' && $minutosFalta === 0,
+            'apurado' => $status !== 'falta' && $totalDesconto === 0,
             'dia' => $dia->format('d/m').' '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
             'dia_completo' => $dia->format('d/m/Y').' - '.self::DIAS_SEMANA[(int) $dia->isoWeekday()],
             'entrada_1' => $this->fmtBatida($registro->entrada_1, $sufixo),
@@ -274,20 +267,27 @@ class CartaoPontoService
             'total_trabalhado' => $this->fmtCelulaHoras($minutosTrabalhado),
             'adicional_noturno' => $this->fmtCelulaHoras(0) ?: '00:00',
             'horas_previstas' => $this->fmtCelulaHoras($minutosPrevistas),
-            'dia_falta' => $diaFalta > 0 ? '1' : '',
+            'dia_falta' => $diaFaltaIntegral > 0 ? '1' : '',
             'horas_falta' => $this->fmtCelulaHoras($minutosFalta),
-            'horas_atraso' => $this->fmtCelulaHoras($minutosAtraso),
-            'falta_atraso' => $this->fmtCelulaHoras($minutosFalta + $minutosAtraso),
+            'horas_atraso' => $this->fmtCelulaHoras($minutosAtrasoBruto),
+            'atraso_descontavel' => $this->fmtCelulaHoras($minutosAtrasoDescontavel),
+            'entrada_antecipada' => $this->fmtCelulaHoras($m['entrada_antecipada']),
+            'saida_posterior' => $this->fmtCelulaHoras($m['saida_posterior']),
+            'falta_atraso' => $this->fmtCelulaHoras($totalDesconto),
+            'tem_ocorrencia_falta' => $m['tem_ocorrencia_falta'],
             'atestado' => $atestado,
             'extras_total' => $this->fmtCelulaHoras($minutosExtras),
             'minutos_normais' => $minutosNormais,
             'minutos_trabalhado' => $minutosTrabalhado,
             'minutos_noturno' => 0,
             'minutos_previstas' => $minutosPrevistas,
-            'minutos_dia_falta' => $diaFalta,
+            'minutos_dia_falta' => $diaFaltaIntegral,
             'minutos_falta' => $minutosFalta,
-            'minutos_atraso' => $minutosAtraso,
-            'minutos_falta_atraso' => $minutosFalta + $minutosAtraso,
+            'minutos_atraso' => $minutosAtrasoBruto,
+            'minutos_atraso_descontavel' => $minutosAtrasoDescontavel,
+            'minutos_falta_atraso' => $totalDesconto,
+            'minutos_entrada_antecipada' => $m['entrada_antecipada'],
+            'minutos_saida_posterior' => $m['saida_posterior'],
             'minutos_extras' => $minutosExtras,
         ]);
     }
@@ -460,9 +460,27 @@ class CartaoPontoService
     /**
      * @return array<string, mixed>
      */
-    private function linhaVazia(Carbon $dia, bool $temJornada, string $ymd, ?FrequenciaRegistro $registro = null): array
-    {
+    private function linhaVazia(
+        Colaborador $colaborador,
+        Carbon $dia,
+        bool $temJornada,
+        string $ymd,
+        ?FrequenciaRegistro $registro = null
+    ): array {
         $ehFalta = $temJornada;
+        $minutosPrevistas = 0;
+        $minutosFalta = 0;
+
+        if ($ehFalta) {
+            $base = $registro ?? new FrequenciaRegistro([
+                'colaborador_id' => $colaborador->id,
+                'data' => $ymd,
+                'status' => 'falta',
+            ]);
+            $base->setRelation('colaborador', $colaborador);
+            $minutosPrevistas = FrequenciaCalculo::jornadaMinutosParaRegistro($base);
+            $minutosFalta = $minutosPrevistas;
+        }
 
         return array_merge($this->metadadosApuracao($registro, false), [
             'data_ymd' => $ymd,
@@ -479,19 +497,19 @@ class CartaoPontoService
             'total_normais' => '',
             'total_trabalhado' => '',
             'adicional_noturno' => '',
-            'horas_previstas' => $temJornada ? '' : '',
-            'dia_falta' => $temJornada ? '1' : '',
-            'horas_falta' => '',
+            'horas_previstas' => $this->fmtCelulaHoras($minutosPrevistas),
+            'dia_falta' => $ehFalta ? '1' : '',
+            'horas_falta' => $this->fmtCelulaHoras($minutosFalta),
             'horas_atraso' => '',
-            'falta_atraso' => '',
+            'falta_atraso' => $this->fmtCelulaHoras($minutosFalta),
             'atestado' => '',
             'extras_total' => '',
             'minutos_normais' => 0,
             'minutos_trabalhado' => 0,
             'minutos_noturno' => 0,
-            'minutos_previstas' => 0,
-            'minutos_dia_falta' => $temJornada ? 1 : 0,
-            'minutos_falta' => 0,
+            'minutos_previstas' => $minutosPrevistas,
+            'minutos_dia_falta' => $ehFalta ? 1 : 0,
+            'minutos_falta' => $minutosFalta,
             'minutos_atraso' => 0,
             'minutos_falta_atraso' => 0,
             'minutos_extras' => 0,

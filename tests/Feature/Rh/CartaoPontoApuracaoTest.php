@@ -129,7 +129,52 @@ class CartaoPontoApuracaoTest extends TestCase
             '2026-04-06'
         )[0];
 
-        $this->assertSame('', $cartao['linhas'][0]['horas_falta']);
+        $this->assertSame('08:00', $cartao['linhas'][0]['horas_falta']);
+    }
+
+    public function test_nao_dobra_desconto_somando_falta_e_atraso(): void
+    {
+        $escala = HorarioEscala::query()->create([
+            'nome' => 'CT',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+        HorarioEscalaDia::query()->create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '08:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:00:00',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Atraso 20',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+        FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colab->id,
+            'data' => '2026-04-06',
+            'status' => 'presente',
+            'entrada_1' => '08:20:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:00:00',
+            'origem' => 'csv_ponto',
+        ]);
+
+        $linha = app(CartaoPontoService::class)->montarCartoes(
+            collect([$colab->load('horarioEscala.dias')]),
+            '2026-04-06',
+            '2026-04-06'
+        )[0]['linhas'][0];
+
+        $this->assertSame('00:20', $linha['horas_atraso']);
+        $this->assertSame('00:20', $linha['horas_falta']);
+        $this->assertSame('00:20', $linha['falta_atraso']);
+        $this->assertSame(20, $linha['minutos_falta_atraso']);
+        $this->assertNotSame('00:40', $linha['falta_atraso']);
+        $this->assertSame('', $linha['dia_falta']);
     }
 
     public function test_tolerancia_nao_marca_falta_em_diferenca_de_minutos(): void
@@ -174,9 +219,10 @@ class CartaoPontoApuracaoTest extends TestCase
         )[0];
 
         $linha = $cartao['linhas'][0];
-        $this->assertTrue($linha['apurado']);
         $this->assertSame('', $linha['horas_falta']);
-        $this->assertSame('normal', $linha['tipo_visual']);
+        $this->assertSame('', $linha['falta_atraso']);
+        $this->assertSame('', $linha['dia_falta']);
+        $this->assertTrue($linha['apurado']);
     }
 
     public function test_apuracao_nao_marca_falta_antes_da_admissao(): void
@@ -259,6 +305,90 @@ class CartaoPontoApuracaoTest extends TestCase
             ->assertOk()
             ->assertSee('Antes da admiss', false)
             ->assertDontSee('text-red-600 font-semibold">1</', false);
+    }
+
+    public function test_dia_sem_batida_com_jornada_conta_horas_falta_da_escala(): void
+    {
+        $escala = HorarioEscala::query()->create([
+            'nome' => 'CT',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+        HorarioEscalaDia::query()->create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '08:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:00:00',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Sem batida',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+        FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colab->id,
+            'data' => '2026-04-06',
+            'status' => 'falta',
+            'origem' => 'grade',
+        ]);
+
+        $linha = app(CartaoPontoService::class)->montarCartoes(
+            collect([$colab->load('horarioEscala.dias')]),
+            '2026-04-06',
+            '2026-04-06'
+        )[0]['linhas'][0];
+
+        $this->assertSame('1', $linha['dia_falta']);
+        $this->assertSame('08:00', $linha['horas_falta']);
+        $this->assertFalse($linha['apurado']);
+    }
+
+    public function test_resumo_para_apuracao_iguala_cartao_com_quatro_batidas(): void
+    {
+        $escala = HorarioEscala::query()->create([
+            'nome' => 'Motorista',
+            'tipo' => 'semanal',
+            'status' => 'ativo',
+        ]);
+        HorarioEscalaDia::query()->create([
+            'horario_escala_id' => $escala->id,
+            'dia_semana' => 1,
+            'entrada_1' => '04:00:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '17:30:00',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Motorista',
+            'horario_escala_id' => $escala->id,
+            'status' => 'ativo',
+        ]);
+        $registro = FrequenciaRegistro::query()->create([
+            'colaborador_id' => $colab->id,
+            'data' => '2026-04-06',
+            'status' => 'presente',
+            'entrada_1' => '07:31:00',
+            'saida_1' => '12:00:00',
+            'entrada_2' => '13:00:00',
+            'saida_2' => '20:30:00',
+            'origem' => 'csv_ponto',
+        ]);
+        $registro->load('colaborador.horarioEscala.dias');
+
+        $linha = app(CartaoPontoService::class)->montarCartoes(
+            collect([$colab]),
+            '2026-04-06',
+            '2026-04-06'
+        )[0]['linhas'][0];
+
+        $this->assertSame('00:31', $linha['horas_falta']);
+        $this->assertSame('00:31', $linha['falta_atraso']);
+        $this->assertSame('03:31', $linha['horas_atraso']);
+        $this->assertSame('', $linha['dia_falta']);
+        $this->assertSame('11:59', $linha['total_trabalhado']);
+        $this->assertSame('12:30', $linha['horas_previstas']);
     }
 
     public function test_rota_apuracao_exibe_totais_coerentes(): void
