@@ -7,7 +7,9 @@ use Illuminate\Console\Command;
 
 class BeneficiosDiagnosticoCommand extends Command
 {
-    protected $signature = 'beneficios:diagnostico {id? : ID para verificar (ex.: 1)}';
+    protected $signature = 'beneficios:diagnostico
+                            {id? : ID para verificar (ex.: 1)}
+                            {--rota : Simula GET HTTP e mostra se o router casa rh/beneficios/{id}}';
 
     protected $description = 'Lista benefícios no banco e verifica se um ID existe (diagnóstico 404 em produção)';
 
@@ -43,6 +45,20 @@ class BeneficiosDiagnosticoCommand extends Command
             } else {
                 $this->info("ID {$id} existe: {$registro->nome} ({$registro->status})");
                 $this->line("URL gestão: /public/rh/beneficios/{$id}");
+
+                $vinculos = $registro->colaboradores()->with('colaborador:id,nome')->get(['id', 'colaborador_id', 'beneficio_id']);
+                if ($vinculos->isEmpty()) {
+                    $this->warn('Nenhum vínculo em colaborador_beneficios para este benefício.');
+                } else {
+                    $this->table(
+                        ['vinculo_id', 'colaborador_id', 'nome'],
+                        $vinculos->map(fn ($v) => [
+                            $v->id,
+                            $v->colaborador_id,
+                            $v->colaborador?->nome ?? '(sem nome)',
+                        ])->all()
+                    );
+                }
             }
         }
 

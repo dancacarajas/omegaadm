@@ -58,6 +58,15 @@ class BeneficioController extends Controller
         }
 
         if ($request->isMethod('POST')) {
+            if (config('app.debug')) {
+                logger()->info('beneficio.show.post', [
+                    'beneficio_id' => $beneficio->id,
+                    'path' => $request->path(),
+                    'uri' => $request->getRequestUri(),
+                    'payload' => $request->except(['_token']),
+                ]);
+            }
+
             return app(BeneficioColaboradorController::class)->store($request, $beneficio);
         }
 

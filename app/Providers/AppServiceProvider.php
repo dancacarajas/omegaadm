@@ -35,7 +35,13 @@ class AppServiceProvider extends ServiceProvider
                 $query->where('beneficio_id', $beneficioId);
             }
 
-            return $query->firstOrFail();
+            $vinculo = $query->first();
+
+            if ($vinculo === null) {
+                abort(404, 'Vínculo não encontrado para este benefício.');
+            }
+
+            return $vinculo;
         });
     }
 }

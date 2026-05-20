@@ -8,22 +8,32 @@ use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BeneficioColaboradorController extends Controller
 {
     public function store(Request $request, Beneficio $beneficio)
     {
-        if ($request->filled('vinculo_id')) {
-            $vinculo = ColaboradorBeneficio::query()
-                ->where('beneficio_id', $beneficio->id)
-                ->whereKey($request->integer('vinculo_id'))
-                ->firstOrFail();
+        if (config('app.debug')) {
+            logger()->info('beneficio.colaborador.store', [
+                'beneficio_id' => $beneficio->id,
+                'payload' => $request->except(['_token']),
+            ]);
+        }
+
+        if ($request->has('vinculo_id') && $request->input('vinculo_id') !== '' && $request->input('vinculo_id') !== null) {
+            $vinculo = $this->findVinculoDoBeneficio($request, $beneficio);
 
             return $this->manage($request, $beneficio, $vinculo);
         }
 
         $data = $this->validatedData($request, $beneficio);
-        $colaborador = Colaborador::query()->findOrFail($data['colaborador_id']);
+        $colaborador = Colaborador::query()->find($data['colaborador_id']);
+        if ($colaborador === null) {
+            throw ValidationException::withMessages([
+                'colaborador_id' => 'Colaborador não encontrado.',
+            ]);
+        }
 
         ColaboradorBeneficio::create([
             ...$data,
@@ -40,7 +50,11 @@ class BeneficioColaboradorController extends Controller
 
     public function manage(Request $request, Beneficio $beneficio, ColaboradorBeneficio $vinculo)
     {
-        abort_unless($vinculo->beneficio_id === $beneficio->id, 404);
+        if ($vinculo->beneficio_id !== $beneficio->id) {
+            throw ValidationException::withMessages([
+                'vinculo_id' => 'Este vínculo não pertence a este benefício.',
+            ]);
+        }
 
         if (! $request->filled('acao') && str_contains($request->path(), '/excluir')) {
             $request->merge(['acao' => 'excluir']);
@@ -73,7 +87,7 @@ class BeneficioColaboradorController extends Controller
         if (
             $anterior !== ''
             && $anterior !== url()->current()
-            && str_contains($anterior, '/rh/beneficios/')
+            && (str_contains($anterior, '/rh/beneficios/') || str_contains($anterior, '/public/rh/beneficios/'))
             && ! str_contains($anterior, '/colaboradores/')
             && ! str_contains($anterior, '/vinculos')
         ) {
@@ -81,6 +95,30 @@ class BeneficioColaboradorController extends Controller
         }
 
         return redirect()->to($destino);
+    }
+
+    private function findVinculoDoBeneficio(Request $request, Beneficio $beneficio): ColaboradorBeneficio
+    {
+        $vinculoId = $request->integer('vinculo_id');
+
+        if ($vinculoId < 1) {
+            throw ValidationException::withMessages([
+                'vinculo_id' => 'Vínculo inválido. Recarregue a página e tente novamente.',
+            ]);
+        }
+
+        $vinculo = ColaboradorBeneficio::query()
+            ->where('beneficio_id', $beneficio->id)
+            ->whereKey($vinculoId)
+            ->first();
+
+        if ($vinculo === null) {
+            throw ValidationException::withMessages([
+                'vinculo_id' => 'Vínculo não encontrado para este benefício. Recarregue a página.',
+            ]);
+        }
+
+        return $vinculo;
     }
 
     private function validatedData(Request $request, Beneficio $beneficio, ?ColaboradorBeneficio $vinculo = null): array

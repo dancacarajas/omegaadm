@@ -16,6 +16,17 @@
 @endsection
 
 @section('content')
+    @if ($errors->any())
+        <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+            <p class="font-semibold">Não foi possível concluir a ação:</p>
+            <ul class="mt-2 list-inside list-disc">
+                @foreach ($errors->all() as $erro)
+                    <li>{{ $erro }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     @php
         /** Mesmo padrão dos demais módulos RH: route() + ForceRequestRootUrl (/public em produção). */
         $urlGestaoBeneficio = route('rh.beneficios.show', $beneficio);
@@ -176,31 +187,32 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($colaboradoresVinculados as $vinculo)
-                        @php $formVinculo = 'vinculo-form-' . $vinculo->id; @endphp
-                        <tr class="align-top">
+                        <form method="POST" action="{{ $urlGestaoBeneficio }}" class="contents">
+                            @csrf
+                            <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
+                            <tr class="align-top">
                             <td class="px-5 py-4">
                                 <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
                                 <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
                             </td>
                             <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
-                                <input form="{{ $formVinculo }}" type="hidden" name="tem_direito" value="0">
+                                <input type="hidden" name="tem_direito" value="0">
                                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
+                                    <input type="checkbox" name="tem_direito" value="1" @checked($vinculo->tem_direito) class="h-4 w-4 accent-brand-burgundy">
                                     Tem direito
                                 </label>
                             </td>
                             <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="cartao_entregue" value="0">
+                                <input type="hidden" name="cartao_entregue" value="0">
                                 <label class="inline-flex items-center gap-2 text-sm font-semibold {{ $vinculo->tem_direito && ! $vinculo->cartao_entregue ? 'text-brand-burgundy' : 'text-brand-black' }}">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
+                                    <input type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="h-4 w-4 accent-brand-burgundy">
                                     {{ $vinculo->cartao_entregue ? 'Entregue' : 'Pendente' }}
                                 </label>
                             </td>
                             <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" type="hidden" name="beneficio_ativo" value="0">
+                                <input type="hidden" name="beneficio_ativo" value="0">
                                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
-                                    <input form="{{ $formVinculo }}" type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
+                                    <input type="checkbox" name="beneficio_ativo" value="1" @checked($vinculo->beneficio_ativo) class="h-4 w-4 accent-brand-burgundy">
                                     Ativo
                                 </label>
                             </td>
@@ -214,30 +226,28 @@
                                     </div>
                                     <label>
                                         <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Entrega do cartao</span>
-                                        <input form="{{ $formVinculo }}" type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 rounded-lg border border-zinc-200 px-2 text-xs">
+                                        <input type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="mt-1 h-9 rounded-lg border border-zinc-200 px-2 text-xs">
                                     </label>
                                 </div>
                             </td>
                             <td class="px-5 py-4">
-                                <input form="{{ $formVinculo }}" name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
-                                <textarea form="{{ $formVinculo }}" name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
+                                <input name="numero_cartao" value="{{ $vinculo->numero_cartao }}" placeholder="Número do cartão" class="h-9 w-full rounded-lg border border-zinc-200 px-3 text-xs">
+                                <textarea name="observacoes" placeholder="Observações" class="mt-2 min-h-16 w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs">{{ $vinculo->observacoes }}</textarea>
                             </td>
                             <td class="px-5 py-4">
-                                <form id="{{ $formVinculo }}" method="POST" action="{{ $urlGestaoBeneficio }}">
-                                    @csrf
-                                </form>
                                 <div class="flex flex-col justify-end gap-2 sm:flex-row">
-                                    <button type="submit" form="{{ $formVinculo }}" name="acao" value="salvar" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
+                                    <button type="submit" name="acao" value="salvar" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-3 text-xs font-semibold text-white">
                                         <i data-lucide="save" class="h-4 w-4"></i>
                                         Salvar
                                     </button>
-                                    <button type="submit" form="{{ $formVinculo }}" name="acao" value="excluir" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black" onclick="return confirm('Remover este colaborador do benefício?')">
+                                    <button type="submit" name="acao" value="excluir" class="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black" onclick="return confirm('Remover este colaborador do benefício?')">
                                         <i data-lucide="trash-2" class="h-4 w-4"></i>
                                         Excluir
                                     </button>
                                 </div>
                             </td>
-                        </tr>
+                            </tr>
+                        </form>
                     @empty
                         <tr>
                             <td colspan="7" class="px-5 py-12 text-center">

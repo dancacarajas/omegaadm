@@ -53,6 +53,23 @@ php artisan tinker --execute="echo json_encode(\DB::table('beneficios')->select(
 
 Não testar `/beneficios/1` sem confirmar que o ID 1 existe em produção.
 
+### Fase 3 — POST 419 no curl, mas POST 404 no navegador logado
+
+| Teste | Resultado | Significado |
+|-------|-----------|-------------|
+| `curl POST` sem CSRF | **419** | Rota existe; Laravel recebeu o POST |
+| Navegador POST com CSRF | **404** | Depois do CSRF, algo na aplicação aborta (não é rewrite) |
+
+Causas corrigidas no código (`fe2ec07+`):
+
+1. **`firstOrFail()` em `BeneficioColaboradorController@store`** quando `vinculo_id` não existe ou não pertence ao benefício → virou `ValidationException` (redirect com mensagem, não 404).
+2. **Formulário da tabela** usava `form="id"` com campos **fora** do `<form>` → alguns navegadores enviavam POST só com `_token` e `acao`, sem `vinculo_id` → comportamento imprevisível. Corrigido com `<form class="contents">` envolvendo a linha.
+3. **`redirectAposAcao`** não reconhecia URL anterior com `/public/rh/beneficios/`.
+
+Logs (só com `APP_DEBUG=true`): `storage/logs/laravel.log` → `beneficio.show.post`, `beneficio.colaborador.store`.
+
+---
+
 ### Se o ID existir e ainda der 404
 
 Com `APP_DEBUG=true` temporário:

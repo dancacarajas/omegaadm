@@ -198,10 +198,30 @@ class BeneficioColaboradorVinculoTest extends TestCase
             'colaborador_id' => $colaborador->id,
         ]);
 
-        $this->actingAs($user)->post(route('rh.beneficios.show', $beneficioA), [
-            'vinculo_id' => $vinculo->id,
-            'acao' => 'salvar',
-            'tem_direito' => '1',
-        ])->assertNotFound();
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficioA))
+            ->post(route('rh.beneficios.show', $beneficioA), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'salvar',
+                'tem_direito' => '1',
+            ])
+            ->assertRedirect(route('rh.beneficios.show', $beneficioA))
+            ->assertSessionHasErrors('vinculo_id');
+    }
+
+    public function test_salvar_com_vinculo_id_inexistente_retorna_erro_nao_404(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'vinculo_id' => 99999,
+                'acao' => 'salvar',
+                'tem_direito' => '1',
+            ])
+            ->assertRedirect(route('rh.beneficios.show', $beneficio))
+            ->assertSessionHasErrors('vinculo_id');
     }
 }
