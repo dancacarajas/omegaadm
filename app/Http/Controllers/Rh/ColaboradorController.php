@@ -43,7 +43,15 @@ class ColaboradorController extends Controller
 
         $funcoes = $this->funcoesDistintas();
 
-        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes'));
+        $resumoEfetivo = [
+            'cadastros_total' => Colaborador::query()->count(),
+            'ativos' => Colaborador::query()->where('status', 'ativo')->count(),
+            'afastados' => Colaborador::query()->where('status', 'afastado')->count(),
+            'desligados' => Colaborador::query()->where('status', 'desligado')->count(),
+            'mobilizacao_concluida' => Colaborador::query()->where('mobilizacao_status', 'mobilizacao_concluida')->count(),
+        ];
+
+        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'resumoEfetivo'));
     }
 
     public function create()

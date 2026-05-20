@@ -13,7 +13,11 @@
         $periodoInicioInput = $periodoInicioInput ?? $periodoInicio->toDateString();
         $periodoFimInput = $periodoFimInput ?? $periodoFim->copy()->startOfDay()->toDateString();
         $json = fn ($value) => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $evolucaoTe = $evolucaoTransferencias ?? ['entrada' => 0, 'saida' => 0];
+        $mp = $movimentacoesPainel ?? [];
+        $evolucaoTe = $evolucaoTransferencias ?? [
+            'entrada' => (int) ($mp['transferencia_entrada'] ?? 0),
+            'saida' => (int) ($mp['transferencia_saida'] ?? 0),
+        ];
         $evolucaoEntradasTotal = (int) ($resumoEfetivo['admitidos'] ?? 0) + (int) ($evolucaoTe['entrada'] ?? 0);
         $evolucaoSaidasTotal = (int) ($resumoEfetivo['desligados'] ?? 0) + (int) ($evolucaoTe['saida'] ?? 0);
     @endphp
@@ -116,7 +120,7 @@
 
             <div class="border-b border-amber-200/90 bg-amber-50/80 px-6 py-3.5 text-xs leading-relaxed text-amber-950 sm:px-8">
                 <span class="font-semibold">Metodologia:</span>
-                efetivo por admissão/demissão; vínculo ao contrato por <strong>centro de custo</strong>, <strong>tipo de contrato</strong>, <strong>vaga de recrutamento</strong> (campo contrato da vaga), ou menção numérica em <strong>local de trabalho</strong>; TRIM e equivalência numérica (286 = 0286). Datas SGC de mobilização não alteram esses totais.
+                efetivo inicial/final e admissões por data no cadastro; transferências, desligamentos com motivo e demais eventos pelo histórico em <strong>Movimentações de efetivo</strong>. Vínculo ao contrato por <strong>centro de custo</strong>, <strong>tipo de contrato</strong>, <strong>vaga</strong> ou <strong>local de trabalho</strong> (TRIM e equivalência numérica 286 = 0286).
             </div>
 
             <div class="px-6 pb-10 pt-8 sm:px-8">
@@ -126,11 +130,21 @@
                             <x-rh.chart-card
                                 eyebrow="Movimentação"
                                 title="Resumo do período"
-                                subtitle="Efetivo no fechamento anterior ao período, entradas, saídas e posição ao final do intervalo analisado."
+                                subtitle="Efetivo inicial, admissões, transferências internas, desligamentos e efetivo final — alinhado ao histórico de Movimentações de efetivo."
                             >
                                 <div class="rounded-xl bg-zinc-50/80 p-4">
                                     <div data-apex-chart="#chart-rh-resumo-periodo" class="rh-pe-chart-host min-h-[300px]"></div>
                                 </div>
+                                @if (! empty($resumoMovimentacoesCard ?? []))
+                                    <div class="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
+                                        @foreach ($resumoMovimentacoesCard as $chip)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-[#600020]/15 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800">
+                                                <span class="text-zinc-500">{{ $chip['label'] }}</span>
+                                                <span class="tabular-nums text-[#600020]">{{ $chip['value'] }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </x-rh.chart-card>
                         @endif
 
@@ -236,7 +250,7 @@
             </div>
 
             <p class="border-b border-zinc-100 px-6 py-2.5 text-[11px] leading-relaxed text-zinc-500 sm:px-8">
-                Transferências de entrada/saída exibem <strong class="text-zinc-700">0</strong> até existir registo no cadastro; admitidos e desligados seguem a metodologia do painel executivo.
+                Transferências, desligamentos com motivo e demais eventos vêm do histórico em <strong class="text-zinc-700">Movimentações de efetivo</strong>; admissões e efetivo inicial/final usam datas do cadastro.
             </p>
 
             <div class="px-6 pb-10 pt-8 sm:px-8">
@@ -247,7 +261,7 @@
                                 <x-rh.chart-card
                                     titleIcon="chart-column-increasing"
                                     title="Resumo do período"
-                                    subtitle="Efetivo inicial, movimentações e posição ao final do intervalo analisado."
+                                    subtitle="Efetivo inicial, admissões, transferências, desligamentos e efetivo final (histórico de Movimentações de efetivo)."
                                     class="w-full shrink-0"
                                 >
                                     <div class="rounded-xl bg-zinc-50/80 p-4">
@@ -290,6 +304,22 @@
                                     <p class="text-2xl font-bold tabular-nums text-[#600020]">{{ (int) ($evolucaoTe['saida'] ?? 0) }}</p>
                                 </div>
                             </div>
+
+                            @if (! empty($evolucaoMetricasExtras ?? []))
+                                <div
+                                    class="flex w-full shrink-0 flex-col divide-y divide-[#E0E0E0] overflow-hidden rounded-[14px] border border-dashed border-[#600020]/25 bg-zinc-50/50 shadow-sm sm:flex-row sm:divide-x sm:divide-y-0"
+                                >
+                                    @foreach ($evolucaoMetricasExtras as $extra)
+                                        <div class="flex flex-1 flex-col items-center gap-2 px-3 py-4 text-center sm:px-4">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100/80 text-[#600020]">
+                                                <i data-lucide="{{ $extra['icon'] }}" class="h-4 w-4" stroke-width="1.5"></i>
+                                            </div>
+                                            <p class="text-[11px] font-bold leading-tight text-zinc-800">{{ $extra['label'] }}</p>
+                                            <p class="text-xl font-bold tabular-nums text-[#600020]">{{ $extra['value'] }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex min-h-0 min-w-0 flex-col gap-6 lg:h-full">
@@ -414,7 +444,8 @@
                 </div>
 
                 <p class="border-b border-zinc-100 px-6 py-2.5 text-[11px] leading-relaxed text-zinc-500 sm:px-8">
-                    Motivos consolidados são <strong class="text-zinc-700">heurísticos</strong> (ligados a admissões, desligamentos e transferências) até existir cadastro formal de motivo no sistema.
+                    <strong class="text-zinc-700">Turnover geral</strong> = [(admissões + desligamentos) ÷ 2] ÷ efetivo médio × 100, com efetivo médio = (inicial + final) ÷ 2.
+                    Voluntário usa desligamentos com tipo <em>pedido de demissão</em> no histórico. Motivos consolidados vêm de Movimentações de efetivo.
                 </p>
 
                 <div class="px-6 pb-10 pt-8 sm:px-8">
@@ -863,7 +894,7 @@
                 </div>
 
                 <p class="border-b border-zinc-100 px-6 py-2.5 text-[11px] leading-relaxed text-zinc-500 sm:px-8">
-                    <strong class="text-zinc-700">Horas extras por causa</strong> repartem o saldo entre jornada realizada e prevista (quando positivo), com pesos operacionais até existir cadastro formal por motivo.
+                    Jornada e horas extras vêm da <strong class="text-zinc-700">apuração de ponto</strong>. <strong class="text-zinc-700">Regularização</strong> = % de dias com jornada prevista tratados (presente, justificado/abono ou falta lançada); incompleto ou dia em branco não conta.
                     <strong class="text-zinc-700">Controle de ponto</strong> usa totais de registos de frequência no período.
                 </p>
 

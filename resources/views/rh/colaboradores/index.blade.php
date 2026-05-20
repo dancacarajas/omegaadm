@@ -48,15 +48,15 @@
                 </div>
                 <span class="rounded-full bg-brand-burgundy-soft px-2.5 py-1 text-xs font-bold text-brand-burgundy">RH</span>
             </div>
-            <p class="mt-5 text-sm font-semibold text-brand-gray">Total no efetivo</p>
-            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $colaboradores->total() }}</p>
+            <p class="mt-5 text-sm font-semibold text-brand-gray">Colaboradores ativos</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['ativos'] }}</p>
         </article>
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-gray-soft text-brand-black">
-                <i data-lucide="badge-check" class="h-5 w-5"></i>
+                <i data-lucide="users" class="h-5 w-5"></i>
             </div>
-            <p class="mt-5 text-sm font-semibold text-brand-gray">Cadastros ativos</p>
-            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $colaboradores->where('status', 'ativo')->count() }}</p>
+            <p class="mt-5 text-sm font-semibold text-brand-gray">Cadastros no sistema</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['cadastros_total'] }}</p>
         </article>
         <article class="rounded-xl border border-zinc-200 bg-brand-gray p-5 text-white shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-white/20 text-white">
@@ -70,7 +70,7 @@
                 <i data-lucide="badge-check" class="h-5 w-5"></i>
             </div>
             <p class="mt-5 text-sm font-semibold text-brand-gray">Mobilização concluída</p>
-            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $colaboradores->where('mobilizacao_status', 'mobilizacao_concluida')->count() }}</p>
+            <p class="mt-1 text-3xl font-bold text-brand-black">{{ $resumoEfetivo['mobilizacao_concluida'] }}</p>
         </article>
     </section>
 

@@ -32,9 +32,15 @@ final class TransferenciasEfetivoPeriodo
             ->whereDate('data_inicio', '>=', $ini)
             ->whereDate('data_inicio', '<=', $fim);
 
+        $entrada = (clone $base);
+        CentroCustoContratoMatcher::aplicar($entrada, 'centro_custo_novo', $tokens);
+
+        $saida = (clone $base);
+        CentroCustoContratoMatcher::aplicar($saida, 'centro_custo_anterior', $tokens);
+
         return [
-            'entrada' => (clone $base)->whereIn('centro_custo_novo', $tokens)->count(),
-            'saida' => (clone $base)->whereIn('centro_custo_anterior', $tokens)->count(),
+            'entrada' => (int) $entrada->count(),
+            'saida' => (int) $saida->count(),
         ];
     }
 }

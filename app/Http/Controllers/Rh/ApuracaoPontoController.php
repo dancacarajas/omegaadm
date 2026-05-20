@@ -13,8 +13,8 @@ use App\Support\JustificativaPontoService;
 use App\Support\Rh\CartaoPontoService;
 use App\Support\Rh\ColaboradorVinculoPonto;
 use App\Support\Rh\FrequenciaRegistroReconciliacao;
+use App\Support\Rh\GarantirFrequenciaRegistrosPeriodo;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -56,10 +56,11 @@ class ApuracaoPontoController extends Controller
                 $colaborador->id
             );
 
-            $this->garantirRegistrosPeriodoColaborador(
+            GarantirFrequenciaRegistrosPeriodo::gerarFaltasColaboradorNoPeriodo(
                 $colaborador,
                 $dataInicio->toDateString(),
-                $dataFim->toDateString()
+                $dataFim->toDateString(),
+                false
             );
 
             $cartoes = app(CartaoPontoService::class)->montarCartoes(
@@ -213,36 +214,6 @@ class ApuracaoPontoController extends Controller
         return redirect()
             ->to($request->input('redirect', route('rh.frequencia.apuracao.index')))
             ->with('success', 'Justificativa removida do dia.');
-    }
-
-    private function garantirRegistrosPeriodoColaborador(Colaborador $colaborador, string $dataInicio, string $dataFim): void
-    {
-        $inicio = Carbon::parse($dataInicio)->startOfDay();
-        $fim = Carbon::parse($dataFim)->startOfDay();
-
-        foreach (CarbonPeriod::create($inicio, $fim) as $dia) {
-            $dataYmd = $dia->toDateString();
-
-            if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dataYmd)) {
-                continue;
-            }
-
-            $existe = FrequenciaRegistro::query()
-                ->where('colaborador_id', $colaborador->id)
-                ->whereDate('data', $dataYmd)
-                ->exists();
-
-            if ($existe) {
-                continue;
-            }
-
-            FrequenciaRegistro::query()->create([
-                'colaborador_id' => $colaborador->id,
-                'data' => $dataYmd,
-                'status' => 'falta',
-                'origem' => 'grade',
-            ]);
-        }
     }
 
     private function urlApuracao(Request $request, ?int $colaboradorId, string $dataInicio, string $dataFim): string

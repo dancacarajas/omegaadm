@@ -33,6 +33,10 @@ Documento de referência após revisão RH/jurídica em 2026-05. Fonte de verdad
 | **Taxa** | `horas_ausencia / horas_previstas` (ex.: 20 min em 8 h ≈ 0,04 dia, não 1 dia). |
 | **Contagem de dias (`ausencias`)** | Apenas `dia_falta_integral` e faltas/justificados de dia inteiro. |
 
+## Grade automática de faltas
+
+No painel executivo e na regularização de ponto, dias de **jornada prevista** sem linha em `frequencia_registros` recebem automaticamente `status=falta` e `origem=grade` (mesma regra da apuração por colaborador, via `GarantirFrequenciaRegistrosPeriodo`). Apenas dias em que a escala prevê trabalho entram na grade; folgas e feriados não ganham falta por esse fluxo.
+
 ## Tolerância
 
 - Padrão: `RH_FREQUENCIA_TOLERANCIA_FALTA_MINUTOS` = **10** (não usar 5% da jornada como padrão).

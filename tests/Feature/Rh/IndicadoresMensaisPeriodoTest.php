@@ -3,9 +3,11 @@
 namespace Tests\Feature\Rh;
 
 use App\Models\Colaborador;
+use App\Models\ColaboradorMovimentacao;
 use App\Models\Contrato;
 use App\Models\FrequenciaRegistro;
 use App\Models\User;
+use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use App\Support\Rh\ColaboradorQueryPorContratoPainel;
 use App\Support\Rh\ColaboradorVinculoPonto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,5 +161,39 @@ class IndicadoresMensaisPeriodoTest extends TestCase
             $totalCard
         );
         $this->assertSame('2', $totalCard[1] ?? '', 'Card de ocorrências deve refletir os 2 abonos');
+    }
+
+    public function test_card_movimentacao_exibe_transferencias_no_grafico_e_leitura(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        Contrato::query()->create([
+            'numero' => '286',
+            'nome' => 'Contrato 286',
+            'centro_custo' => '286',
+            'status' => 'ativo',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Transferido',
+            'status' => 'ativo',
+            'centro_custo' => 'OUTRO',
+        ]);
+        ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
+            'data_inicio' => '2026-04-10',
+            'centro_custo_anterior' => 'OUTRO',
+            'centro_custo_novo' => '286',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('rh.indicadores-mensais.painel-executivo', [
+                'contrato' => '286',
+                'periodo_inicio' => '2026-04-01',
+                'periodo_fim' => '2026-04-30',
+            ]))
+            ->assertOk()
+            ->assertSee('Transf. entrada', false)
+            ->assertSee('transferências internas (1 entrada(s)', false)
+            ->assertSee('1 transferência(s) de entrada', false);
     }
 }

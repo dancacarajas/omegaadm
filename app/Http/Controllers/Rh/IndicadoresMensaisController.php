@@ -8,9 +8,14 @@ use App\Models\Contrato;
 use App\Models\FrequenciaRegistro;
 use App\Services\Rh\MovimentacaoEfetivoPeriodo;
 use App\Support\ContratoAccess;
+use App\Support\FrequenciaCalculo;
 use App\Support\Rh\AbsenteismoPeriodo;
 use App\Support\Rh\ColaboradorQueryPorContratoPainel;
 use App\Support\Rh\ColaboradorVinculoPonto;
+use App\Support\Rh\MovimentacoesPainelExecutivoPeriodo;
+use App\Support\Rh\JornadaPontoPeriodoAgregador;
+use App\Support\Rh\RegularizacaoPontoPeriodo;
+use App\Support\Rh\TurnoverIndicadoresPeriodo;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,7 +120,15 @@ class IndicadoresMensaisController extends Controller
         $service = new MovimentacaoEfetivoPeriodo($identificadoresColaborador);
         $resumoEfetivo = $service->resumo($periodoInicio, $periodoFim);
 
-        $chartResumoPeriodo = $this->chartResumoPeriodo($resumoEfetivo);
+        $movimentacoesPainel = MovimentacoesPainelExecutivoPeriodo::resumo(
+            $identificadoresColaborador,
+            $periodoInicio,
+            $periodoFim
+        );
+        $resumoEfetivo['admitidos'] = $movimentacoesPainel['admitidos'];
+        $resumoEfetivo['desligados'] = $movimentacoesPainel['desligados'];
+
+        $chartResumoPeriodo = $this->chartResumoPeriodo($resumoEfetivo, $movimentacoesPainel);
 
         $freqStats = $this->frequenciaNoPeriodo($identificadoresColaborador, $periodoInicio, $periodoFim);
         $absenteismoPeriodo = app(AbsenteismoPeriodo::class)->calcularParaContrato(
@@ -123,20 +136,44 @@ class IndicadoresMensaisController extends Controller
             $periodoFim,
             $identificadoresColaborador
         );
-        $kpisRh = $this->kpisQuadroExecutivoFromFreq($resumoEfetivo['efetivo_final'], $freqStats, $absenteismoPeriodo);
-        $indicadoresFaixa = $this->indicadoresFaixaCircular($resumoEfetivo, $freqStats, $absenteismoPeriodo);
-        $leituraExecutiva = $this->textoLeituraExecutiva($contratoLabel, $periodoLabel, $resumoEfetivo, $freqStats);
-        $pontosAtencao = $this->listaPontosAtencao($resumoEfetivo, $freqStats, $absenteismoPeriodo);
-        $variacaoEfetivo = $this->variacaoEfetivoCard($resumoEfetivo);
-        $evolucaoTransferencias = \App\Support\Rh\TransferenciasEfetivoPeriodo::resumo(
-            $identificadoresColaborador,
+        $regularizacaoPonto = RegularizacaoPontoPeriodo::calcular(
             $periodoInicio,
-            $periodoFim
+            $periodoFim,
+            $identificadoresColaborador
         );
+        $jornadaAgg = JornadaPontoPeriodoAgregador::agregar(
+            $periodoInicio,
+            $periodoFim,
+            $identificadoresColaborador
+        );
+        $kpisRh = $this->kpisQuadroExecutivoFromFreq(
+            $resumoEfetivo['efetivo_final'],
+            $freqStats,
+            $absenteismoPeriodo,
+            $regularizacaoPonto,
+            $jornadaAgg['extras_minutos']
+        );
+        $indicadoresFaixa = $this->indicadoresFaixaCircular($resumoEfetivo, $freqStats, $absenteismoPeriodo, $regularizacaoPonto);
+        $leituraExecutiva = $this->textoLeituraExecutiva($contratoLabel, $periodoLabel, $resumoEfetivo, $freqStats, $movimentacoesPainel);
+        $pontosAtencao = $this->listaPontosAtencao($resumoEfetivo, $freqStats, $absenteismoPeriodo, $movimentacoesPainel, $regularizacaoPonto);
+        $variacaoEfetivo = $this->variacaoEfetivoCard($resumoEfetivo);
+        $evolucaoTransferencias = $movimentacoesPainel['transferencias'];
         $evolucaoWaterfallLayout = $this->evolucaoWaterfallLayout($resumoEfetivo, $evolucaoTransferencias);
-        $leituraEvolucaoEfetivo = $this->textoLeituraEvolucaoEfetivo($contratoLabel, $periodoLabel, $resumoEfetivo, $evolucaoTransferencias);
-        $pontosAtencaoEvolucao = $this->listaPontosAtencaoEvolucaoEfetivo();
-        $turnoverMovimentacoes = $this->turnoverMovimentacoesViewModel($resumoEfetivo, $evolucaoTransferencias, $contratoLabel, $periodoLabel);
+        $leituraEvolucaoEfetivo = $this->textoLeituraEvolucaoEfetivo(
+            $contratoLabel,
+            $periodoLabel,
+            $resumoEfetivo,
+            $evolucaoTransferencias,
+            $movimentacoesPainel
+        );
+        $pontosAtencaoEvolucao = $this->listaPontosAtencaoEvolucaoEfetivo($resumoEfetivo, $movimentacoesPainel);
+        $evolucaoMetricasExtras = $this->evolucaoMetricasExtrasViewModel($movimentacoesPainel);
+        $turnoverMovimentacoes = $this->turnoverMovimentacoesViewModel(
+            $resumoEfetivo,
+            $movimentacoesPainel,
+            $contratoLabel,
+            $periodoLabel
+        );
         $absenteismoFrequencia = $this->absenteismoFrequenciaViewModel(
             $resumoEfetivo,
             $freqStats,
@@ -150,11 +187,10 @@ class IndicadoresMensaisController extends Controller
         $jornadaPontoHorasExtras = $this->jornadaPontoHorasExtrasViewModel(
             $resumoEfetivo,
             $freqStats,
-            $identificadoresColaborador,
-            $periodoInicio,
-            $periodoFim,
             $contratoLabel,
-            $periodoLabel
+            $periodoLabel,
+            $regularizacaoPonto,
+            $jornadaAgg
         );
         $planoAcaoRh = $this->planoAcaoRhViewModel(
             $resumoEfetivo,
@@ -187,7 +223,10 @@ class IndicadoresMensaisController extends Controller
             'leituraEvolucaoEfetivo' => $leituraEvolucaoEfetivo,
             'pontosAtencaoEvolucao' => $pontosAtencaoEvolucao,
             'evolucaoTransferencias' => $evolucaoTransferencias,
+            'movimentacoesPainel' => $movimentacoesPainel,
+            'evolucaoMetricasExtras' => $evolucaoMetricasExtras,
             'turnoverMovimentacoes' => $turnoverMovimentacoes,
+            'resumoMovimentacoesCard' => $this->resumoMovimentacoesCardViewModel($movimentacoesPainel),
             'absenteismoFrequencia' => $absenteismoFrequencia,
             'jornadaPontoHorasExtras' => $jornadaPontoHorasExtras,
             'planoAcaoRh' => $planoAcaoRh,
@@ -412,28 +451,102 @@ class IndicadoresMensaisController extends Controller
      *
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
      * @param  array{entrada: int, saida: int}  $transf
+     * @param  array<string, mixed>  $movPainel
      */
-    private function textoLeituraEvolucaoEfetivo(string $contratoLabel, string $periodoLabel, array $resumo, array $transf): string
-    {
+    private function textoLeituraEvolucaoEfetivo(
+        string $contratoLabel,
+        string $periodoLabel,
+        array $resumo,
+        array $transf,
+        array $movPainel
+    ): string {
         $m = $periodoLabel;
-        $ent = (int) $resumo['admitidos'] + (int) ($transf['entrada'] ?? 0);
-        $sai = (int) $resumo['desligados'] + (int) ($transf['saida'] ?? 0);
+        $adm = (int) ($resumo['admitidos'] ?? 0);
+        $te = max(0, (int) ($transf['entrada'] ?? 0));
+        $des = (int) ($resumo['desligados'] ?? 0);
+        $ts = max(0, (int) ($transf['saida'] ?? 0));
+        $ent = $adm + $te;
+        $sai = $des + $ts;
         $fin = (int) $resumo['efetivo_final'];
 
-        return 'A evolução do efetivo no contrato '.$contratoLabel.' na competência '.$m.' consolida '.$ent.' entradas e '.$sai
-            .' saídas entre admissões, desligamentos e transferências internas, encerrando o recorte com '.$fin.' colaboradores ativos.';
+        $txt = 'A evolução do efetivo no contrato '.$contratoLabel.' na competência '.$m.' consolida '.$ent
+            .' entradas ('.$adm.' admissões'.($te > 0 ? ', '.$te.' transferência(s) de entrada' : '').') e '.$sai
+            .' saídas ('.$des.' desligamento(s)'.($ts > 0 ? ', '.$ts.' transferência(s) de saída' : '').'), '
+            .'encerrando o recorte com '.$fin.' colaboradores ativos.';
+
+        $extras = [];
+        if (($movPainel['promocoes'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['promocoes'].' promoção(ões)';
+        }
+        if (($movPainel['mudanca_funcao'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['mudanca_funcao'].' mudança(s) de função';
+        }
+        if (($movPainel['ferias'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['ferias'].' férias';
+        }
+        if (($movPainel['afastamento_inss'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['afastamento_inss'].' afastamento(s) INSS';
+        }
+        if ($extras !== []) {
+            $txt .= ' No histórico de movimentações constam também '.implode(', ', $extras).'.';
+        }
+
+        return $txt;
     }
 
     /**
+     * Métricas inferiores do card Evolução (além das quatro principais).
+     *
+     * @param  array<string, mixed>  $movPainel
+     * @return list<array{label: string, value: int, icon: string}>
+     */
+    private function evolucaoMetricasExtrasViewModel(array $movPainel): array
+    {
+        $itens = [
+            ['label' => 'Promoções', 'value' => (int) ($movPainel['promocoes'] ?? 0), 'icon' => 'trending-up'],
+            ['label' => 'Mudança de função', 'value' => (int) ($movPainel['mudanca_funcao'] ?? 0), 'icon' => 'briefcase'],
+            ['label' => 'Férias', 'value' => (int) ($movPainel['ferias'] ?? 0), 'icon' => 'palmtree'],
+            ['label' => 'Afastamento INSS', 'value' => (int) ($movPainel['afastamento_inss'] ?? 0), 'icon' => 'heart-pulse'],
+        ];
+
+        return array_values(array_filter($itens, static fn (array $i): bool => $i['value'] > 0));
+    }
+
+    /**
+     * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
+     * @param  array<string, mixed>  $movPainel
      * @return list<string>
      */
-    private function listaPontosAtencaoEvolucaoEfetivo(): array
+    private function listaPontosAtencaoEvolucaoEfetivo(array $resumo, array $movPainel): array
     {
-        return [
-            'Acompanhar reposições decorrentes de desligamentos.',
-            'Monitorar estabilidade das funções críticas.',
-            'Manter controle das movimentações internas.',
-        ];
+        $out = [];
+        $des = (int) ($resumo['desligados'] ?? 0);
+        $adm = (int) ($resumo['admitidos'] ?? 0);
+        $transf = max(0, (int) ($movPainel['transferencia_entrada'] ?? 0))
+            + max(0, (int) ($movPainel['transferencia_saida'] ?? 0));
+
+        if ($des > 0) {
+            $out[] = 'Acompanhar reposição de '.$des.' desligamento(s) no período.';
+        } else {
+            $out[] = 'Sem desligamentos no recorte; manter plano de sucessão atualizado.';
+        }
+
+        if ($transf > 0) {
+            $out[] = 'Validar '.$transf.' transferência(s) interna(s) e o impacto no centro de custo do contrato.';
+        } elseif ($des > $adm && $des > 0) {
+            $out[] = 'Saídas superaram entradas: revisar estabilidade das funções críticas.';
+        } else {
+            $out[] = 'Monitorar estabilidade das funções críticas e registrar movimentações em RH → Movimentações.';
+        }
+
+        $inss = (int) ($movPainel['afastamento_inss'] ?? 0);
+        if ($inss > 0) {
+            $out[] = 'Acompanhar '.$inss.' afastamento(s) INSS registrado(s) no período.';
+        } else {
+            $out[] = 'Manter controle das movimentações internas (promoção, função, férias) no histórico de efetivo.';
+        }
+
+        return array_slice($out, 0, 3);
     }
 
     /**
@@ -475,21 +588,33 @@ class IndicadoresMensaisController extends Controller
     }
 
     /**
+     * Card 01 — barras de movimentação (efetivo + histórico de movimentações no período).
+     *
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
+     * @param  array<string, mixed>  $movPainel
      */
-    private function chartResumoPeriodo(array $resumo): array
+    private function chartResumoPeriodo(array $resumo, array $movPainel): array
     {
         $chartBase = [
             'fontFamily' => 'Instrument Sans, sans-serif',
             'toolbar' => ['show' => false],
             'zoom' => ['enabled' => false],
         ];
-        $categorias = ['Efetivo inicial', 'Admitidos', 'Desligados', 'Efetivo final'];
+        $categorias = [
+            'Efetivo inicial',
+            'Admitidos',
+            'Transf. entrada',
+            'Desligados',
+            'Transf. saída',
+            'Efetivo final',
+        ];
         $valores = [
-            $resumo['efetivo_inicial'],
-            $resumo['admitidos'],
-            $resumo['desligados'],
-            $resumo['efetivo_final'],
+            (int) ($resumo['efetivo_inicial'] ?? 0),
+            (int) ($resumo['admitidos'] ?? 0),
+            max(0, (int) ($movPainel['transferencia_entrada'] ?? 0)),
+            (int) ($resumo['desligados'] ?? 0),
+            max(0, (int) ($movPainel['transferencia_saida'] ?? 0)),
+            (int) ($resumo['efetivo_final'] ?? 0),
         ];
         $maxValor = max($valores);
         $yMax = $maxValor === 0 ? 5 : max(5, (int) ceil($maxValor * 1.15));
@@ -497,11 +622,11 @@ class IndicadoresMensaisController extends Controller
         return [
             'chart' => $chartBase + ['type' => 'bar', 'height' => 340],
             'series' => [['name' => 'Colaboradores', 'data' => $valores]],
-            'colors' => ['#600020', '#842244', '#f3cfd9', '#600020'],
+            'colors' => ['#600020', '#842244', '#9f4a63', '#f3cfd9', '#e8b4c4', '#600020'],
             'plotOptions' => [
                 'bar' => [
                     'horizontal' => false,
-                    'columnWidth' => '58%',
+                    'columnWidth' => '42%',
                     'borderRadius' => 6,
                     'distributed' => true,
                 ],
@@ -509,7 +634,11 @@ class IndicadoresMensaisController extends Controller
             'dataLabels' => [
                 'enabled' => true,
                 'offsetY' => -4,
-                'style' => ['fontSize' => '13px', 'fontWeight' => 700, 'colors' => ['#ffffff', '#ffffff', '#451a1a', '#ffffff']],
+                'style' => [
+                    'fontSize' => '12px',
+                    'fontWeight' => 700,
+                    'colors' => ['#ffffff', '#ffffff', '#ffffff', '#451a1a', '#451a1a', '#ffffff'],
+                ],
             ],
             'xaxis' => [
                 'categories' => $categorias,
@@ -561,18 +690,24 @@ class IndicadoresMensaisController extends Controller
     /**
      * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
      */
-    private function kpisQuadroExecutivoFromFreq(int $efetivoFinal, array $f, array $absenteismo): array
+    /**
+     * @param  array<string, mixed>  $regularizacaoPonto
+     */
+    private function kpisQuadroExecutivoFromFreq(int $efetivoFinal, array $f, array $absenteismo, array $regularizacaoPonto, int $extrasMinutos = 0): array
     {
         $baseJornada = (int) ($absenteismo['base'] ?? $f['base_jornada'] ?? 0);
         $frequenciaLabel = $baseJornada > 0
             ? number_format(100 * ($absenteismo['presentes'] ?? $f['presentes']) / $baseJornada, 1, ',', '.').'%'
             : '—';
-        $pendencias = $f['faltas'] + $f['incompletos'];
+        $pendencias = (int) ($regularizacaoPonto['dias_pendentes'] ?? ($f['faltas'] + $f['incompletos']));
+        $horasExtrasLabel = $extrasMinutos > 0
+            ? JornadaPontoPeriodoAgregador::fmtHoras(JornadaPontoPeriodoAgregador::minutosParaHoras($extrasMinutos))
+            : '—';
 
         return [
             ['title' => 'Efetivo ativo', 'value' => (string) $efetivoFinal, 'icon' => 'users-round'],
             ['title' => 'Frequência', 'value' => $frequenciaLabel, 'icon' => 'clock-fading'],
-            ['title' => 'Horas extras', 'value' => '—', 'icon' => 'clock-plus'],
+            ['title' => 'Horas extras', 'value' => $horasExtrasLabel, 'icon' => 'clock-plus'],
             ['title' => 'Pendências de ponto', 'value' => (string) $pendencias, 'icon' => 'file-warning'],
         ];
     }
@@ -587,40 +722,83 @@ class IndicadoresMensaisController extends Controller
     /**
      * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
      */
-    private function indicadoresFaixaCircular(array $resumo, array $f, array $absenteismo): array
+    /**
+     * @param  array<string, mixed>  $regularizacaoPonto
+     */
+    private function indicadoresFaixaCircular(array $resumo, array $f, array $absenteismo, array $regularizacaoPonto): array
     {
-        $mediaEfetivo = max(1, (int) round(($resumo['efetivo_inicial'] + $resumo['efetivo_final']) / 2));
-        $turnover = $mediaEfetivo > 0
-            ? round(($resumo['desligados'] / $mediaEfetivo) * 100, 1)
-            : 0.0;
+        $turnoverCalc = TurnoverIndicadoresPeriodo::calcular($resumo);
 
         $baseJornada = (int) ($absenteismo['base'] ?? 0);
         $freqPct = $baseJornada > 0 ? round(100 * ($absenteismo['presentes'] ?? 0) / $baseJornada, 1) : null;
         $absPct = $baseJornada > 0 ? (float) ($absenteismo['taxa'] ?? 0.0) : null;
-        $total = $f['total'];
-        $regPct = $total > 0 ? round(100 * ($f['presentes'] + $f['justificados']) / $total, 1) : null;
-
         $fmt = fn (?float $v) => $v === null ? '—' : number_format($v, 1, ',', '.').'%';
 
         return [
-            ['label' => 'Turnover', 'value' => number_format($turnover, 1, ',', '.').'%', 'icon' => 'refresh-ccw'],
+            ['label' => 'Turnover', 'value' => $turnoverCalc['turnover_geral_label'], 'icon' => 'refresh-ccw'],
             ['label' => 'Absenteísmo', 'value' => $fmt($absPct), 'icon' => 'user-x'],
             ['label' => 'Frequência', 'value' => $fmt($freqPct), 'icon' => 'circle-check'],
-            ['label' => 'Regularização de ponto', 'value' => $fmt($regPct), 'icon' => 'clipboard-check'],
+            ['label' => 'Regularização de ponto', 'value' => $regularizacaoPonto['percentual_label'], 'icon' => 'clipboard-check'],
         ];
     }
 
     /**
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
+     * @param  array<string, mixed>  $movPainel
      */
-    private function textoLeituraExecutiva(string $contratoLabel, string $periodoLabel, array $resumo, array $f): string
+    private function textoLeituraExecutiva(string $contratoLabel, string $periodoLabel, array $resumo, array $f, array $movPainel): string
     {
         $m = $periodoLabel;
+        $te = max(0, (int) ($movPainel['transferencia_entrada'] ?? 0));
+        $ts = max(0, (int) ($movPainel['transferencia_saida'] ?? 0));
 
-        return 'Este painel consolida, para o contrato '.$contratoLabel.' na competência '.$m.', a movimentação de efetivo '
-            .'(inicial '.$resumo['efetivo_inicial'].', admitidos '.$resumo['admitidos'].', desligados '.$resumo['desligados'].', final '.$resumo['efetivo_final'].') '
-            .'e a leitura de frequência registrada no período. Use os indicadores circulares para estabilidade da equipe e os cartões à direita para acompanhamento operacional imediato.';
+        $base = 'Este painel consolida, para o contrato '.$contratoLabel.' na competência '.$m.', a movimentação de efetivo '
+            .'(inicial '.$resumo['efetivo_inicial'].', admitidos '.$resumo['admitidos'].', desligados '.$resumo['desligados'].', final '.$resumo['efetivo_final'].')';
+
+        if ($te > 0 || $ts > 0) {
+            $base .= ' e transferências internas ('.$te.' entrada(s), '.$ts.' saída(s)) registradas em Movimentações de efetivo';
+        }
+
+        $extras = [];
+        if (($movPainel['promocoes'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['promocoes'].' promoção(ões)';
+        }
+        if (($movPainel['mudanca_funcao'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['mudanca_funcao'].' mudança(s) de função';
+        }
+        if (($movPainel['ferias'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['ferias'].' férias';
+        }
+        if (($movPainel['afastamento_inss'] ?? 0) > 0) {
+            $extras[] = (int) $movPainel['afastamento_inss'].' afastamento(s) INSS';
+        }
+        if ($extras !== []) {
+            $base .= ', além de '.implode(', ', $extras).' no histórico';
+        }
+
+        return $base
+            .'. A leitura de frequência cobre o mesmo intervalo. Use os indicadores circulares para estabilidade da equipe e os cartões à direita para acompanhamento operacional imediato.';
+    }
+
+    /**
+     * Chips do card MOVIMENTAÇÃO (eventos além das barras principais).
+     *
+     * @param  array<string, mixed>  $movPainel
+     * @return list<array{label: string, value: int}>
+     */
+    private function resumoMovimentacoesCardViewModel(array $movPainel): array
+    {
+        $itens = [
+            ['label' => 'Transf. entrada', 'value' => max(0, (int) ($movPainel['transferencia_entrada'] ?? 0))],
+            ['label' => 'Transf. saída', 'value' => max(0, (int) ($movPainel['transferencia_saida'] ?? 0))],
+            ['label' => 'Promoções', 'value' => (int) ($movPainel['promocoes'] ?? 0)],
+            ['label' => 'Mudança de função', 'value' => (int) ($movPainel['mudanca_funcao'] ?? 0)],
+            ['label' => 'Férias', 'value' => (int) ($movPainel['ferias'] ?? 0)],
+            ['label' => 'Afastamento INSS', 'value' => (int) ($movPainel['afastamento_inss'] ?? 0)],
+        ];
+
+        return array_values(array_filter($itens, static fn (array $i): bool => $i['value'] > 0));
     }
 
     /**
@@ -631,91 +809,146 @@ class IndicadoresMensaisController extends Controller
     /**
      * @param  array{taxa: float, base: int, ausencias: int, presentes: int}  $absenteismo
      */
-    private function listaPontosAtencao(array $resumo, array $f, array $absenteismo): array
+    /**
+     * @param  array<string, mixed>  $movPainel
+     */
+    /**
+     * @param  array<string, mixed>  $regularizacaoPonto
+     */
+    private function listaPontosAtencao(array $resumo, array $f, array $absenteismo, array $movPainel = [], array $regularizacaoPonto = []): array
     {
-        $pend = $f['faltas'] + $f['incompletos'];
+        $pend = (int) ($regularizacaoPonto['dias_pendentes'] ?? ($f['faltas'] + $f['incompletos']));
         $out = [];
 
         if ($pend > 0) {
-            $out[] = 'Acompanhar '.$pend.' pendência(s) de ponto (falta ou registro incompleto) em tratativa no período.';
+            $sem = (int) ($regularizacaoPonto['sem_registro'] ?? 0);
+            $inc = (int) ($regularizacaoPonto['incompletos'] ?? 0);
+            $out[] = 'Regularizar '.$pend.' dia(s) de jornada prevista pendente(s)'
+                .($inc > 0 ? ' — '.$inc.' incompleto(s)' : '')
+                .($sem > 0 ? ($inc > 0 ? '; ' : ' — ').$sem.' sem registro após grade automática' : '').'.';
         } else {
-            $out[] = 'Manter rotina de conferência de ponto mesmo sem pendências abertas no recorte.';
+            $out[] = 'Todos os dias de jornada prevista estão tratados no período (ponto completo, justificativa ou falta).';
         }
 
-        $out[] = 'Monitorar horas extras por função crítica assim que o módulo de HE estiver disponível.';
+        $transf = max(0, (int) ($movPainel['transferencia_entrada'] ?? 0))
+            + max(0, (int) ($movPainel['transferencia_saida'] ?? 0));
+        if ($transf > 0) {
+            $out[] = 'Houve '.$transf.' transferência(s) interna(s) no período: validar impacto operacional e cadastro de centro de custo.';
+        } else {
+            $out[] = 'Registrar transferências e demais movimentações em RH → Movimentações para refletir no painel.';
+        }
 
         if ($resumo['desligados'] > $resumo['admitidos'] && $resumo['desligados'] > 0) {
             $out[] = 'Desligamentos superaram admissões no período: revisar plano de sucessão e estabilidade da equipe.';
         }
 
-        $taxaGeral = (float) ($absenteismo['taxa_geral'] ?? $absenteismo['taxa'] ?? 0.0);
-        if ($taxaGeral > 2 && ($absenteismo['base'] ?? 0) > 0) {
-            $out[] = 'Absenteísmo geral em '.number_format($taxaGeral, 1, ',', '.').'% — revisar atestados, abonos e faltas no período.';
-        } else {
-            $out[] = 'Manter absenteísmo geral dentro da meta acordada para o contrato.';
+        if (count($out) < 3) {
+            $taxaGeral = (float) ($absenteismo['taxa_geral'] ?? $absenteismo['taxa'] ?? 0.0);
+            if ($taxaGeral > 2 && ($absenteismo['base'] ?? 0) > 0) {
+                $out[] = 'Absenteísmo geral em '.number_format($taxaGeral, 1, ',', '.').'% — revisar atestados, abonos e faltas no período.';
+            } else {
+                $out[] = 'Manter absenteísmo geral dentro da meta acordada para o contrato.';
+            }
         }
 
         return array_slice($out, 0, 3);
     }
 
     /**
-     * Card 03 — Turnover e movimentações (barras horizontais, motivos heurísticos, KPIs).
-     * Motivos refletem contagem operacional até existir cadastro formal de motivos.
+     * Card 03 — Turnover e movimentações (barras horizontais, motivos do histórico, KPIs).
      *
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
-     * @param  array{entrada: int, saida: int}  $transf
+     * @param  array<string, mixed>  $movPainel  Saída de {@see MovimentacoesPainelExecutivoPeriodo::resumo()}
      * @return array<string, mixed>
      */
-    private function turnoverMovimentacoesViewModel(array $resumo, array $transf, string $contratoLabel, string $periodoLabel): array
+    private function turnoverMovimentacoesViewModel(array $resumo, array $movPainel, string $contratoLabel, string $periodoLabel): array
     {
         $adm = (int) ($resumo['admitidos'] ?? 0);
         $des = (int) ($resumo['desligados'] ?? 0);
-        $te = max(0, (int) ($transf['entrada'] ?? 0));
-        $ts = max(0, (int) ($transf['saida'] ?? 0));
+        $te = max(0, (int) ($movPainel['transferencia_entrada'] ?? 0));
+        $ts = max(0, (int) ($movPainel['transferencia_saida'] ?? 0));
+        $prom = (int) ($movPainel['promocoes'] ?? 0);
+        $func = (int) ($movPainel['mudanca_funcao'] ?? 0);
+        $ferias = (int) ($movPainel['ferias'] ?? 0);
+        $inss = (int) ($movPainel['afastamento_inss'] ?? 0);
         $ini = (int) ($resumo['efetivo_inicial'] ?? 0);
         $fim = (int) ($resumo['efetivo_final'] ?? 0);
 
-        $maxBar = max(1, $adm, $des, $te, $ts);
+        $maxBar = max(1, $adm, $des, $te, $ts, $prom, $func, $ferias, $inss);
         $pct = static fn (int $v): float => round(100 * $v / $maxBar, 1);
 
         $movimentacoesBarras = [
             ['label' => 'Admissões', 'value' => $adm, 'pct' => $pct($adm), 'hex' => '#600020'],
             ['label' => 'Desligamentos', 'value' => $des, 'pct' => $pct($des), 'hex' => '#9f4a63'],
-            ['label' => 'Transf. entrada', 'value' => $te, 'pct' => $pct($te), 'hex' => '#d4899e'],
-            ['label' => 'Transf. saída', 'value' => $ts, 'pct' => $pct($ts), 'hex' => '#f3cfd9'],
+            ['label' => 'Transf. entrada', 'value' => $te, 'pct' => $pct($te), 'hex' => '#842244'],
+            ['label' => 'Transf. saída', 'value' => $ts, 'pct' => $pct($ts), 'hex' => '#c97d8f'],
+            ['label' => 'Promoções', 'value' => $prom, 'pct' => $pct($prom), 'hex' => '#d4899e'],
+            ['label' => 'Mudança de função', 'value' => $func, 'pct' => $pct($func), 'hex' => '#e8b4c4'],
+            ['label' => 'Férias', 'value' => $ferias, 'pct' => $pct($ferias), 'hex' => '#f3cfd9'],
+            ['label' => 'Afastamento INSS', 'value' => $inss, 'pct' => $pct($inss), 'hex' => '#fce8ef'],
         ];
+        $movimentacoesBarras = array_values(array_filter(
+            $movimentacoesBarras,
+            static fn (array $bar): bool => ($bar['value'] ?? 0) > 0
+        ));
+        if ($movimentacoesBarras === []) {
+            $movimentacoesBarras[] = ['label' => 'Sem movimentações', 'value' => 0, 'pct' => 0.0, 'hex' => '#f3cfd9'];
+        }
 
-        $totalEventos = $adm + $des + $te + $ts;
+        $totalEventos = (int) ($movPainel['total_eventos'] ?? ($adm + $des + $te + $ts + $prom + $func + $ferias + $inss));
 
-        $motivos = [
-            ['label' => 'Ampliação de efetivo', 'value' => $adm, 'icon' => 'trending-up'],
-            ['label' => 'Substituição operacional', 'value' => $des, 'icon' => 'refresh-ccw'],
-            ['label' => 'Transferência interna', 'value' => $te, 'icon' => 'arrow-left-right'],
-            ['label' => 'Pedido de desligamento', 'value' => $ts, 'icon' => 'file-minus'],
-        ];
+        $motivos = $movPainel['motivos'] ?? [];
+        if ($motivos === []) {
+            $motivos = [
+                ['label' => 'Nenhuma movimentação registrada no período', 'value' => 0, 'icon' => 'minus'],
+            ];
+        }
 
-        $mediaEfetivo = max(1, (int) round(($ini + $fim) / 2));
-        $turnoverPct = $mediaEfetivo > 0
-            ? round(($des / $mediaEfetivo) * 100, 1)
-            : 0.0;
-        $turnoverLabel = number_format($turnoverPct, 1, ',', '.').'%';
+        $turnoverCalc = TurnoverIndicadoresPeriodo::calcular($resumo, [
+            'desligamentos_voluntarios' => (int) ($movPainel['desligamentos_voluntarios'] ?? 0),
+        ]);
 
         $saldo = $fim - $ini;
         $saldoLabel = ($saldo > 0 ? '+' : ($saldo < 0 ? '−' : '')).(string) abs($saldo);
 
         $kpisTurnover = [
-            ['label' => 'Turnover mensal', 'value' => $turnoverLabel, 'icon' => 'percent'],
-            ['label' => 'Efetivo médio', 'value' => (string) $mediaEfetivo, 'icon' => 'users'],
+            ['label' => 'Turnover geral', 'value' => $turnoverCalc['turnover_geral_label'], 'icon' => 'percent'],
+            ['label' => 'Turnover desligamento', 'value' => $turnoverCalc['turnover_desligamento_label'], 'icon' => 'user-x'],
+            ['label' => 'Turnover voluntário', 'value' => $turnoverCalc['turnover_voluntario_label'], 'icon' => 'log-out'],
+            ['label' => 'Turnover involuntário', 'value' => $turnoverCalc['turnover_involuntario_label'], 'icon' => 'shield-off'],
+            ['label' => 'Efetivo médio', 'value' => $turnoverCalc['efetivo_medio_label'], 'icon' => 'users'],
             ['label' => 'Admissões', 'value' => (string) $adm, 'icon' => 'user-plus'],
-            ['label' => 'Desligamentos', 'value' => (string) $des, 'icon' => 'user-x'],
+            ['label' => 'Desligamentos', 'value' => (string) $des, 'icon' => 'user-minus'],
             ['label' => 'Transferências', 'value' => (string) ($te + $ts), 'icon' => 'shuffle'],
             ['label' => 'Saldo do período', 'value' => $saldoLabel, 'icon' => 'scale'],
         ];
 
         $m = $periodoLabel;
-        $leitura = 'No contrato '.$contratoLabel.' ('.$m.') registaram-se '.$totalEventos.' movimentações no período '
-            .'(admissões '.$adm.', desligamentos '.$des.', transferências '.($te + $ts).'). '
-            .'O turnover mensal estimado sobre efetivo médio é '.$turnoverLabel.', com saldo de efetivo de '.$saldoLabel.' colaboradores em relação ao início do recorte.';
+        $extras = [];
+        if ($prom > 0) {
+            $extras[] = $prom.' promoção(ões)';
+        }
+        if ($func > 0) {
+            $extras[] = $func.' mudança(s) de função';
+        }
+        if ($ferias > 0) {
+            $extras[] = $ferias.' férias';
+        }
+        if ($inss > 0) {
+            $extras[] = $inss.' afastamento(s) INSS';
+        }
+        $extrasTxt = $extras !== [] ? ' Inclui '.implode(', ', $extras).'.' : '';
+
+        $tg = $turnoverCalc['turnover_geral_label'];
+        $td = $turnoverCalc['turnover_desligamento_label'];
+        $tv = $turnoverCalc['turnover_voluntario_label'];
+        $em = $turnoverCalc['efetivo_medio_label'];
+
+        $leitura = 'No contrato '.$contratoLabel.' ('.$m.') registaram-se '.$totalEventos.' eventos no período '
+            .'(admissões '.$adm.', desligamentos '.$des.', transferências '.($te + $ts).').'.$extrasTxt.' '
+            .'Turnover geral '.$tg.' [(admissões + desligamentos) ÷ 2 ÷ efetivo médio '.$em.'], '
+            .'turnover de desligamento '.$td.', turnover voluntário '.$tv.'. '
+            .'Saldo de efetivo '.$saldoLabel.' em relação ao início do recorte.';
 
         $pontos = [
             'Acompanhar reposições decorrentes de desligamentos.',
@@ -728,6 +961,7 @@ class IndicadoresMensaisController extends Controller
             'totalEventos' => $totalEventos,
             'motivos' => $motivos,
             'kpisTurnover' => $kpisTurnover,
+            'turnoverCalc' => $turnoverCalc,
             'leitura' => $leitura,
             'pontos' => $pontos,
         ];
@@ -903,27 +1137,39 @@ class IndicadoresMensaisController extends Controller
     }
 
     /**
-     * Card 05 — Jornada, ponto e horas extras (barras HE por causa, fluxo de ponto, KPIs, leitura).
-     * Horas extras por causa são uma repartição proporcional do saldo realizada − prevista quando positivo;
-     * causas formais serão ligadas a cadastro quando existir.
+     * Card 05 — Jornada, ponto e horas extras (apuração de batidas + escala, alinhado ao cartão de ponto).
      *
      * @param  array{efetivo_inicial: int, admitidos: int, desligados: int, efetivo_final: int}  $resumo
      * @param  array{total: int, presentes: int, justificados: int, faltas: int, incompletos: int}  $f
      * @return array<string, mixed>
      */
+    /**
+     * @param  array<string, mixed>  $regularizacaoPonto
+     */
+    /**
+     * @param  array{previstas_minutos: int, trabalhadas_minutos: int, extras_minutos: int, entrada_antecipada_minutos: int, saida_posterior_minutos: int, dias_com_extra: int, colaboradores_com_extra: int}  $ag
+     */
     private function jornadaPontoHorasExtrasViewModel(
         array $resumo,
         array $f,
-        array $identificadoresColab,
-        Carbon $periodoInicio,
-        Carbon $periodoFim,
         string $contratoLabel,
-        string $periodoLabel
+        string $periodoLabel,
+        array $regularizacaoPonto,
+        array $ag
     ): array {
-        $brk = $this->frequenciaOcorrenciasBreakdown($identificadoresColab, $periodoInicio, $periodoFim);
-        $diasUteis = $this->diasUteisNoPeriodo($periodoInicio, $periodoFim);
-        $mediaHeadcount = max(1, (int) round(((int) $resumo['efetivo_inicial'] + (int) $resumo['efetivo_final']) / 2));
-        $horasPrevistas = $diasUteis * 8 * $mediaHeadcount;
+
+        $horasPrevistas = JornadaPontoPeriodoAgregador::minutosParaHoras($ag['previstas_minutos']);
+        $horasRealizadas = JornadaPontoPeriodoAgregador::minutosParaHoras($ag['trabalhadas_minutos']);
+        $totalHorasExtras = JornadaPontoPeriodoAgregador::minutosParaHoras($ag['extras_minutos']);
+
+        $horasExtrasBarras = JornadaPontoPeriodoAgregador::barrasHorasExtras(
+            $ag['extras_minutos'],
+            $ag['entrada_antecipada_minutos'],
+            $ag['saida_posterior_minutos']
+        );
+
+        $totalHorasExtrasLabel = JornadaPontoPeriodoAgregador::fmtHoras($totalHorasExtras);
+        $fmtH = static fn (float $h): string => JornadaPontoPeriodoAgregador::fmtHoras($h);
 
         $presentes = (int) $f['presentes'];
         $just = (int) $f['justificados'];
@@ -931,73 +1177,25 @@ class IndicadoresMensaisController extends Controller
         $incomp = (int) $f['incompletos'];
         $totalReg = max(0, (int) $f['total']);
 
-        $deltaRealiz = (int) round(
-            $brk['atrasos'] * 2
-            + $incomp * 2.5
-            + $presentes * 0.12
-            + $brk['abonos_mobilizacao'] * 0.5
-        );
-        $horasRealizadas = (int) max($horasPrevistas, min((int) round($horasPrevistas * 1.08), $horasPrevistas + max(0, $deltaRealiz)));
-
-        $totalHorasExtras = max(0, $horasRealizadas - $horasPrevistas);
-
-        $labelsCausa = [
-            'Cobertura operacional',
-            'Demandas emergenciais',
-            'Programação extraordinária',
-            'Treinamentos e apoio',
-        ];
-        $weights = [0.381, 0.27, 0.206, 0.143];
-        $hePorCausaHoras = [];
-        $acc = 0;
-        $last = count($weights) - 1;
-        foreach ($weights as $i => $w) {
-            $h = $i === $last
-                ? max(0, $totalHorasExtras - $acc)
-                : (int) floor($totalHorasExtras * $w);
-            if ($i !== $last) {
-                $acc += $h;
-            }
-            $hePorCausaHoras[] = $h;
-        }
-
-        $maxHe = max(1, ...$hePorCausaHoras);
-        $pctHe = static fn (int $h): float => round(100 * $h / $maxHe, 1);
-        $horasExtrasBarras = [];
-        foreach ($labelsCausa as $i => $label) {
-            $h = $hePorCausaHoras[$i] ?? 0;
-            $horasExtrasBarras[] = [
-                'label' => $label,
-                'hours' => $h,
-                'valueLabel' => $h.'h',
-                'pct' => $pctHe($h),
-                'hex' => '#600020',
-            ];
-        }
-
-        $fmtH = static fn (int $x): string => number_format($x, 0, ',', '.').'h';
-        $totalHorasExtrasLabel = $fmtH($totalHorasExtras);
-
-        $pontosConferidos = $totalReg;
-        $comOcorrencia = $faltas + $incomp;
-        $regularizados = $just;
-        $pendentes = $incomp;
+        $diasExige = (int) ($regularizacaoPonto['dias_exigem_tratamento'] ?? 0);
+        $diasTratados = (int) ($regularizacaoPonto['dias_tratados'] ?? 0);
+        $diasPendentes = (int) ($regularizacaoPonto['dias_pendentes'] ?? 0);
+        $semRegistro = (int) ($regularizacaoPonto['sem_registro'] ?? 0);
+        $incompPonto = (int) ($regularizacaoPonto['incompletos'] ?? 0);
 
         $pontoFluxo = [
-            ['kind' => 'conferidos', 'label' => 'Pontos conferidos', 'value' => $pontosConferidos],
-            ['kind' => 'ocorrencia', 'label' => 'Com ocorrência', 'value' => $comOcorrencia],
-            ['kind' => 'regularizados', 'label' => 'Regularizados', 'value' => $regularizados],
-            ['kind' => 'pendentes', 'label' => 'Pendentes', 'value' => $pendentes],
+            ['kind' => 'conferidos', 'label' => 'Dias com jornada prevista', 'value' => $diasExige],
+            ['kind' => 'regularizados', 'label' => 'Tratados', 'value' => $diasTratados],
+            ['kind' => 'ocorrencia', 'label' => 'Incompletos', 'value' => $incompPonto],
+            ['kind' => 'pendentes', 'label' => 'Pendentes', 'value' => $diasPendentes],
         ];
 
-        $horasR = max(1, $horasRealizadas);
-        $aderenciaPct = round(100 * $horasPrevistas / $horasR, 1);
-        $aderenciaLabel = number_format($aderenciaPct, 1, ',', '.').'%';
-
-        $regPontoPct = $totalReg > 0
-            ? (int) round(100 * ($presentes + $just) / $totalReg)
+        $aderenciaPct = $ag['previstas_minutos'] > 0
+            ? round(100 * $ag['trabalhadas_minutos'] / $ag['previstas_minutos'], 1)
             : null;
-        $regPontoLabel = $regPontoPct === null ? '—' : $regPontoPct.'%';
+        $aderenciaLabel = $aderenciaPct === null ? '—' : number_format($aderenciaPct, 1, ',', '.').'%';
+
+        $regPontoLabel = $regularizacaoPonto['percentual_label'];
 
         $kpisJornada = [
             ['label' => 'Jornada prevista', 'value' => $fmtH($horasPrevistas), 'icon' => 'clock'],
@@ -1007,16 +1205,26 @@ class IndicadoresMensaisController extends Controller
         ];
 
         $m = $periodoLabel;
-        $leitura = 'O período ('.$m.') registrou '.$totalHorasExtrasLabel.' de horas extras (estimativa operacional a partir do saldo entre jornada prevista e realizada e da repartição por causa). '
-            .'Jornada prevista '.$fmtH($horasPrevistas).' e jornada realizada '.$fmtH($horasRealizadas).', com aderência de '.$aderenciaLabel.'. '
-            .'Foram conferidos '.$pontosConferidos.' pontos, '.$comOcorrencia.' com ocorrência, '.$regularizados.' regularizados e '.$pendentes.' pendente(s).';
+        $leitura = 'O período ('.$m.') registrou '.$totalHorasExtrasLabel.' de horas extras apuradas (batidas × escala, tolerância de '
+            .FrequenciaCalculo::toleranciaMinutosFalta().' min). '
+            .'Jornada prevista '.$fmtH($horasPrevistas).' e realizada '.$fmtH($horasRealizadas)
+            .' (aderência realizada ÷ prevista: '.$aderenciaLabel.'). '
+            .'Extras em '.$ag['dias_com_extra'].' dia(s), '.$ag['colaboradores_com_extra'].' colaborador(es). '
+            .'Regularização de ponto: '.$diasTratados.' de '.$diasExige.' dia(s) de jornada prevista tratados ('.$regPontoLabel.'), '
+            .(int) ($regularizacaoPonto['colaboradores_no_escopo'] ?? 0).' colaborador(es) no escopo.';
 
         $pontos = [
-            $pendentes > 0
-                ? 'Concluir '.$pendentes.' pendência(s) de ponto remanescente(s).'
-                : 'Manter fila zerada de pendências de ponto no fechamento do período.',
-            'Monitorar horas extras por cobertura operacional.',
-            'Manter aderência da jornada acima de 99%.',
+            $diasPendentes > 0
+                ? 'Tratar '.$diasPendentes.' dia(s) pendente(s) de ponto'
+                    .($incompPonto > 0 ? ' ('.$incompPonto.' incompleto)' : '')
+                    .($semRegistro > 0 ? ($incompPonto > 0 ? ', ' : ' (').$semRegistro.' sem registro)' : '').'.'
+                : 'Todos os dias de jornada prevista estão tratados no período.',
+            $totalHorasExtras > 0
+                ? 'Acompanhar '.$totalHorasExtrasLabel.' de horas extras apuradas no período.'
+                : 'Sem horas extras apuradas no recorte.',
+            $aderenciaPct !== null && $aderenciaPct < 95
+                ? 'Aderência à jornada em '.$aderenciaLabel.' — revisar faltas, batidas incompletas e escala.'
+                : 'Manter conferência de batidas e escala alinhada ao cartão de ponto.',
         ];
 
         return [
