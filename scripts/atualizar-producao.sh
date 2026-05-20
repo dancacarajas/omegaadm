@@ -10,5 +10,6 @@ php artisan optimize:clear
 php artisan route:clear
 php artisan config:clear
 php artisan view:clear
+php artisan route:list --path=beneficios/vinculos 2>/dev/null | head -5
 
-echo "Pronto. Teste salvar um vinculo em /rh/beneficios/1"
+echo "Pronto. Abra /rh/beneficios/1 com Ctrl+F5 e teste Salvar (URL deve usar /vinculos)."

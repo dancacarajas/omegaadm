@@ -372,11 +372,14 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
-        Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'manage'])->name('beneficios.colaboradores.update');
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'manage'])->name('beneficios.colaboradores.update.legado');
-        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'manage'])->name('beneficios.colaboradores.destroy.legado');
-        Route::get('beneficios/{beneficio}/colaboradores/{vinculo}/{legado}', function (Beneficio $beneficio) {
+        Route::post('beneficios/{beneficio}/vinculos', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
+        Route::post('beneficios/{beneficio}/vinculos/{vinculo}', [BeneficioColaboradorController::class, 'manage'])->name('beneficios.colaboradores.update');
+        // Legado (views/cache antigas e URLs salvas)
+        Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store']);
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'manage']);
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/salvar', [BeneficioColaboradorController::class, 'manage']);
+        Route::post('beneficios/{beneficio}/colaboradores/{vinculo}/excluir', [BeneficioColaboradorController::class, 'manage']);
+        Route::get('beneficios/{beneficio}/colaboradores/{vinculo}/{legado?}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->where('legado', 'salvar|excluir');
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
