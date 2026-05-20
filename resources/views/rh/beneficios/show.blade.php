@@ -177,7 +177,6 @@
                         <tr class="align-top">
                             <form id="vinculo-update-{{ $vinculo->id }}" method="POST" action="{{ route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]) }}" class="contents">
                                 @csrf
-                                @method('PUT')
                                 <td class="px-5 py-4">
                                     <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
                                     <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
@@ -230,7 +229,6 @@
                                     </button>
                                     <form method="POST" action="{{ route('rh.beneficios.colaboradores.destroy', [$beneficio, $vinculo]) }}" class="flex-1" onsubmit="return confirm('Remover este colaborador do benefício?')">
                                         @csrf
-                                        @method('DELETE')
                                         <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 text-xs font-semibold text-brand-black">
                                             <i data-lucide="trash-2" class="h-4 w-4"></i>
                                             Excluir
