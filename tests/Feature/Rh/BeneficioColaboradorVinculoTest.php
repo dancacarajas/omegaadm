@@ -54,14 +54,13 @@ class BeneficioColaboradorVinculoTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('rh.beneficios.show', $beneficio))
-            ->post(
-            route('rh.beneficios.colaboradores.update', [$beneficio, $vinculo]),
-            [
+            ->post(route('rh.beneficios.colaboradores.store', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'salvar',
                 'cartao_entregue' => '1',
                 'beneficio_ativo' => '1',
                 'tem_direito' => '1',
-            ]
-        );
+            ]);
 
         $response->assertRedirect(route('rh.beneficios.show', $beneficio));
         $vinculo->refresh();
@@ -160,9 +159,10 @@ class BeneficioColaboradorVinculoTest extends TestCase
             'colaborador_id' => $colaborador->id,
         ]);
 
-        $this->actingAs($user)->post(
-            route('rh.beneficios.colaboradores.update', [$beneficioA, $vinculo]),
-            ['tem_direito' => '1']
-        )->assertNotFound();
+        $this->actingAs($user)->post(route('rh.beneficios.colaboradores.store', $beneficioA), [
+            'vinculo_id' => $vinculo->id,
+            'acao' => 'salvar',
+            'tem_direito' => '1',
+        ])->assertNotFound();
     }
 }

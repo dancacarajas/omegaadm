@@ -13,6 +13,15 @@ class BeneficioColaboradorController extends Controller
 {
     public function store(Request $request, Beneficio $beneficio)
     {
+        if ($request->filled('vinculo_id')) {
+            $vinculo = ColaboradorBeneficio::query()
+                ->where('beneficio_id', $beneficio->id)
+                ->whereKey($request->integer('vinculo_id'))
+                ->firstOrFail();
+
+            return $this->manage($request, $beneficio, $vinculo);
+        }
+
         $data = $this->validatedData($request, $beneficio);
         $colaborador = Colaborador::query()->findOrFail($data['colaborador_id']);
 
@@ -32,6 +41,10 @@ class BeneficioColaboradorController extends Controller
     public function manage(Request $request, Beneficio $beneficio, ColaboradorBeneficio $vinculo)
     {
         abort_unless($vinculo->beneficio_id === $beneficio->id, 404);
+
+        if (! $request->filled('acao') && str_contains($request->path(), '/excluir')) {
+            $request->merge(['acao' => 'excluir']);
+        }
 
         if ($request->input('acao') === 'excluir') {
             $vinculo->delete();
