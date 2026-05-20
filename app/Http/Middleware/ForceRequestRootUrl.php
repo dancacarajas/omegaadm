@@ -15,7 +15,12 @@ class ForceRequestRootUrl
     public function handle(Request $request, Closure $next): Response
     {
         if (! app()->runningInConsole()) {
-            $root = rtrim($request->getSchemeAndHttpHost().$request->getBaseUrl(), '/');
+            $host = $request->getSchemeAndHttpHost();
+            // Produção Hostinger: links devem manter /public na URL pública
+            $root = str_starts_with($request->getRequestUri(), '/public')
+                ? $host.'/public'
+                : rtrim($host.$request->getBaseUrl(), '/');
+
             if ($root !== '') {
                 URL::forceRootUrl($root);
             }

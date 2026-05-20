@@ -61,3 +61,7 @@ APP_URL=https://omegaadm.feston.net.br/public
 ### Ideal no Hostinger (opcional)
 
 No hPanel, definir **document root** = `omegaadm/public`. Aí a URL fica `https://omegaadm.feston.net.br/rh/beneficios/1` (sem `/public`), igual ao localhost.
+
+### Documento completo para o desenvolvedor
+
+Ver **`docs/DEV_BENEFICIOS_404_PRODUCAO.md`** (histórico de commits, arquivos, checklist SSH, causa raiz `REQUEST_URI` com `/public`).
