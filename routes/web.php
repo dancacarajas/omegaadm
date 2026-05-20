@@ -18,6 +18,7 @@ use App\Http\Controllers\Rh\CartaoPontoController;
 use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\ColaboradorController;
+use App\Http\Controllers\Rh\ColaboradorMovimentacaoController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\ApuracaoPontoController;
 use App\Http\Controllers\Rh\FeriadoController;
@@ -374,6 +375,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('beneficios/{beneficio}/colaboradores', [BeneficioColaboradorController::class, 'store'])->name('beneficios.colaboradores.store');
         Route::put('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'update'])->name('beneficios.colaboradores.update');
         Route::delete('beneficios/{beneficio}/colaboradores/{vinculo}', [BeneficioColaboradorController::class, 'destroy'])->name('beneficios.colaboradores.destroy');
+        Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
+        Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
+        Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
+        Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])->name('efetivo.movimentacoes.destroy');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');
         Route::post('efetivo/excluir-massa', [ColaboradorController::class, 'destroyMassa'])->name('efetivo.excluir-massa');

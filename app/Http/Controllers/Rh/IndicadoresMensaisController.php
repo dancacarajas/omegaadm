@@ -128,7 +128,11 @@ class IndicadoresMensaisController extends Controller
         $leituraExecutiva = $this->textoLeituraExecutiva($contratoLabel, $periodoLabel, $resumoEfetivo, $freqStats);
         $pontosAtencao = $this->listaPontosAtencao($resumoEfetivo, $freqStats, $absenteismoPeriodo);
         $variacaoEfetivo = $this->variacaoEfetivoCard($resumoEfetivo);
-        $evolucaoTransferencias = ['entrada' => 0, 'saida' => 0];
+        $evolucaoTransferencias = \App\Support\Rh\TransferenciasEfetivoPeriodo::resumo(
+            $identificadoresColaborador,
+            $periodoInicio,
+            $periodoFim
+        );
         $evolucaoWaterfallLayout = $this->evolucaoWaterfallLayout($resumoEfetivo, $evolucaoTransferencias);
         $leituraEvolucaoEfetivo = $this->textoLeituraEvolucaoEfetivo($contratoLabel, $periodoLabel, $resumoEfetivo, $evolucaoTransferencias);
         $pontosAtencaoEvolucao = $this->listaPontosAtencaoEvolucaoEfetivo();

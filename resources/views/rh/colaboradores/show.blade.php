@@ -5,7 +5,11 @@
 @section('page-title', 'Ficha do colaborador')
 
 @section('actions')
-    <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="h-10 rounded-md bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm">Editar</a>
+    <a href="{{ route('rh.efetivo.movimentacoes.create', ['colaborador' => $colaborador, 'tipo' => 'desligamento']) }}" class="inline-flex h-10 items-center gap-2 rounded-md bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm">
+        <i data-lucide="git-branch" class="h-4 w-4"></i>
+        Movimentação
+    </a>
+    <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="h-10 rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm">Editar</a>
     <a href="{{ route('rh.efetivo.index') }}" class="h-10 rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm">Voltar</a>
 @endsection
 
@@ -131,6 +135,56 @@
                     </div>
                 </section>
             @endforeach
+
+            <section class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-brand-black">Histórico de movimentações</h3>
+                        <p class="mt-1 text-sm text-brand-gray">Desligamento, transferências, promoções, férias e afastamentos INSS.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($tiposMovimentacao as $tipoKey => $tipoLabel)
+                            <a href="{{ route('rh.efetivo.movimentacoes.create', ['colaborador' => $colaborador, 'tipo' => $tipoKey]) }}" class="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-black hover:border-brand-burgundy hover:text-brand-burgundy">{{ $tipoLabel }}</a>
+                        @endforeach
+                    </div>
+                </div>
+                @if (session('success'))
+                    <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">{{ session('success') }}</div>
+                @endif
+                <div class="mt-5 overflow-x-auto">
+                    <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                        <thead class="border-b border-zinc-100 text-xs font-bold uppercase tracking-wide text-brand-gray">
+                            <tr>
+                                <th class="py-2 pr-3">Data</th>
+                                <th class="py-2 pr-3">Tipo</th>
+                                <th class="py-2 pr-3">Resumo</th>
+                                <th class="py-2 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100">
+                            @forelse ($colaborador->movimentacoes as $mov)
+                                <tr>
+                                    <td class="whitespace-nowrap py-3 pr-3 font-medium text-brand-black">
+                                        {{ $mov->data_inicio->format('d/m/Y') }}
+                                        @if ($mov->data_fim)<span class="text-brand-gray"> — {{ $mov->data_fim->format('d/m/Y') }}</span>@endif
+                                    </td>
+                                    <td class="py-3 pr-3"><span class="rounded-full bg-brand-burgundy-soft px-2 py-0.5 text-xs font-bold text-brand-burgundy">{{ $mov->tipoLabel() }}</span></td>
+                                    <td class="py-3 pr-3 text-brand-gray">{{ $mov->resumoAlteracao() }}</td>
+                                    <td class="py-3 text-right">
+                                        <form method="POST" action="{{ route('rh.efetivo.movimentacoes.destroy', [$colaborador, $mov]) }}" class="inline" onsubmit="return confirm('Remover este registro do histórico?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs font-semibold text-red-600 hover:underline">Excluir</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="py-6 text-center text-brand-gray">Nenhuma movimentação registrada. Use o botão «Movimentação» acima.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             <section class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

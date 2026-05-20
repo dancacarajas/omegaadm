@@ -107,6 +107,11 @@ class Colaborador extends Model
         return $this->hasMany(FrequenciaRegistro::class);
     }
 
+    public function movimentacoes()
+    {
+        return $this->hasMany(ColaboradorMovimentacao::class)->orderByDesc('data_inicio')->orderByDesc('id');
+    }
+
     public function horarioEscala()
     {
         return $this->belongsTo(HorarioEscala::class, 'horario_escala_id');

@@ -75,9 +75,15 @@ class ColaboradorController extends Controller
 
     public function show(Colaborador $colaborador)
     {
-        $colaborador->load('horarioEscala');
+        $colaborador->load([
+            'horarioEscala',
+            'movimentacoes' => fn ($q) => $q->with('registradoPor:id,name')->limit(50),
+        ]);
 
-        return view('rh.colaboradores.show', compact('colaborador'));
+        return view('rh.colaboradores.show', [
+            'colaborador' => $colaborador,
+            'tiposMovimentacao' => \App\Support\Rh\ColaboradorMovimentacaoTipos::labels(),
+        ]);
     }
 
     public function edit(Colaborador $colaborador)

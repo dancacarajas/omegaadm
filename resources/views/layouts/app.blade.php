@@ -82,9 +82,13 @@
                                     <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
                                     Painel
                                 </a>
-                                <a href="{{ route('rh.efetivo.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.efetivo.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <a href="{{ route('rh.efetivo.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.efetivo.index') || request()->routeIs('rh.efetivo.show') || request()->routeIs('rh.efetivo.create') || request()->routeIs('rh.efetivo.edit') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="users" class="h-4 w-4"></i>
                                     Efetivo
+                                </a>
+                                <a href="{{ route('rh.efetivo.movimentacoes.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.efetivo.movimentacoes.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="git-branch" class="h-4 w-4"></i>
+                                    Movimentações
                                 </a>
                                 <a href="{{ route('rh.beneficios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.beneficios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="hand-heart" class="h-4 w-4"></i>
