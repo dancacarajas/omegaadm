@@ -100,12 +100,16 @@
                         title="Clique para {{ filled($colaborador->foto_path) ? 'alterar' : 'anexar' }} a foto"
                     >
                         @if (filled($colaborador->foto_path))
-                            <img src="{{ $colaborador->urlFotoPerfil() }}" alt="" class="relative z-10 h-32 w-32 rounded-full object-cover shadow-2xl shadow-black/30 ring-4 ring-white/90 transition group-hover:brightness-90 sm:h-36 sm:w-36">
-                        @else
-                            <div class="relative z-10 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-white/25 to-white/5 text-4xl font-bold tracking-tight text-white shadow-2xl shadow-black/25 ring-4 ring-white/90 backdrop-blur-sm transition group-hover:from-white/35 sm:h-36 sm:w-36 sm:text-5xl">
-                                {{ $iniciais ?: mb_strtoupper(mb_substr($colaborador->nome, 0, 1)) }}
-                            </div>
+                            <img
+                                src="{{ $colaborador->urlFotoPerfil() }}"
+                                alt=""
+                                class="relative z-10 h-32 w-32 rounded-full object-cover shadow-2xl shadow-black/30 ring-4 ring-white/90 transition group-hover:brightness-90 sm:h-36 sm:w-36"
+                                onerror="this.classList.add('hidden'); document.getElementById('ficha-foto-iniciais')?.classList.remove('hidden');"
+                            >
                         @endif
+                        <div id="ficha-foto-iniciais" class="{{ filled($colaborador->foto_path) ? 'hidden ' : '' }}relative z-10 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-white/25 to-white/5 text-4xl font-bold tracking-tight text-white shadow-2xl shadow-black/25 ring-4 ring-white/90 backdrop-blur-sm transition group-hover:from-white/35 sm:h-36 sm:w-36 sm:text-5xl">
+                            {{ $iniciais ?: mb_strtoupper(mb_substr($colaborador->nome, 0, 1)) }}
+                        </div>
                         <span class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 rounded-full bg-black/50 text-white opacity-0 transition duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 max-sm:bg-black/40 max-sm:opacity-100" id="ficha-foto-overlay">
                             <i data-lucide="camera" class="h-6 w-6 sm:h-7 sm:w-7"></i>
                             <span class="hidden px-2 text-center text-[10px] font-bold uppercase tracking-wide sm:block">{{ filled($colaborador->foto_path) ? 'Alterar' : 'Anexar' }}</span>

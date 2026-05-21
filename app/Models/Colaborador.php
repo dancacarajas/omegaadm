@@ -128,8 +128,7 @@ class Colaborador extends Model
     }
 
     /**
-     * Caminho público da foto (requer `php artisan storage:link`).
-     * Usa URL relativa ao host atual para evitar divergência de porta com APP_URL.
+     * URL pública da foto (requer `php artisan storage:link` ou rewrite /storage → public/storage).
      */
     public function urlFotoPerfil(): ?string
     {
@@ -139,7 +138,7 @@ class Colaborador extends Model
 
         $path = str_replace('\\', '/', (string) $this->foto_path);
 
-        return '/storage/'.ltrim($path, '/');
+        return asset('storage/'.ltrim($path, '/'));
     }
 
     /**

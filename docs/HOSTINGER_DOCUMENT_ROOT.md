@@ -24,10 +24,16 @@ Site acessado como `https://dominio/public/rh/...` com document root na **raiz d
 5. SSH:
    ```bash
    cd ~/omegaadm   # ou o caminho real exibido no pwd
+   php artisan storage:link
    php artisan config:clear
    php artisan route:clear
    php artisan view:clear
    ```
+
+   **Foto de perfil do efetivo não aparece?** Confirme o link `public/storage` e teste no navegador:
+   `https://omegaadm.feston.net.br/public/storage/rh/colaboradores/fotos/NOME.jpg`
+   (ou `/storage/...` se o `.htaccess` da raiz estiver atualizado). No `.env`, se o site usa `/public/` na URL:
+   `APP_URL=https://omegaadm.feston.net.br/public`
 
 6. Testar: `https://omegaadm.feston.net.br/rh/beneficios/1`
 

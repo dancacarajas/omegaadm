@@ -1,6 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Uploads Laravel (symlink em public/storage) — /storage/... sem /public/ na URL
+    RewriteCond %{REQUEST_URI} ^/storage/(.+)$ [NC]
+    RewriteCond %{DOCUMENT_ROOT}/public/storage/%1 -f
+    RewriteRule ^storage/(.+)$ public/storage/$1 [L]
+
     # Arquivos estáticos reais (css, js, build) dentro de public/
     RewriteCond %{REQUEST_URI} ^/public/(.+)$ [NC]
     RewriteCond %{DOCUMENT_ROOT}/public/%1 -f
