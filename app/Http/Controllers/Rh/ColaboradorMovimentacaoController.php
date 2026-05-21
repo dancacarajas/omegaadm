@@ -15,24 +15,37 @@ class ColaboradorMovimentacaoController extends Controller
 {
     public function index(Request $request)
     {
-        $movimentacoes = ColaboradorMovimentacao::query()
-            ->with(['colaborador:id,nome,matricula,cargo', 'registradoPor:id,name'])
+        $query = ColaboradorMovimentacao::query()
             ->when($request->filled('tipo'), fn ($q) => $q->where('tipo', $request->input('tipo')))
             ->when($request->filled('busca'), function ($q) use ($request) {
                 $busca = '%'.trim((string) $request->input('busca')).'%';
                 $q->whereHas('colaborador', fn ($c) => $c->where('nome', 'like', $busca)
                     ->orWhere('matricula', 'like', $busca));
-            })
+            });
+
+        $movimentacoes = (clone $query)
+            ->with(['colaborador:id,nome,matricula,cargo,foto_path', 'registradoPor:id,name'])
             ->orderByDesc('data_inicio')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
+
+        $resumo = [
+            'total_geral' => ColaboradorMovimentacao::count(),
+            'total_filtrado' => $movimentacoes->total(),
+            'em_aberto' => ColaboradorMovimentacao::query()->whereNull('data_fim')->count(),
+            'afastamento_inss' => ColaboradorMovimentacao::query()
+                ->where('tipo', ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS)
+                ->whereNull('data_fim')
+                ->count(),
+        ];
 
         return view('rh.colaboradores.movimentacoes.index', [
             'movimentacoes' => $movimentacoes,
             'tipos' => ColaboradorMovimentacaoTipos::labels(),
             'tipoFiltro' => $request->input('tipo'),
             'busca' => $request->input('busca'),
+            'resumo' => $resumo,
         ]);
     }
 
