@@ -30,10 +30,9 @@ Site acessado como `https://dominio/public/rh/...` com document root na **raiz d
    php artisan view:clear
    ```
 
-   **Foto de perfil do efetivo não aparece?** Confirme o link `public/storage` e teste no navegador:
-   `https://omegaadm.feston.net.br/public/storage/rh/colaboradores/fotos/NOME.jpg`
-   (ou `/storage/...` se o `.htaccess` da raiz estiver atualizado). No `.env`, se o site usa `/public/` na URL:
-   `APP_URL=https://omegaadm.feston.net.br/public`
+   **Foto de perfil:** após `git pull`, as imagens são servidas pela rota
+   `/public/rh/efetivo/{id}/foto` (não depende de `storage:link`). Teste logado:
+   `https://omegaadm.feston.net.br/public/rh/efetivo/1/foto`
 
 6. Testar: `https://omegaadm.feston.net.br/rh/beneficios/1`
 

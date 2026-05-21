@@ -144,6 +144,22 @@ class ColaboradorController extends Controller
             ->with('success', 'Foto de perfil atualizada.');
     }
 
+    public function showFoto(Colaborador $colaborador)
+    {
+        abort_unless(
+            filled($colaborador->foto_path) && Storage::disk('public')->exists($colaborador->foto_path),
+            404,
+        );
+
+        $path = str_replace('\\', '/', (string) $colaborador->foto_path);
+
+        return Storage::disk('public')->response(
+            $path,
+            basename($path),
+            ['Cache-Control' => 'private, max-age=3600'],
+        );
+    }
+
     public function destroy(Colaborador $colaborador)
     {
         $this->excluirColaborador($colaborador);

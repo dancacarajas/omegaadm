@@ -128,12 +128,16 @@ class Colaborador extends Model
     }
 
     /**
-     * URL pública da foto (requer `php artisan storage:link` ou rewrite /storage → public/storage).
+     * URL da foto via rota Laravel (funciona em produção sem depender de symlink /storage).
      */
     public function urlFotoPerfil(): ?string
     {
         if (blank($this->foto_path)) {
             return null;
+        }
+
+        if ($this->exists) {
+            return route('rh.efetivo.foto.show', $this);
         }
 
         $path = str_replace('\\', '/', (string) $this->foto_path);

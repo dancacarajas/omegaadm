@@ -34,7 +34,11 @@ class ColaboradorFotoPerfilTest extends TestCase
         $colab->refresh();
         $this->assertNotNull($colab->foto_path);
         Storage::disk('public')->assertExists($colab->foto_path);
-        $this->assertStringContainsString('storage/', (string) $colab->urlFotoPerfil());
+        $this->assertSame(route('rh.efetivo.foto.show', $colab), $colab->urlFotoPerfil());
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.foto.show', $colab))
+            ->assertOk();
     }
 
     public function test_rejeita_arquivo_invalido(): void
