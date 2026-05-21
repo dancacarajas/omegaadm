@@ -25,7 +25,7 @@ final class ColaboradorMovimentacaoTipos
             self::PROMOCAO => 'Promoção',
             self::MUDANCA_FUNCAO => 'Mudança de função',
             self::FERIAS => 'Férias',
-            self::AFASTAMENTO_INSS => 'Afastamento INSS',
+            self::AFASTAMENTO_INSS => 'Afastamento INSS / benefício',
         ];
     }
 
@@ -60,11 +60,20 @@ final class ColaboradorMovimentacaoTipos
     {
         return [
             'auxilio_doenca' => 'Auxílio-doença',
-            'acidente_trabalho' => 'Acidente de trabalho',
-            'auxilio_acidente' => 'Auxílio-acidente',
+            'acidente_trabalho' => 'Acidente de trabalho (CAT / afastamento)',
+            'auxilio_acidente' => 'Auxílio-acidente (após retorno)',
             'aposentadoria_invalidez' => 'Aposentadoria por invalidez',
             'salario_maternidade' => 'Salário-maternidade',
             'outro' => 'Outro',
         ];
+    }
+
+    public static function labelEspecieInss(?string $especie): string
+    {
+        if ($especie === null || $especie === '') {
+            return '';
+        }
+
+        return self::especiesInss()[$especie] ?? $especie;
     }
 }

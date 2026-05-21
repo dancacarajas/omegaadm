@@ -171,11 +171,14 @@
                                     <td class="py-3 pr-3"><span class="rounded-full bg-brand-burgundy-soft px-2 py-0.5 text-xs font-bold text-brand-burgundy">{{ $mov->tipoLabel() }}</span></td>
                                     <td class="py-3 pr-3 text-brand-gray">{{ $mov->resumoAlteracao() }}</td>
                                     <td class="py-3 text-right">
-                                        <form method="POST" action="{{ route('rh.efetivo.movimentacoes.destroy', [$colaborador, $mov]) }}" class="inline" onsubmit="return confirm('Remover este registro do histórico?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-600 hover:underline">Excluir</button>
-                                        </form>
+                                        <div class="inline-flex items-center justify-end gap-3">
+                                            <a href="{{ route('rh.efetivo.movimentacoes.edit', [$colaborador, $mov]) }}" class="text-xs font-semibold text-brand-burgundy hover:underline">Alterar</a>
+                                            <form method="POST" action="{{ route('rh.efetivo.movimentacoes.destroy', [$colaborador, $mov]) }}" class="inline" onsubmit="return confirm('Remover este registro do histórico?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-xs font-semibold text-red-600 hover:underline">Excluir</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

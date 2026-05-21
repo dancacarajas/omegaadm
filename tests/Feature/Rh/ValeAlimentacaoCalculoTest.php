@@ -5,7 +5,11 @@ namespace Tests\Feature\Rh;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Models\ColaboradorMovimentacao;
 use App\Models\FrequenciaRegistro;
+use App\Support\Rh\AfastamentoAcidenteTrabalho;
+use App\Support\Rh\ColaboradorMovimentacaoTipos;
+use App\Support\Rh\ValeAlimentacaoRegraConfig;
 use App\Models\HorarioEscala;
 use App\Models\HorarioEscalaDia;
 use App\Services\Rh\ValeAlimentacaoCalculoService;
@@ -98,6 +102,101 @@ class ValeAlimentacaoCalculoTest extends TestCase
         $this->assertStringContainsString('01/03/2026', $calc['periodo_apuracao']);
         $this->assertStringContainsString('30/04/2026', $calc['periodo_apuracao']);
         Carbon::setTestNow();
+    }
+
+    public function test_acidente_trabalho_isenta_desconto_no_terceiro_mes(): void
+    {
+        Carbon::setTestNow('2026-05-15');
+        [$colab, $beneficio, $vinculo] = $this->cenarioValeAlimentacao();
+
+        ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => null,
+            'especie_beneficio_inss' => 'acidente_trabalho',
+        ]);
+
+        $this->diaUtilComFalta($colab, Carbon::parse('2026-04-10'));
+
+        $calc = app(ValeAlimentacaoCalculoService::class)->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            Carbon::parse('2026-05-01'),
+            Carbon::parse('2026-04-01'),
+            Carbon::parse('2026-04-30')
+        );
+
+        $this->assertTrue($calc['isento_acidente_trabalho']);
+        $this->assertSame(3, $calc['acidente_trabalho_mes_afastamento']);
+        $this->assertEquals(750.0, $calc['valor_final']);
+        $this->assertSame(0, $calc['percentual_desconto']);
+        Carbon::setTestNow();
+    }
+
+    public function test_acidente_trabalho_aplica_desconto_apos_limite_de_meses(): void
+    {
+        Carbon::setTestNow('2026-05-15');
+        [$colab, $beneficio, $vinculo] = $this->cenarioValeAlimentacao();
+
+        ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            'data_inicio' => '2026-01-05',
+            'data_fim' => null,
+            'especie_beneficio_inss' => 'acidente_trabalho',
+        ]);
+
+        $this->diaUtilComFalta($colab, Carbon::parse('2026-04-10'));
+
+        $calc = app(ValeAlimentacaoCalculoService::class)->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            Carbon::parse('2026-05-01'),
+            Carbon::parse('2026-04-01'),
+            Carbon::parse('2026-04-30')
+        );
+
+        $this->assertFalse($calc['isento_acidente_trabalho']);
+        $this->assertSame(4, $calc['acidente_trabalho_mes_afastamento']);
+        $this->assertSame(20, $calc['percentual_desconto']);
+        $this->assertEquals(600.0, $calc['valor_final']);
+        Carbon::setTestNow();
+    }
+
+    public function test_auxilio_doenca_nao_isenta_por_acidente(): void
+    {
+        [$colab] = $this->cenarioValeAlimentacao();
+        ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            'data_inicio' => '2026-04-01',
+            'especie_beneficio_inss' => 'auxilio_doenca',
+        ]);
+
+        $situacao = AfastamentoAcidenteTrabalho::situacaoValeAlimentacaoNoMes(
+            $colab,
+            Carbon::parse('2026-04-01'),
+            3
+        );
+
+        $this->assertFalse($situacao['isento']);
+    }
+
+    public function test_meses_decorridos_afastamento(): void
+    {
+        $this->assertSame(1, AfastamentoAcidenteTrabalho::mesesDecorridosDesdeInicio(
+            Carbon::parse('2026-01-15'),
+            Carbon::parse('2026-01-01')
+        ));
+        $this->assertSame(3, AfastamentoAcidenteTrabalho::mesesDecorridosDesdeInicio(
+            Carbon::parse('2026-01-15'),
+            Carbon::parse('2026-03-01')
+        ));
+        $this->assertSame(4, AfastamentoAcidenteTrabalho::mesesDecorridosDesdeInicio(
+            Carbon::parse('2026-01-15'),
+            Carbon::parse('2026-04-01')
+        ));
     }
 
     public function test_proporcional_admissao_no_meio_do_mes(): void

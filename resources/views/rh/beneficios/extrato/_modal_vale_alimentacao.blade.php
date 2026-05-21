@@ -77,7 +77,7 @@
 
                 <section class="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
                     <h4 class="text-sm font-bold text-blue-900">Afastamento por acidente de trabalho</h4>
-                    <p class="mt-1 text-xs text-blue-800">Sem desconto por falta no mês, limitado aos meses configurados (movimentação INSS — acidente de trabalho).</p>
+                    <p class="mt-1 text-xs text-blue-800">Sem desconto por falta no mês de pagamento, contando os meses de calendário desde o início do afastamento registrado em <strong>Efetivo → Movimentação → Afastamento INSS</strong> com espécie <strong>Acidente de trabalho</strong>.</p>
                     <div class="mt-3 flex flex-wrap gap-6">
                         <label class="flex items-center gap-2 text-sm font-semibold text-brand-black">
                             <input type="hidden" name="afastamento_acidente_trabalho[ativo]" value="0">

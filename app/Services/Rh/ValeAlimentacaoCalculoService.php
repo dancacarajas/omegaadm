@@ -5,10 +5,9 @@ namespace App\Services\Rh;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
-use App\Models\ColaboradorMovimentacao;
 use App\Models\FrequenciaRegistro;
 use App\Models\HorarioEscalaDia;
-use App\Support\Rh\ColaboradorMovimentacaoTipos;
+use App\Support\Rh\AfastamentoAcidenteTrabalho;
 use App\Support\Rh\ValeAlimentacaoRegraConfig;
 use App\Support\FrequenciaCalculo;
 use App\Support\Rh\CartaoPontoService;
@@ -91,7 +90,8 @@ class ValeAlimentacaoCalculoService
         $valorProporcional = round($valorBase * $proporcao['fator'], 2);
 
         $percentualDesconto = $config->percentualDescontoPorFaltas($faltasInjustificadas);
-        $isentoAcidente = $this->isentoDescontoPorAcidenteTrabalho($colaborador, $mesPagamento, $config);
+        $situacaoAcidente = $this->situacaoAcidenteTrabalho($colaborador, $fimApuracao, $config);
+        $isentoAcidente = $situacaoAcidente['isento'];
         if ($isentoAcidente) {
             $percentualDesconto = 0.0;
         }
@@ -126,6 +126,8 @@ class ValeAlimentacaoCalculoService
             'valor_proporcional' => $valorProporcional,
             'valor_final' => $valorFinal,
             'isento_acidente_trabalho' => $isentoAcidente,
+            'acidente_trabalho_mes_afastamento' => $situacaoAcidente['mes_afastamento'],
+            'acidente_trabalho_limite_meses' => $situacaoAcidente['limite_meses'],
             'recarga_natal' => $recargaNatal,
             'dias_apuracao' => $this->listarDiasApuracaoParaExtrato(
                 $colaborador,
@@ -135,7 +137,7 @@ class ValeAlimentacaoCalculoService
                 $proporcao,
                 $config->proporcionalAdmissaoDemissao()
             ),
-            'detalhe' => $this->montarDetalhe($faltasInjustificadas, $percentualDesconto, $proporcao, $config, $isentoAcidente, $recargaNatal),
+            'detalhe' => $this->montarDetalhe($faltasInjustificadas, $percentualDesconto, $proporcao, $config, $situacaoAcidente, $recargaNatal),
         ];
     }
 
@@ -356,46 +358,34 @@ class ValeAlimentacaoCalculoService
         Carbon $mesPagamento,
         ValeAlimentacaoRegraConfig $config
     ): bool {
+        return $this->situacaoAcidenteTrabalho($colaborador, $mesPagamento, $config)['isento'];
+    }
+
+    /**
+     * @return array{isento: bool, mes_afastamento: int|null, limite_meses: int, movimentacao_id: int|null}
+     */
+    public function situacaoAcidenteTrabalho(
+        Colaborador $colaborador,
+        Carbon $mesPagamento,
+        ValeAlimentacaoRegraConfig $config
+    ): array {
         $regra = $config->afastamentoAcidente();
         if (! ($regra['ativo'] ?? false)) {
-            return false;
+            return [
+                'isento' => false,
+                'mes_afastamento' => null,
+                'limite_meses' => (int) ($regra['meses_limite_integral'] ?? 3),
+                'movimentacao_id' => null,
+            ];
         }
 
         $limiteMeses = (int) ($regra['meses_limite_integral'] ?? 3);
-        $inicioMes = $mesPagamento->copy()->startOfMonth();
-        $fimMes = $mesPagamento->copy()->endOfMonth();
 
-        $afastamentos = ColaboradorMovimentacao::query()
-            ->where('colaborador_id', $colaborador->id)
-            ->where('tipo', ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS)
-            ->where('especie_beneficio_inss', 'acidente_trabalho')
-            ->where('data_inicio', '<=', $fimMes->toDateString())
-            ->where(function ($q) use ($inicioMes) {
-                $q->whereNull('data_fim')->orWhere('data_fim', '>=', $inicioMes->toDateString());
-            })
-            ->orderBy('data_inicio')
-            ->get();
-
-        if ($afastamentos->isEmpty()) {
-            return false;
-        }
-
-        $mesesAfastado = 0;
-        foreach ($afastamentos as $mov) {
-            $ini = $mov->data_inicio->copy()->startOfMonth();
-            $fim = ($mov->data_fim ?? $fimMes)->copy()->endOfMonth();
-            $cursor = $ini->copy();
-            while ($cursor->lte($fim)) {
-                if ($cursor->isSameMonth($mesPagamento)) {
-                    $mesesAfastado++;
-
-                    break;
-                }
-                $cursor->addMonth();
-            }
-        }
-
-        return $mesesAfastado > 0 && $mesesAfastado <= $limiteMeses;
+        return AfastamentoAcidenteTrabalho::situacaoValeAlimentacaoNoMes(
+            $colaborador,
+            $mesPagamento->copy()->startOfMonth(),
+            $limiteMeses
+        );
     }
 
     /**
@@ -610,7 +600,7 @@ class ValeAlimentacaoCalculoService
         float $percentualDesconto,
         array $proporcao,
         ValeAlimentacaoRegraConfig $config,
-        bool $isentoAcidente,
+        array $situacaoAcidente,
         array $recargaNatal
     ): string {
         $partes = [];
@@ -623,8 +613,21 @@ class ValeAlimentacaoCalculoService
             );
         }
 
-        if ($isentoAcidente) {
-            $partes[] = 'Afastamento por acidente de trabalho no mês → sem desconto por falta (limite configurado).';
+        if ($situacaoAcidente['isento']) {
+            $mes = (int) ($situacaoAcidente['mes_afastamento'] ?? 0);
+            $limite = (int) ($situacaoAcidente['limite_meses'] ?? 3);
+            $partes[] = sprintf(
+                'Afastamento por acidente de trabalho (mês %d de %d) → vale alimentação sem desconto por falta neste pagamento.',
+                $mes,
+                $limite
+            );
+        } elseif ($situacaoAcidente['mes_afastamento'] !== null) {
+            $partes[] = sprintf(
+                'Afastamento por acidente de trabalho: mês %d — ultrapassou o limite de %d mês(es) com vale integral; aplica-se desconto por assiduidade.',
+                $situacaoAcidente['mes_afastamento'],
+                $situacaoAcidente['limite_meses']
+            );
+            $partes[] = $config->textoFaixaDesconto($faltas);
         } else {
             $partes[] = $config->textoFaixaDesconto($faltas);
         }

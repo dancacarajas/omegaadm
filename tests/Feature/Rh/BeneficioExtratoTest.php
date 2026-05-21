@@ -170,4 +170,51 @@ class BeneficioExtratoTest extends TestCase
             ->assertSee('Total do extrato', false)
             ->assertSee('R$ 500,00', false);
     }
+
+    public function test_pagina_gerar_nao_lista_colaborador_desligado(): void
+    {
+        $desligado = Colaborador::query()->create([
+            'nome' => 'Jarbas Desligado',
+            'matricula' => '022214',
+            'status' => 'desligado',
+            'data_demissao' => '2026-04-30',
+        ]);
+        $ativo = Colaborador::query()->create([
+            'nome' => 'Maria Ativa',
+            'status' => 'ativo',
+        ]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'Vale',
+            'status' => 'ativo',
+            'valor' => 500,
+        ]);
+        BeneficioExtratoRegra::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'tipo_regra' => BeneficioExtratoRegra::TIPO_VALOR_FIXO,
+            'ativo' => true,
+            'configurado' => true,
+        ]);
+        ColaboradorBeneficio::query()->create([
+            'colaborador_id' => $desligado->id,
+            'beneficio_id' => $beneficio->id,
+            'tem_direito' => false,
+            'beneficio_ativo' => false,
+        ]);
+        ColaboradorBeneficio::query()->create([
+            'colaborador_id' => $ativo->id,
+            'beneficio_id' => $beneficio->id,
+            'tem_direito' => true,
+        ]);
+
+        $this->actingAs($this->usuarioRh())
+            ->get(route('rh.beneficios.extrato.gerar', [
+                'colaborador_id' => $desligado->id,
+                'periodo_inicio' => '21/04/2026',
+                'periodo_fim' => '20/05/2026',
+            ]))
+            ->assertOk()
+            ->assertDontSee('Jarbas Desligado', false)
+            ->assertSee('Maria Ativa', false)
+            ->assertDontSee('Total do extrato', false);
+    }
 }

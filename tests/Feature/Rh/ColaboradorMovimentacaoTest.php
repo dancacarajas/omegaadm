@@ -87,4 +87,38 @@ class ColaboradorMovimentacaoTest extends TestCase
             ->get(route('rh.efetivo.movimentacoes.index'))
             ->assertOk();
     }
+
+    public function test_edita_afastamento_inss_alterando_especie(): void
+    {
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create([
+            'nome' => 'Pedro',
+            'status' => 'afastado',
+        ]);
+
+        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.store', $colab), [
+            'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            'data_inicio' => '2026-05-14',
+            'especie_beneficio_inss' => 'auxilio_acidente',
+        ]);
+
+        $mov = ColaboradorMovimentacao::query()->where('colaborador_id', $colab->id)->first();
+        $this->assertNotNull($mov);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.movimentacoes.edit', [$colab, $mov]))
+            ->assertOk()
+            ->assertSee('Alterar movimentação', false)
+            ->assertSee('auxilio_acidente', false);
+
+        $this->actingAs($user)->put(route('rh.efetivo.movimentacoes.update', [$colab, $mov]), [
+            'data_inicio' => '2026-05-14',
+            'especie_beneficio_inss' => 'acidente_trabalho',
+            'cid' => 'S82.0',
+        ])->assertRedirect(route('rh.efetivo.show', $colab));
+
+        $mov->refresh();
+        $this->assertSame('acidente_trabalho', $mov->especie_beneficio_inss);
+        $this->assertSame('S82.0', $mov->cid);
+    }
 }

@@ -40,9 +40,20 @@ Faltas **injustificadas** somadas na **apuração de ponto** entre **período in
 
 Proporcional: `(dias úteis com vínculo no mês) / (dias úteis do mês na escala)`.
 
-### 4. Pendente (não implementado nesta versão)
+### 4. Afastamento por acidente de trabalho
 
-- **Recarga extra de Natal** (R$ 925, atestados, sindicalizado) — regra documentada no ACT; exige campos extras e período 20/06–20/12/2025.
+1. Registrar em **Efetivo → ficha do colaborador → Movimentação → Afastamento INSS / benefício**.
+2. Espécie: **Acidente de trabalho (CAT / afastamento)** (`especie_beneficio_inss = acidente_trabalho`).
+3. Informar **início do afastamento**; **data fim** opcional (em aberto se ainda afastado).
+4. No extrato (modal Vale), ativar **Afastamento por acidente de trabalho** e definir **meses com vale integral** (padrão: 3).
+
+**Cálculo:** no mês de referência do extrato (fim do período de apuração), conta-se o mês de calendário desde o início do afastamento (1º, 2º, 3º…). Enquanto ≤ limite configurado e o afastamento cobre o mês, **não há desconto por falta** no vale. Após o limite, voltam as faixas de assiduidade.
+
+Código: `App\Support\Rh\AfastamentoAcidenteTrabalho`, testes `AfastamentoAcidenteTrabalhoTest`, `ValeAlimentacaoCalculoTest` (cenários de acidente).
+
+### 5. Recarga extra de Natal
+
+Configurável no modal do extrato (vigência, atestados, cargos excluídos). Ver parâmetros em `ValeAlimentacaoRegraConfig`.
 
 ## Comando de diagnóstico
 

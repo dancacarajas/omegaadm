@@ -16,9 +16,122 @@ final class ColaboradorMovimentacaoService
         $payload['registrado_por_user_id'] = $userId;
 
         $movimentacao = ColaboradorMovimentacao::create($payload);
-        $this->aplicarNoCadastro($colaborador, $movimentacao);
+        $this->sincronizarCadastroColaborador($colaborador);
 
         return $movimentacao;
+    }
+
+    public function atualizar(ColaboradorMovimentacao $movimentacao, array $data): ColaboradorMovimentacao
+    {
+        $colaborador = $movimentacao->colaborador;
+        if ($colaborador === null) {
+            return $movimentacao;
+        }
+
+        $payload = $this->montarPayloadAtualizacao($movimentacao, $data);
+        $movimentacao->update($payload);
+        $this->sincronizarCadastroColaborador($colaborador->fresh());
+
+        return $movimentacao->fresh();
+    }
+
+    public function sincronizarCadastroColaborador(Colaborador $colaborador): void
+    {
+        $hoje = today();
+
+        $desligamento = ColaboradorMovimentacao::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->where('tipo', ColaboradorMovimentacaoTipos::DESLIGAMENTO)
+            ->where('data_inicio', '<=', $hoje->toDateString())
+            ->orderByDesc('data_inicio')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($desligamento !== null) {
+            $colaborador->update([
+                'status' => 'desligado',
+                'data_demissao' => $desligamento->data_inicio,
+            ]);
+
+            return;
+        }
+
+        if ($colaborador->data_demissao !== null) {
+            $colaborador->update(['data_demissao' => null]);
+        }
+
+        foreach ([
+            ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
+            ColaboradorMovimentacaoTipos::PROMOCAO,
+            ColaboradorMovimentacaoTipos::MUDANCA_FUNCAO,
+        ] as $tipoCadastral) {
+            $movimentacoes = ColaboradorMovimentacao::query()
+                ->where('colaborador_id', $colaborador->id)
+                ->where('tipo', $tipoCadastral)
+                ->where('data_inicio', '<=', $hoje->toDateString())
+                ->orderBy('data_inicio')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($movimentacoes as $mov) {
+                $this->aplicarNoCadastro($colaborador->fresh(), $mov);
+            }
+        }
+
+        $colaborador->refresh();
+
+        $afastadoVigente = ColaboradorMovimentacao::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->whereIn('tipo', [
+                ColaboradorMovimentacaoTipos::FERIAS,
+                ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            ])
+            ->whereDate('data_inicio', '<=', $hoje)
+            ->where(function ($query) use ($hoje) {
+                $query->whereNull('data_fim')
+                    ->orWhereDate('data_fim', '>=', $hoje);
+            })
+            ->exists();
+
+        if ($afastadoVigente) {
+            $colaborador->update(['status' => 'afastado']);
+
+            return;
+        }
+
+        if ($colaborador->status === 'afastado') {
+            $colaborador->update(['status' => 'ativo']);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function montarPayloadAtualizacao(ColaboradorMovimentacao $movimentacao, array $data): array
+    {
+        $data['tipo'] = $movimentacao->tipo;
+        $colaborador = $movimentacao->colaborador;
+        $payload = $this->montarPayload($colaborador, $data);
+
+        unset($payload['colaborador_id'], $payload['tipo'], $payload['status_anterior']);
+
+        $camposAnteriores = [
+            'centro_custo_anterior',
+            'tipo_contrato_anterior',
+            'local_trabalho_anterior',
+            'departamento_anterior',
+            'cargo_anterior',
+            'salario_anterior',
+        ];
+
+        foreach ($camposAnteriores as $campo) {
+            if (filled($movimentacao->{$campo})) {
+                $payload[$campo] = $movimentacao->{$campo};
+            }
+        }
+
+        return $payload;
     }
 
     /**

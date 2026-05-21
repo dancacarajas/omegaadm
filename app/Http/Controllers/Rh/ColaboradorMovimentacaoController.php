@@ -64,24 +64,61 @@ class ColaboradorMovimentacaoController extends Controller
             ->with('success', ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado com sucesso.');
     }
 
-    public function destroy(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao)
+    public function edit(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao)
     {
-        abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
-        $movimentacao->delete();
+        $this->garantirMovimentacaoDoColaborador($colaborador, $movimentacao);
+
+        return view('rh.colaboradores.movimentacoes.create', [
+            'colaborador' => $colaborador,
+            'movimentacao' => $movimentacao,
+            'tipo' => $movimentacao->tipo,
+            'tipos' => ColaboradorMovimentacaoTipos::labels(),
+            'tiposRescisao' => ColaboradorMovimentacaoTipos::tiposRescisao(),
+            'especiesInss' => ColaboradorMovimentacaoTipos::especiesInss(),
+            'centrosCusto' => $this->centrosCustoSugestoes(),
+            'contratos' => Contrato::query()->orderBy('numero')->get(['id', 'numero', 'nome', 'centro_custo']),
+        ]);
+    }
+
+    public function update(
+        Request $request,
+        Colaborador $colaborador,
+        ColaboradorMovimentacao $movimentacao,
+        ColaboradorMovimentacaoService $service
+    ) {
+        $this->garantirMovimentacaoDoColaborador($colaborador, $movimentacao);
+
+        $data = $this->validateMovimentacao($request, (string) $movimentacao->tipo);
+        $service->atualizar($movimentacao, $data);
 
         return redirect()
             ->route('rh.efetivo.show', $colaborador)
-            ->with('success', 'Registro de movimentação removido. O cadastro do colaborador não foi revertido automaticamente — ajuste manualmente se necessário.');
+            ->with('success', ColaboradorMovimentacaoTipos::label((string) $movimentacao->tipo).' atualizado com sucesso.');
+    }
+
+    public function destroy(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
+    {
+        $this->garantirMovimentacaoDoColaborador($colaborador, $movimentacao);
+        $movimentacao->delete();
+        $service->sincronizarCadastroColaborador($colaborador->fresh());
+
+        return redirect()
+            ->route('rh.efetivo.show', $colaborador)
+            ->with('success', 'Registro de movimentação removido. O cadastro do colaborador foi reajustado conforme as demais movimentações.');
+    }
+
+    private function garantirMovimentacaoDoColaborador(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao): void
+    {
+        abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function validateMovimentacao(Request $request): array
+    private function validateMovimentacao(Request $request, ?string $tipoFixo = null): array
     {
-        $tipo = $request->input('tipo');
+        $tipo = $tipoFixo ?? $request->input('tipo');
         $rules = [
-            'tipo' => ['required', Rule::in(ColaboradorMovimentacaoTipos::todos())],
             'data_inicio' => ['required', 'date'],
             'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
             'motivo_texto' => ['nullable', 'string', 'max:500'],
@@ -120,7 +157,16 @@ class ColaboradorMovimentacaoController extends Controller
             default => [],
         };
 
-        return $request->validate($rules);
+        if ($tipoFixo === null) {
+            $rules = array_merge([
+                'tipo' => ['required', Rule::in(ColaboradorMovimentacaoTipos::todos())],
+            ], $rules);
+        }
+
+        $validated = $request->validate($rules);
+        $validated['tipo'] = $tipo;
+
+        return $validated;
     }
 
     /**

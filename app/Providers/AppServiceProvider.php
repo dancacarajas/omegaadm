@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
 use App\Models\SsmaAmbientalRegistro;
+use App\Observers\ColaboradorObserver;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Colaborador::observe(ColaboradorObserver::class);
+
         Route::bind('ambiental', function (string $value): SsmaAmbientalRegistro {
             return SsmaAmbientalRegistro::query()->findOrFail((int) $value);
         });

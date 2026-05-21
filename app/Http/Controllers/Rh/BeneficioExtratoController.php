@@ -242,15 +242,13 @@ class BeneficioExtratoController extends Controller
         [$periodoInicio, $periodoFim] = $this->periodoExtrato($request);
         $colaboradorId = (int) $request->input('colaborador_id', 0);
 
-        $colaboradores = Colaborador::query()
-            ->orderBy('nome')
-            ->get(['id', 'nome', 'cargo', 'matricula']);
+        $colaboradores = $this->colaboradoresElegiveisExtrato($regras);
 
         $extrato = null;
         $colaborador = null;
 
         if ($colaboradorId > 0) {
-            $colaborador = Colaborador::query()->find($colaboradorId);
+            $colaborador = $colaboradores->firstWhere('id', $colaboradorId);
             if ($colaborador !== null) {
                 $extrato = $calculo->montarExtratoColaborador(
                     $colaborador,
@@ -258,6 +256,8 @@ class BeneficioExtratoController extends Controller
                     $periodoFim,
                     $regras
                 );
+            } else {
+                $colaboradorId = 0;
             }
         }
 
@@ -270,6 +270,28 @@ class BeneficioExtratoController extends Controller
             'periodoFim',
             'extrato'
         ));
+    }
+
+    /**
+     * Colaboradores que podem ser apurados no extrato: não desligados e com direito em ao menos um benefício do extrato.
+     *
+     * @param  \Illuminate\Support\Collection<int, BeneficioExtratoRegra>  $regras
+     * @return \Illuminate\Database\Eloquent\Collection<int, Colaborador>
+     */
+    private function colaboradoresElegiveisExtrato($regras)
+    {
+        $beneficioIds = $regras->pluck('beneficio_id')->filter()->unique()->values();
+
+        return Colaborador::query()
+            ->where('status', '!=', 'desligado')
+            ->when($beneficioIds->isNotEmpty(), function ($query) use ($beneficioIds) {
+                $query->whereHas('beneficios', function ($sub) use ($beneficioIds) {
+                    $sub->whereIn('beneficio_id', $beneficioIds)
+                        ->where('tem_direito', true);
+                });
+            })
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cargo', 'matricula']);
     }
 
     /**

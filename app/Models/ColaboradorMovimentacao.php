@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Rh\AfastamentoAcidenteTrabalho;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -74,8 +75,7 @@ class ColaboradorMovimentacao extends Model
             ColaboradorMovimentacaoTipos::MUDANCA_FUNCAO => $this->resumoPar($this->cargo_anterior, $this->cargo_novo, 'Função'),
             ColaboradorMovimentacaoTipos::FERIAS => $this->resumoPeriodo()
                 .($this->dias_ferias ? " ({$this->dias_ferias} dias)" : ''),
-            ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS => $this->resumoPeriodo()
-                .($this->especie_beneficio_inss ? ' · '.ColaboradorMovimentacaoTipos::especiesInss()[$this->especie_beneficio_inss] ?? $this->especie_beneficio_inss : ''),
+            ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS => $this->resumoAfastamentoInss(),
             default => '—',
         };
     }
@@ -102,6 +102,19 @@ class ColaboradorMovimentacao extends Model
         $fim = $this->data_fim?->format('d/m/Y') ?? 'em aberto';
 
         return "{$ini} até {$fim}";
+    }
+
+    private function resumoAfastamentoInss(): string
+    {
+        $periodo = $this->resumoPeriodo();
+        $especie = ColaboradorMovimentacaoTipos::labelEspecieInss($this->especie_beneficio_inss);
+        $partes = array_filter([$periodo, $especie !== '' ? $especie : null]);
+
+        if (AfastamentoAcidenteTrabalho::especieElegivel($this->especie_beneficio_inss)) {
+            $partes[] = 'Vale alimentação integral até 3º mês (regra benefícios)';
+        }
+
+        return implode(' · ', $partes);
     }
 
     private function fmtMoney(mixed $valor): string

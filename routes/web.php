@@ -404,6 +404,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
+        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', [ColaboradorMovimentacaoController::class, 'edit'])->name('efetivo.movimentacoes.edit');
+        Route::put('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'update'])->name('efetivo.movimentacoes.update');
         Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])->name('efetivo.movimentacoes.destroy');
         Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
