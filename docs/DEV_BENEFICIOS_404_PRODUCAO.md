@@ -442,4 +442,32 @@ Com o fix em `index.php`, deve comportar-se como produção corrigida.
 
 ---
 
+## 16. Mesmo padrão — Movimentações (Alterar / Salvar)
+
+O 404 em **Alterar** (`/public/rh/efetivo/{colab}/movimentacoes/{id}/editar`) e em **Salvar** (PUT) segue a mesma causa e a mesma correção de benefícios.
+
+| Camada | Benefícios | Movimentações (após alinhar) |
+|--------|------------|------------------------------|
+| Rota | `Route::match(['get','post'], 'beneficios/{beneficio}', show)` | `Route::match(['get','post'], 'movimentacoes/{movimentacao}', editar)` |
+| URL pública | `/public/rh/beneficios/1` | `/public/rh/movimentacoes/3` |
+| Formulário | `action="{{ route('rh.beneficios.show', $beneficio) }}"` + POST | `action="{{ route('rh.efetivo.movimentacoes.edit', $movimentacao) }}"` + POST (sem `@method('PUT')`) |
+| Controller | `show()` delega POST para `store` | `editar()` delega POST para `update()` |
+| Legado | redirects de URLs antigas | `.../movimentacoes/{id}/editar` → 301 para `.../movimentacoes/{id}` |
+
+Infra compartilhada (já no projeto): `index.php` raiz, `.htaccess`, `bootstrap/fix-public-request-uri.php`, middleware `ForceRequestRootUrl`.
+
+### Deploy movimentações
+
+```bash
+git pull origin main
+php artisan route:clear
+php artisan optimize:clear
+php artisan movimentacoes:diagnostico --rota
+php artisan movimentacoes:diagnostico 3   # ID real em produção
+```
+
+Debug (só `APP_DEBUG=true`): `?debug_movimentacao=1` na URL de gestão.
+
+---
+
 *Documento gerado para handoff ao desenvolvedor. Atualizar este arquivo se a causa raiz for confirmada no servidor.*

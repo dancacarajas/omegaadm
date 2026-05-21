@@ -77,10 +77,40 @@ class ColaboradorMovimentacaoController extends Controller
             ->with('success', ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado com sucesso.');
     }
 
-    /** URL curta: /rh/movimentacoes/{id}/editar (produção Hostinger). */
-    public function editByMovimentacao(ColaboradorMovimentacao $movimentacao)
+    /**
+     * GET exibe o formulário; POST salva (mesmo padrão de rh/beneficios/{id} em produção).
+     * URL: /rh/movimentacoes/{id} — sem /editar e sem método PUT.
+     */
+    public function editar(Request $request, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
     {
+        if ($request->boolean('debug_movimentacao') && config('app.debug')) {
+            dd([
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'request_uri' => $request->getRequestUri(),
+                'base_url' => $request->getBaseUrl(),
+                'script_name' => $request->server->get('SCRIPT_NAME'),
+                'expected_route' => 'rh/movimentacoes/'.$movimentacao->getKey(),
+                'movimentacao_id' => $movimentacao->id,
+                'colaborador_id' => $movimentacao->colaborador_id,
+            ]);
+        }
+
         $colaborador = $movimentacao->colaborador()->firstOrFail();
+
+        if ($request->isMethod('POST')) {
+            if (config('app.debug')) {
+                logger()->info('movimentacao.editar.post', [
+                    'movimentacao_id' => $movimentacao->id,
+                    'colaborador_id' => $colaborador->id,
+                    'path' => $request->path(),
+                    'uri' => $request->getRequestUri(),
+                    'payload' => $request->except(['_token']),
+                ]);
+            }
+
+            return $this->update($request, $colaborador, $movimentacao, $service);
+        }
 
         return $this->edit($colaborador, $movimentacao);
     }
@@ -99,16 +129,6 @@ class ColaboradorMovimentacaoController extends Controller
             'centrosCusto' => $this->centrosCustoSugestoes(),
             'contratos' => Contrato::query()->orderBy('numero')->get(['id', 'numero', 'nome', 'centro_custo']),
         ]);
-    }
-
-    public function updateByMovimentacao(
-        Request $request,
-        ColaboradorMovimentacao $movimentacao,
-        ColaboradorMovimentacaoService $service
-    ) {
-        $colaborador = $movimentacao->colaborador()->firstOrFail();
-
-        return $this->update($request, $colaborador, $movimentacao, $service);
     }
 
     public function update(

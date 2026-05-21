@@ -111,7 +111,7 @@ class ColaboradorMovimentacaoTest extends TestCase
             ->assertSee('Alterar movimentação', false)
             ->assertSee('auxilio_acidente', false);
 
-        $this->actingAs($user)->put(route('rh.efetivo.movimentacoes.update', $mov), [
+        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.edit', $mov), [
             'data_inicio' => '2026-05-14',
             'especie_beneficio_inss' => 'acidente_trabalho',
             'cid' => 'S82.0',
@@ -141,5 +141,48 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->actingAs($user)
             ->get(route('rh.efetivo.movimentacoes.edit.legado', [$a, $mov]))
             ->assertNotFound();
+    }
+
+    public function test_url_com_sufixo_editar_redireciona_para_gestao(): void
+    {
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create(['nome' => 'C', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
+            'data_inicio' => '2026-05-01',
+            'centro_custo_novo' => 'CC-N',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/rh/movimentacoes/'.$mov->id.'/editar')
+            ->assertRedirect(route('rh.efetivo.movimentacoes.edit', $mov));
+    }
+
+    public function test_gestao_movimentacao_com_prefixo_public_na_requisicao(): void
+    {
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create(['nome' => 'D', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
+            'data_inicio' => '2026-05-01',
+            'centro_custo_novo' => 'CC-X',
+        ]);
+
+        $this->actingAs($user)
+            ->call(
+                'GET',
+                '/rh/movimentacoes/'.$mov->id,
+                [],
+                [],
+                [],
+                [
+                    'SCRIPT_NAME' => '/public/index.php',
+                    'REQUEST_URI' => '/public/rh/movimentacoes/'.$mov->id,
+                ]
+            )
+            ->assertOk()
+            ->assertSee('Alterar movimentação', false);
     }
 }

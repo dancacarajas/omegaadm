@@ -33,13 +33,18 @@
         </div>
     @endunless
 
-    <form method="POST" action="{{ $editando ? route('rh.efetivo.movimentacoes.update', $movimentacao) : route('rh.efetivo.movimentacoes.store', $colaborador) }}" class="space-y-6">
+    @php
+        /** Mesmo padrão benefícios: route() + POST na mesma URL (sem @method PUT). */
+        $urlFormMovimentacao = $editando
+            ? route('rh.efetivo.movimentacoes.edit', $movimentacao)
+            : route('rh.efetivo.movimentacoes.store', $colaborador);
+    @endphp
+
+    <form method="POST" action="{{ $urlFormMovimentacao }}" class="space-y-6">
         @csrf
-        @if ($editando)
-            @method('PUT')
-        @else
+        @unless ($editando)
             <input type="hidden" name="tipo" value="{{ $tipo }}">
-        @endif
+        @endunless
 
         <section class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 class="text-lg font-bold text-brand-black">{{ $tipos[$tipo] ?? $tipo }}</h2>
