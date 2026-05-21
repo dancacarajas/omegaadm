@@ -350,7 +350,16 @@
             </label>
             <label>
                 <span class="{{ $labelClass }}">Salário inicial</span>
-                <input type="number" step="0.01" min="0" name="salario_inicial" value="{{ $value('salario_inicial') }}" class="{{ $inputClass }}">
+                <input
+                    type="text"
+                    inputmode="decimal"
+                    name="salario_inicial"
+                    value="{{ old('salario_inicial', \App\Support\Rh\MoedaBr::paraInput($value('salario_inicial'))) }}"
+                    placeholder="3.091,91"
+                    autocomplete="off"
+                    class="{{ $inputClass }}"
+                >
+                @error('salario_inicial') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
             </label>
             <label class="md:col-span-2">
                 <span class="{{ $labelClass }}">Local de trabalho</span>

@@ -27,7 +27,7 @@
             'wide' => $wide,
         ];
         $date = fn ($value) => $value ? $value->format('d/m/Y') : null;
-        $money = fn ($value) => filled($value) ? 'R$ '.number_format((float) $value, 2, ',', '.') : null;
+        $money = fn ($value) => \App\Support\Rh\MoedaBr::format(filled($value) ? (float) $value : null);
         $st = $colaborador->status ?? 'ativo';
         $statusLabel = ['ativo' => 'Ativo', 'afastado' => 'Afastado', 'desligado' => 'Desligado'];
         $statusUiHero = [

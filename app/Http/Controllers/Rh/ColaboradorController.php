@@ -8,6 +8,7 @@ use App\Models\HorarioEscala;
 use App\Models\SsmaTstRegistro;
 use App\Support\Rh\EfetivoExcelExport;
 use App\Support\Rh\EfetivoResumoCards;
+use App\Support\Rh\MoedaBr;
 use App\Support\SimpleSpreadsheet;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
@@ -327,7 +328,10 @@ class ColaboradorController extends Controller
 
     private function validatedData(Request $request, ?Colaborador $colaborador = null): array
     {
-        return $request->validate($this->validatedDataRules($colaborador));
+        $data = $request->validate($this->validatedDataRules($colaborador));
+        $data['salario_inicial'] = MoedaBr::parse($data['salario_inicial'] ?? null);
+
+        return $data;
     }
 
     private function storeFotoPerfil(Request $request, ?Colaborador $colaborador = null): ?string
@@ -456,7 +460,7 @@ class ColaboradorController extends Controller
         }
 
         if (filled($data['salario_inicial'] ?? null)) {
-            $data['salario_inicial'] = str_replace(['.', ','], ['', '.'], (string) $data['salario_inicial']);
+            $data['salario_inicial'] = MoedaBr::parse($data['salario_inicial']);
         }
 
         if (array_key_exists('horario_escala_id', $data)) {
