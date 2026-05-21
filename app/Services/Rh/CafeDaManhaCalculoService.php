@@ -92,12 +92,10 @@ class CafeDaManhaCalculoService
         }
 
         $diasSemPagamentoUteis = $resumo['dias_justificado_sem_trabalho'] + $resumo['dias_sem_trabalho'];
-        $valorDescontado = $valorCheioAplicado
-            ? round(max(0, $valorMensal - $valorProporcional), 2)
-            : round($diasSemPagamentoUteis * $valorDiario, 2);
-        $valorBrutoApuracao = $valorCheioAplicado
-            ? $valorMensal
-            : round($valorProporcional + $valorDescontado, 2);
+        $valorDescontado = round($diasSemPagamentoUteis * $valorDiario, 2);
+        $valorBrutoApuracao = $valorDescontado > 0
+            ? round($valorFinal + $valorDescontado, 2)
+            : $valorFinal;
 
         return [
             'aplica' => true,

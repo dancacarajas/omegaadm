@@ -102,6 +102,7 @@ class CafeDaManhaCalculoTest extends TestCase
 
         $this->assertTrue($calc['valor_cheio_aplicado']);
         $this->assertEqualsWithDelta(175.0, $calc['valor_final'], 0.01);
+        $this->assertEquals(0.0, $calc['valor_descontado']);
         $this->assertGreaterThan(15, $calc['dias_trabalhados']);
         $this->assertSame(0, $calc['dias_com_justificativa_sem_trabalho']);
         $this->assertSame(0, $calc['dias_sem_trabalho']);
@@ -124,6 +125,7 @@ class CafeDaManhaCalculoTest extends TestCase
         $this->assertEqualsWithDelta(7.95, $calc['valor_proporcional'], 0.01);
         $this->assertTrue($calc['valor_cheio_aplicado']);
         $this->assertEqualsWithDelta(175.0, $calc['valor_final'], 0.01);
+        $this->assertEquals(0.0, $calc['valor_descontado']);
     }
 
     public function test_sabado_domingo_e_feriado_sem_trabalho_nao_penalizam(): void
@@ -165,6 +167,7 @@ class CafeDaManhaCalculoTest extends TestCase
         $this->assertSame(1, $calc['dias_trabalhados']);
         $this->assertSame(0, $calc['dias_com_justificativa_sem_trabalho']);
         $this->assertTrue($calc['valor_cheio_aplicado']);
+        $this->assertEquals(0.0, $calc['valor_descontado']);
         $this->assertCount(1, $calc['dias_apuracao']);
         $this->assertSame('2026-04-08', $calc['dias_apuracao'][0]['data']);
     }

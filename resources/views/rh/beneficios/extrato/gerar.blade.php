@@ -176,9 +176,7 @@
                     @php
                         $calc = $linha['calculo'];
                         $valorDesconto = (float) ($calc['valor_descontado'] ?? 0);
-                        $valorBrutoLinha = array_key_exists('dias_trabalhados', $calc)
-                            ? (float) ($calc['valor_bruto_apuracao'] ?? $calc['valor_proporcional'] ?? 0)
-                            : (float) ($calc['valor_base'] ?? 0);
+                        $valorBrutoLinha = (float) ($calc['valor_bruto_apuracao'] ?? $calc['valor_base'] ?? $calc['valor_proporcional'] ?? 0);
                         $valorFinal = (float) ($calc['valor_final'] ?? 0);
                         $icone = match ($linha['regra']->tipo_regra) {
                             \App\Models\BeneficioExtratoRegra::TIPO_CAFE_MANHA => 'coffee',
@@ -268,10 +266,12 @@
                                 <div class="rounded-2xl border border-brand-burgundy/15 bg-gradient-to-b from-brand-burgundy/5 to-white p-4 text-center ring-1 ring-brand-burgundy/10">
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-brand-burgundy/80">Valor</p>
                                     <div class="mt-2">
-                                        @if ($valorBrutoLinha > 0 && $valorDesconto > 0)
+                                        @if ($valorDesconto > 0 && $valorBrutoLinha > $valorFinal + 0.009)
                                             <p class="text-xs tabular-nums text-brand-gray line-through decoration-rose-300/80">
                                                 R$ {{ number_format($valorBrutoLinha, 2, ',', '.') }}
                                             </p>
+                                        @elseif (! empty($calc['valor_cheio_aplicado']))
+                                            <p class="mt-0.5 text-[10px] font-semibold text-emerald-800">Valor integral ACT</p>
                                         @endif
                                         <p class="text-xl font-black tabular-nums text-brand-burgundy">R$ {{ number_format($valorFinal, 2, ',', '.') }}</p>
                                         @if (($calc['valor_recarga_natal'] ?? 0) > 0)
