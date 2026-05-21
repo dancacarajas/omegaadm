@@ -411,6 +411,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');
         Route::post('efetivo/excluir-massa', [ColaboradorController::class, 'destroyMassa'])->name('efetivo.excluir-massa');
+        Route::post('efetivo/{colaborador}/foto', [ColaboradorController::class, 'updateFoto'])->name('efetivo.foto.update');
         Route::resource('efetivo', ColaboradorController::class)
             ->parameters(['efetivo' => 'colaborador']);
         Route::get('indicadores-mensais/painel-executivo', [IndicadoresMensaisController::class, 'painelExecutivo'])->name('indicadores-mensais.painel-executivo');

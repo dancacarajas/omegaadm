@@ -5,38 +5,30 @@
         $current = old($field, data_get($colaborador, $field));
         return $current instanceof \Carbon\CarbonInterface ? $current->format('Y-m-d') : $current;
     };
-    $inputClass = 'mt-2 h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-brand-black outline-none transition placeholder:text-zinc-400 focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10';
-    $textareaClass = 'mt-2 min-h-28 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-brand-black outline-none transition placeholder:text-zinc-400 focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10';
-    $labelClass = 'text-[11px] font-bold uppercase tracking-wide text-brand-gray';
+    $inputClass = 'mt-2 h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10';
+    $textareaClass = 'mt-2 min-h-28 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 py-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10';
+    $labelClass = 'text-[11px] font-bold uppercase tracking-wider text-zinc-400';
+    $secaoClass = 'form-secao scroll-mt-28 overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-md shadow-zinc-200/40 ring-1 ring-zinc-100';
 @endphp
 
 @if ($errors->any())
-    <div class="mb-5 flex items-start gap-3 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-3 text-sm text-brand-burgundy">
-        <i data-lucide="circle-alert" class="mt-0.5 h-5 w-5"></i>
+    <div class="mb-6 flex items-start gap-3 rounded-2xl border border-red-200/80 bg-gradient-to-r from-red-50 to-white px-5 py-4 text-sm text-red-900 shadow-sm">
+        <i data-lucide="circle-alert" class="mt-0.5 h-5 w-5 shrink-0 text-red-600"></i>
         <div>
-            <p class="font-bold">Revise os campos destacados.</p>
-            <p class="mt-1 text-xs font-medium text-brand-burgundy/80">Algumas informações obrigatórias ainda precisam ser preenchidas.</p>
+            <p class="font-bold">Revise os campos destacados</p>
+            <p class="mt-1 text-xs text-red-800/80">Algumas informações obrigatórias ainda precisam ser preenchidas.</p>
         </div>
     </div>
 @endif
 
-<div class="space-y-6">
-    <section id="dados-pessoais" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex flex-col gap-5 border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-6 md:flex-row md:items-center md:justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20">
-                    <i data-lucide="id-card" class="h-6 w-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">01 / Identificação</p>
-                    <h2 class="mt-1 text-xl font-bold text-brand-black">Dados pessoais</h2>
-                </div>
-            </div>
-            <span class="inline-flex items-center gap-2 rounded-full bg-brand-burgundy-soft px-3 py-1.5 text-xs font-bold text-brand-burgundy">
-                <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
-                Ficha do empregado
-            </span>
-        </div>
+<div class="space-y-8">
+    <section id="dados-pessoais" class="{{ $secaoClass }}">
+        @include('rh.colaboradores._form_secao_cabecalho', [
+            'numero' => '01',
+            'titulo' => 'Dados pessoais',
+            'icone' => 'id-card',
+            'badge' => '<i data-lucide="sparkles" class="h-3.5 w-3.5"></i> Ficha do empregado',
+        ])
 
         <div class="grid gap-5 p-6 md:grid-cols-3">
             <label class="md:col-span-2">
@@ -48,21 +40,25 @@
                 <span class="{{ $labelClass }}">Matrícula</span>
                 <input name="matricula" value="{{ $value('matricula') }}" class="{{ $inputClass }}">
             </label>
-            <div class="md:col-span-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-5">
-                <div class="flex flex-wrap items-start gap-4">
+            <div id="foto-perfil" class="md:col-span-3 rounded-2xl border border-dashed border-brand-burgundy/25 bg-gradient-to-br from-brand-burgundy/[0.03] to-zinc-50/80 p-5 ring-1 ring-brand-burgundy/10">
+                <div class="flex flex-wrap items-start gap-5">
                     @if (filled($colaborador->foto_path))
-                        <div class="shrink-0">
-                            <p class="{{ $labelClass }} mb-2">Pré-visualização</p>
-                            <img src="{{ $colaborador->urlFotoPerfil() }}" alt="Foto de perfil atual" class="h-28 w-28 rounded-xl object-cover shadow-sm ring-1 ring-zinc-200">
+                        <div class="shrink-0 text-center">
+                            <p class="{{ $labelClass }} mb-2">Atual</p>
+                            <img src="{{ $colaborador->urlFotoPerfil() }}" alt="Foto de perfil atual" class="mx-auto h-28 w-28 rounded-full object-cover shadow-md ring-4 ring-white">
+                        </div>
+                    @else
+                        <div class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-2xl font-bold text-brand-burgundy ring-4 ring-white">
+                            {{ mb_strtoupper(mb_substr((string) $colaborador->nome, 0, 1)) }}
                         </div>
                     @endif
                     <div class="min-w-0 flex-1">
-                        <span class="{{ $labelClass }}">Anexar foto de perfil</span>
-                        <p class="mt-1 text-xs font-medium text-brand-gray">Opcional. JPG, PNG, GIF ou WebP até 5&nbsp;MB. Aparece na ficha do colaborador e em telas SSMA (ex.: equipe do Kaizen).</p>
-                        <input type="file" name="foto_perfil" accept="image/jpeg,image/png,image/webp,image/gif" class="mt-3 block w-full text-sm font-medium text-brand-black file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy-soft file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-burgundy">
-                        @error('foto_perfil') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
+                        <span class="{{ $labelClass }}">Foto de perfil</span>
+                        <p class="mt-1.5 text-sm leading-relaxed text-zinc-600">Opcional. JPG, PNG, GIF ou WebP até 5&nbsp;MB. Exibida na ficha, na listagem do efetivo e em telas SSMA.</p>
+                        <input type="file" name="foto_perfil" accept="image/jpeg,image/png,image/webp,image/gif" class="mt-4 block w-full text-sm font-medium text-zinc-800 file:mr-4 file:cursor-pointer file:rounded-xl file:border-0 file:bg-brand-burgundy file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-white file:shadow-sm hover:file:bg-brand-burgundy-dark">
+                        @error('foto_perfil') <span class="mt-2 block text-xs font-semibold text-brand-burgundy">{{ $message }}</span> @enderror
                         @if (filled($colaborador->foto_path))
-                            <p class="mt-2 text-xs text-brand-gray">Para trocar a foto, anexe um novo arquivo e salve o cadastro.</p>
+                            <p class="mt-2 text-xs text-zinc-500">Na ficha, também é possível alterar a foto com um clique no avatar.</p>
                         @endif
                     </div>
                 </div>
@@ -126,16 +122,12 @@
         </div>
     </section>
 
-    <section id="documentos" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex items-center gap-3 border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-6">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
-                <i data-lucide="files" class="h-6 w-6"></i>
-            </div>
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">02 / Documentação</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Documentos e endereço</h2>
-            </div>
-        </div>
+    <section id="documentos" class="{{ $secaoClass }}">
+        @include('rh.colaboradores._form_secao_cabecalho', [
+            'numero' => '02',
+            'titulo' => 'Documentos e endereço',
+            'icone' => 'map-pin',
+        ])
 
         <div class="grid gap-5 p-6 md:grid-cols-4">
             <label>
@@ -209,16 +201,18 @@
         </div>
     </section>
 
-    <section id="contrato" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex items-center gap-3 border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-6">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
-                <i data-lucide="briefcase" class="h-6 w-6"></i>
-            </div>
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">03 / Vínculo</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Dados do contrato</h2>
-                <p class="mt-2 max-w-3xl text-sm text-brand-gray">Cada colaborador pode ter uma <strong class="text-brand-black">escala de horários</strong> diferente. Cadastre as grades em <strong class="text-brand-black">RH → Frequência → Cadastro de horários</strong> e selecione abaixo a escala deste profissional — o ponto diário usará esses horários para calcular falta e extras.</p>
-            </div>
+    <section id="contrato" class="{{ $secaoClass }}">
+        @include('rh.colaboradores._form_secao_cabecalho', [
+            'numero' => '03',
+            'titulo' => 'Contrato e jornada',
+            'icone' => 'briefcase',
+        ])
+        <div class="border-b border-zinc-100 bg-zinc-50/50 px-6 py-4">
+            <p class="text-sm leading-relaxed text-zinc-600">
+                Cada colaborador pode ter uma <strong class="text-zinc-900">escala de horários</strong> diferente. Cadastre em
+                <a href="{{ route('rh.horarios.index') }}" class="font-bold text-brand-burgundy hover:underline">RH → Frequência → Cadastro de horários</a>
+                e selecione abaixo — o ponto diário usa esses horários para falta e extras.
+            </p>
         </div>
 
         <div class="grid gap-5 p-6 md:grid-cols-4">
@@ -295,20 +289,33 @@
                 <span class="mt-1 block text-xs font-medium text-brand-gray" data-colab-ciclo-offset-hint></span>
             </label>
             @if ($colaborador->exists && $colaborador->status === 'ativo')
-                <div class="md:col-span-2 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4" role="note">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0 flex-1">
-                            <p class="text-xs font-bold uppercase tracking-wide text-emerald-900">Ponto pelo celular</p>
-                            <p class="mt-1 text-sm text-emerald-950">
-                                Acesso em <strong>/ponto</strong> com matrícula e CPF (seção Dados pessoais).
-                            </p>
-                            <ul class="mt-2 space-y-1 text-xs text-emerald-900/90">
-                                <li>Matrícula: <span class="font-semibold">{{ $colaborador->matricula ?: '— não informada' }}</span></li>
-                                <li>CPF: <span class="font-semibold">{{ $colaborador->cpf ?: '— não informado' }}</span></li>
-                            </ul>
+                <div class="md:col-span-4 overflow-hidden rounded-2xl border border-brand-burgundy/15 bg-gradient-to-br from-brand-burgundy/[0.04] via-white to-zinc-50/80 shadow-md shadow-brand-burgundy/5 ring-1 ring-brand-burgundy/10" role="note">
+                    <div class="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                        <div class="flex min-w-0 flex-1 gap-4">
+                            <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-burgundy to-brand-burgundy-dark text-white shadow-lg shadow-brand-burgundy/25">
+                                <i data-lucide="smartphone" class="h-7 w-7"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-brand-burgundy/80">Ponto pelo celular</p>
+                                <p class="mt-1.5 text-sm leading-relaxed text-zinc-600">
+                                    O colaborador registra batidas em
+                                    <code class="rounded-md bg-brand-burgundy-soft px-1.5 py-0.5 text-xs font-bold text-brand-burgundy">/ponto</code>
+                                    usando matrícula e CPF desta ficha.
+                                </p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm">
+                                        <i data-lucide="hash" class="h-3.5 w-3.5 text-brand-burgundy"></i>
+                                        Mat. {{ $colaborador->matricula ?: '—' }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm">
+                                        <i data-lucide="credit-card" class="h-3.5 w-3.5 text-brand-burgundy"></i>
+                                        {{ $colaborador->cpf ?: 'CPF não informado' }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <a href="{{ url('/ponto') }}" target="_blank" rel="noopener" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white shadow-sm">
-                            <i data-lucide="smartphone" class="h-4 w-4"></i>
+                        <a href="{{ url('/ponto') }}" target="_blank" rel="noopener" class="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-burgundy px-5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/25 transition hover:bg-brand-burgundy-dark">
+                            <i data-lucide="external-link" class="h-4 w-4"></i>
                             Abrir app de ponto
                         </a>
                     </div>
@@ -317,16 +324,12 @@
         </div>
     </section>
 
-    <section id="admissao" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex items-center gap-3 border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-6">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
-                <i data-lucide="calendar-check" class="h-6 w-6"></i>
-            </div>
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">04 / Entrada</p>
-                <h2 class="mt-1 text-xl font-bold text-brand-black">Dados da admissão</h2>
-            </div>
-        </div>
+    <section id="admissao" class="{{ $secaoClass }}">
+        @include('rh.colaboradores._form_secao_cabecalho', [
+            'numero' => '04',
+            'titulo' => 'Admissão e contatos',
+            'icone' => 'wallet',
+        ])
 
         <div class="grid gap-5 p-6 md:grid-cols-4">
             <label>
@@ -380,22 +383,13 @@
         </div>
     </section>
 
-    <section id="mobilizacao-sgc" class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div class="flex flex-col gap-4 border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-6 md:flex-row md:items-center md:justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
-                    <i data-lucide="badge-check" class="h-6 w-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wide text-brand-burgundy">05 / Mobilização</p>
-                    <h2 class="mt-1 text-xl font-bold text-brand-black">Mobilização SGC Vale</h2>
-                </div>
-            </div>
-            <span class="inline-flex items-center gap-2 rounded-full bg-brand-burgundy-soft px-3 py-1.5 text-xs font-bold text-brand-burgundy">
-                <i data-lucide="shield-check" class="h-3.5 w-3.5"></i>
-                Status automático pelo crachá
-            </span>
-        </div>
+    <section id="mobilizacao-sgc" class="{{ $secaoClass }}">
+        @include('rh.colaboradores._form_secao_cabecalho', [
+            'numero' => '05',
+            'titulo' => 'Mobilização SGC Vale',
+            'icone' => 'shield-check',
+            'badge' => '<i data-lucide="shield-check" class="h-3.5 w-3.5"></i> Status pelo crachá',
+        ])
 
         <div class="grid gap-5 p-6 md:grid-cols-4">
             <label>

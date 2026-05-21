@@ -21,7 +21,7 @@ class ColaboradorController extends Controller
 {
     public function index(Request $request)
     {
-        $ordenacao = $request->input('ordenacao', 'recentes');
+        $ordenacao = $request->input('ordenacao', 'alfabetica');
 
         $colaboradores = $this->queryEfetivoListagem($request)
             ->paginate(10)
@@ -44,7 +44,7 @@ class ColaboradorController extends Controller
 
     private function queryEfetivoListagem(Request $request): Builder
     {
-        $ordenacao = $request->input('ordenacao', 'recentes');
+        $ordenacao = $request->input('ordenacao', 'alfabetica');
 
         return Colaborador::query()
             ->with('horarioEscala')
@@ -128,6 +128,20 @@ class ColaboradorController extends Controller
         return redirect()
             ->route('rh.efetivo.show', $colaborador)
             ->with('success', 'Cadastro atualizado com sucesso.');
+    }
+
+    public function updateFoto(Request $request, Colaborador $colaborador)
+    {
+        $request->validate([
+            'foto_perfil' => ['required', 'file', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
+        ]);
+
+        $foto = $this->storeFotoPerfil($request, $colaborador);
+        $colaborador->update(['foto_path' => $foto]);
+
+        return redirect()
+            ->route('rh.efetivo.show', $colaborador)
+            ->with('success', 'Foto de perfil atualizada.');
     }
 
     public function destroy(Colaborador $colaborador)
