@@ -174,21 +174,33 @@ class ColaboradorMovimentacaoTest extends TestCase
             'centro_custo_novo' => 'CC-X',
         ]);
 
-        ($fix = require base_path('bootstrap/fix-public-request-uri.php'))();
-
-        $this->actingAs($user)
-            ->call(
-                'GET',
-                '/rh/efetivo/movimentacao/'.$mov->id,
-                [],
-                [],
-                [],
-                [
-                    'SCRIPT_NAME' => '/public/index.php',
-                    'REQUEST_URI' => '/public/rh/efetivo/movimentacao/'.$mov->id,
-                ]
-            )
+        $this->getComPrefixoPublic($user, '/rh/efetivo/movimentacao/'.$mov->id)
             ->assertOk()
             ->assertSee('Alterar movimentação', false);
+    }
+
+    public function test_listagem_movimentacoes_mantem_assets_com_base_public_hostinger(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->getComPrefixoPublic($user, '/rh/efetivo/movimentacoes');
+        $response->assertOk()->assertSee('Movimentações de efetivo', false);
+
+        $response->assertSee('/public/logo.png', false);
+    }
+
+    private function getComPrefixoPublic(User $user, string $path)
+    {
+        $_SERVER['REQUEST_URI'] = '/public'.$path;
+        $_SERVER['SCRIPT_NAME'] = '/public/index.php';
+        $_SERVER['SCRIPT_FILENAME'] = public_path('index.php');
+        $_SERVER['QUERY_STRING'] = '';
+
+        (require base_path('bootstrap/fix-public-request-uri.php'))();
+
+        return $this->actingAs($user)->call('GET', $_SERVER['REQUEST_URI'], [], [], [], [
+            'SCRIPT_NAME' => '/public/index.php',
+            'OMEGA_REQUEST_USES_PUBLIC_URL' => '1',
+        ]);
     }
 }

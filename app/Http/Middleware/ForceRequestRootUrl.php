@@ -14,16 +14,22 @@ class ForceRequestRootUrl
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! app()->runningInConsole()) {
-            $host = $request->getSchemeAndHttpHost();
-            // Produção Hostinger: links devem manter /public na URL pública
-            $root = str_starts_with($request->getRequestUri(), '/public')
-                ? $host.'/public'
-                : rtrim($host.$request->getBaseUrl(), '/');
+        $host = $request->getSchemeAndHttpHost();
+        $scriptName = (string) $request->server->get('SCRIPT_NAME', '');
 
-            if ($root !== '') {
-                URL::forceRootUrl($root);
-            }
+        // Hostinger: fix-public-request-uri normaliza o path do router (rh/...) mas CSS/JS
+        // (@vite, asset()) precisam da base https://dominio/public
+        $usaBasePublic = filter_var(config('app.force_public_url'), FILTER_VALIDATE_BOOLEAN)
+            || $request->server->get('OMEGA_REQUEST_USES_PUBLIC_URL') === '1'
+            || str_starts_with($request->getRequestUri(), '/public')
+            || str_contains($scriptName, '/public/index.php');
+
+        $root = $usaBasePublic
+            ? $host.'/public'
+            : rtrim($host.$request->getBaseUrl(), '/');
+
+        if ($root !== '') {
+            URL::forceRootUrl($root);
         }
 
         return $next($request);

@@ -458,6 +458,12 @@ Infra compartilhada: `index.php` raiz, `.htaccess`, `bootstrap/fix-public-reques
 
 URLs antigas `/public/rh/movimentacoes/{id}` redirecionam 301 para `/public/rh/efetivo/movimentacao/{id}`.
 
+### CSS/JS sem estilo (página “crua”) após normalizar `/public`
+
+Se o layout perdeu Tailwind/CSS: `fix-public-request-uri` remove `/public` do path do router, e o middleware `ForceRequestRootUrl` deixou de ver `/public` na URI → `@vite`/`asset()` geravam `/build/...` em vez de `/public/build/...`.
+
+Correção: flag `OMEGA_REQUEST_USES_PUBLIC_URL` no bootstrap + `ForceRequestRootUrl` usa essa flag ou `SCRIPT_NAME` com `public/index.php`. Em produção, opcional: `APP_FORCE_PUBLIC_URL=true` no `.env`.
+
 ### Deploy movimentações
 
 ```bash

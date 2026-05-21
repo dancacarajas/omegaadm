@@ -10,6 +10,7 @@ return function (): void {
         return;
     }
 
+    $_SERVER['OMEGA_REQUEST_USES_PUBLIC_URL'] = '1';
     $_SERVER['SCRIPT_NAME'] = '/public/index.php';
     $_SERVER['PHP_SELF'] = '/public/index.php';
 
