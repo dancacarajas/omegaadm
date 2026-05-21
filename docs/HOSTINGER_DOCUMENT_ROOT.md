@@ -31,6 +31,14 @@ Site acessado como `https://dominio/public/rh/...` com document root na **raiz d
 
 6. Testar: `https://omegaadm.feston.net.br/rh/beneficios/1`
 
+7. Após alterar CSS/JS do extrato de benefícios (ou qualquer view Tailwind), no servidor:
+   ```bash
+   git pull origin main
+   npm run build   # se Node estiver disponível no SSH; senão confira se `public/build` veio no pull
+   php artisan view:clear
+   php artisan optimize:clear
+   ```
+
 ## Se não puder mudar o document root agora
 
 Manter URL com `/public` e garantir deploy do `.htaccess` mais recente (rewrite para `public/index.php`).

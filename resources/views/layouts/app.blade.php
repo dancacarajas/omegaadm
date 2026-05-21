@@ -400,16 +400,18 @@
                             <h1 class="mt-1 text-xl font-bold text-brand-black">@yield('page-title', 'Dashboard')</h1>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
                         <div class="hidden h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-gray shadow-sm md:flex">
                             <i data-lucide="search" class="h-4 w-4 text-brand-burgundy"></i>
                             Buscar no sistema
                         </div>
-                        @yield('actions')
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            @yield('actions')
+                        </div>
                     </div>
                 </header>
 
-                <main class="min-w-0 max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+                <main class="min-w-0 max-w-full px-4 py-6 sm:px-6 lg:px-8">
                     @if (session('success'))
                         <div class="mb-5 flex items-center gap-3 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-3 text-sm font-semibold text-brand-burgundy shadow-sm">
                             <i data-lucide="circle-check" class="h-5 w-5"></i>
@@ -428,6 +430,7 @@
                 </main>
             </div>
         </div>
+        @stack('modals')
         @stack('scripts')
     </body>
 </html>

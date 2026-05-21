@@ -1,7 +1,7 @@
 @php $cfg = $config->toArray(); @endphp
 
-<div id="modal-cafe-{{ $beneficio->id }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-    <div class="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
+<div id="modal-cafe-{{ $beneficio->id }}" class="extrato-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="extrato-modal__panel extrato-modal__panel--sm">
         <div class="shrink-0 border-b border-amber-100 bg-gradient-to-br from-amber-50 to-amber-100/80 px-6 py-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -20,7 +20,7 @@
 
         <form method="POST" action="{{ route('rh.beneficios.extrato.regras.salvar', $beneficio) }}" class="flex min-h-0 flex-1 flex-col">
             @csrf
-            <div class="min-h-0 flex-1 overflow-y-auto space-y-6 p-6">
+            <div class="extrato-modal__body space-y-6 p-6">
                 <section class="grid gap-4 sm:grid-cols-2">
                     <label>
                         <span class="text-[11px] font-bold uppercase text-brand-gray">Ano de vigência</span>

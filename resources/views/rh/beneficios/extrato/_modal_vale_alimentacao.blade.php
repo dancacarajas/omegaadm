@@ -6,8 +6,8 @@
     $faixasAtestados = $natal['faixas_atestados'] ?? [];
 @endphp
 
-<div id="modal-va-{{ $beneficio->id }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-    <div class="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
+<div id="modal-va-{{ $beneficio->id }}" class="extrato-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="extrato-modal__panel">
         <div class="shrink-0 border-b border-zinc-100 bg-gradient-to-br from-brand-gray to-brand-burgundy/90 px-6 py-5 text-white">
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -23,7 +23,7 @@
 
         <form method="POST" action="{{ route('rh.beneficios.extrato.regras.salvar', $beneficio) }}" class="flex min-h-0 flex-1 flex-col">
             @csrf
-            <div class="min-h-0 flex-1 overflow-y-auto p-6 space-y-8">
+            <div class="extrato-modal__body p-6 space-y-8">
                 <section>
                     <h4 class="text-sm font-bold text-brand-black">Vigência</h4>
                     <p class="mt-1 text-xs text-brand-gray">Ano de referência do acordo / ACT aplicado nestas regras.</p>
