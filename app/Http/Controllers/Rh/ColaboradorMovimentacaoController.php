@@ -77,6 +77,14 @@ class ColaboradorMovimentacaoController extends Controller
             ->with('success', ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado com sucesso.');
     }
 
+    /** URL curta: /rh/movimentacoes/{id}/editar (produção Hostinger). */
+    public function editByMovimentacao(ColaboradorMovimentacao $movimentacao)
+    {
+        $colaborador = $movimentacao->colaborador()->firstOrFail();
+
+        return $this->edit($colaborador, $movimentacao);
+    }
+
     public function edit(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao)
     {
         $this->garantirMovimentacaoDoColaborador($colaborador, $movimentacao);
@@ -91,6 +99,16 @@ class ColaboradorMovimentacaoController extends Controller
             'centrosCusto' => $this->centrosCustoSugestoes(),
             'contratos' => Contrato::query()->orderBy('numero')->get(['id', 'numero', 'nome', 'centro_custo']),
         ]);
+    }
+
+    public function updateByMovimentacao(
+        Request $request,
+        ColaboradorMovimentacao $movimentacao,
+        ColaboradorMovimentacaoService $service
+    ) {
+        $colaborador = $movimentacao->colaborador()->firstOrFail();
+
+        return $this->update($request, $colaborador, $movimentacao, $service);
     }
 
     public function update(

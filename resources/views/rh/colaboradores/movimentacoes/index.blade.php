@@ -221,7 +221,7 @@
                             </td>
                             <td class="px-5 py-4 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <a href="{{ route('rh.efetivo.movimentacoes.edit', ['colaborador' => $mov->colaborador_id, 'movimentacao' => $mov->id]) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200/80 bg-white px-3 text-xs font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
+                                    <a href="{{ route('rh.efetivo.movimentacoes.edit', $mov) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200/80 bg-white px-3 text-xs font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
                                         <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                         Alterar
                                     </a>

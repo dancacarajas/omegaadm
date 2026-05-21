@@ -106,12 +106,12 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->assertNotNull($mov);
 
         $this->actingAs($user)
-            ->get(route('rh.efetivo.movimentacoes.edit', [$colab, $mov]))
+            ->get(route('rh.efetivo.movimentacoes.edit', $mov))
             ->assertOk()
             ->assertSee('Alterar movimentação', false)
             ->assertSee('auxilio_acidente', false);
 
-        $this->actingAs($user)->put(route('rh.efetivo.movimentacoes.update', [$colab, $mov]), [
+        $this->actingAs($user)->put(route('rh.efetivo.movimentacoes.update', $mov), [
             'data_inicio' => '2026-05-14',
             'especie_beneficio_inss' => 'acidente_trabalho',
             'cid' => 'S82.0',
@@ -135,7 +135,11 @@ class ColaboradorMovimentacaoTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('rh.efetivo.movimentacoes.edit', [$a, $mov]))
+            ->get(route('rh.efetivo.movimentacoes.edit', $mov))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.movimentacoes.edit.legado', [$a, $mov]))
             ->assertNotFound();
     }
 }

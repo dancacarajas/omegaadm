@@ -22,7 +22,7 @@ class MovimentacoesDiagnosticoCommand extends Command
             $edit = Route::has('rh.efetivo.movimentacoes.edit');
             $this->line('rh.efetivo.movimentacoes.edit: '.($edit ? 'SIM' : 'NÃO'));
             if ($edit) {
-                $this->line('URL exemplo: '.route('rh.efetivo.movimentacoes.edit', [1, 1]));
+                $this->line('URL exemplo: '.route('rh.efetivo.movimentacoes.edit', 1));
             } else {
                 $this->error('Rota ausente → git pull + php artisan route:clear');
             }
@@ -77,7 +77,8 @@ class MovimentacoesDiagnosticoCommand extends Command
         }
 
         $this->info("OK: movimentação {$movId} ({$mov->tipo}) pertence ao colaborador {$colabId}.");
-        $this->line('URL: /public/rh/efetivo/'.$colabId.'/movimentacoes/'.$movId.'/editar');
+        $this->line('URL editar: /public/rh/movimentacoes/'.$movId.'/editar');
+        $this->line('URL legado: /public/rh/efetivo/'.$colabId.'/movimentacoes/'.$movId.'/editar (redireciona)');
 
         return self::SUCCESS;
     }

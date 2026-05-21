@@ -33,7 +33,7 @@
         </div>
     @endunless
 
-    <form method="POST" action="{{ $editando ? route('rh.efetivo.movimentacoes.update', [$colaborador, $movimentacao]) : route('rh.efetivo.movimentacoes.store', $colaborador) }}" class="space-y-6">
+    <form method="POST" action="{{ $editando ? route('rh.efetivo.movimentacoes.update', $movimentacao) : route('rh.efetivo.movimentacoes.store', $colaborador) }}" class="space-y-6">
         @csrf
         @if ($editando)
             @method('PUT')

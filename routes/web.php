@@ -402,21 +402,26 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->whereNumber('beneficio');
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
+        Route::get('movimentacoes/{movimentacao}/editar', [ColaboradorMovimentacaoController::class, 'editByMovimentacao'])
+            ->whereNumber('movimentacao')
+            ->name('efetivo.movimentacoes.edit');
+        Route::put('movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'updateByMovimentacao'])
+            ->whereNumber('movimentacao')
+            ->name('efetivo.movimentacoes.update');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])
             ->whereNumber('colaborador')
             ->name('efetivo.movimentacoes.create');
         Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])
             ->whereNumber('colaborador')
             ->name('efetivo.movimentacoes.store');
-        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', [ColaboradorMovimentacaoController::class, 'edit'])
-            ->whereNumber(['colaborador', 'movimentacao'])
-            ->name('efetivo.movimentacoes.edit');
-        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/edit', [ColaboradorMovimentacaoController::class, 'edit'])
-            ->whereNumber(['colaborador', 'movimentacao'])
-            ->name('efetivo.movimentacoes.edit.en');
-        Route::put('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'update'])
-            ->whereNumber(['colaborador', 'movimentacao'])
-            ->name('efetivo.movimentacoes.update');
+        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', function (
+            \App\Models\Colaborador $colaborador,
+            \App\Models\ColaboradorMovimentacao $movimentacao
+        ) {
+            abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
+
+            return redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301);
+        })->whereNumber(['colaborador', 'movimentacao'])->name('efetivo.movimentacoes.edit.legado');
         Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])
             ->whereNumber(['colaborador', 'movimentacao'])
             ->name('efetivo.movimentacoes.destroy');
