@@ -121,4 +121,21 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->assertSame('acidente_trabalho', $mov->especie_beneficio_inss);
         $this->assertSame('S82.0', $mov->cid);
     }
+
+    public function test_editar_movimentacao_de_outro_colaborador_retorna_404(): void
+    {
+        $user = User::factory()->create();
+        $a = Colaborador::query()->create(['nome' => 'A', 'status' => 'ativo']);
+        $b = Colaborador::query()->create(['nome' => 'B', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $b->id,
+            'tipo' => ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
+            'data_inicio' => '2026-05-01',
+            'centro_custo_novo' => 'CC-B',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.movimentacoes.edit', [$a, $mov]))
+            ->assertNotFound();
+    }
 }

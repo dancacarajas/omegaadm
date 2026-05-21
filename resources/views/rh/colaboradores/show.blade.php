@@ -369,7 +369,7 @@
                                     @endif
                                 </div>
                                 <div class="flex shrink-0 gap-2">
-                                    <a href="{{ route('rh.efetivo.movimentacoes.edit', [$colaborador, $mov]) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-brand-burgundy shadow-sm hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
+                                    <a href="{{ route('rh.efetivo.movimentacoes.edit', ['colaborador' => $colaborador->id, 'movimentacao' => $mov->id]) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-brand-burgundy shadow-sm hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
                                         <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                         Alterar
                                     </a>

@@ -402,11 +402,24 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->whereNumber('beneficio');
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
-        Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])->name('efetivo.movimentacoes.create');
-        Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])->name('efetivo.movimentacoes.store');
-        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', [ColaboradorMovimentacaoController::class, 'edit'])->name('efetivo.movimentacoes.edit');
-        Route::put('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'update'])->name('efetivo.movimentacoes.update');
-        Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])->name('efetivo.movimentacoes.destroy');
+        Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])
+            ->whereNumber('colaborador')
+            ->name('efetivo.movimentacoes.create');
+        Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])
+            ->whereNumber('colaborador')
+            ->name('efetivo.movimentacoes.store');
+        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', [ColaboradorMovimentacaoController::class, 'edit'])
+            ->whereNumber(['colaborador', 'movimentacao'])
+            ->name('efetivo.movimentacoes.edit');
+        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/edit', [ColaboradorMovimentacaoController::class, 'edit'])
+            ->whereNumber(['colaborador', 'movimentacao'])
+            ->name('efetivo.movimentacoes.edit.en');
+        Route::put('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'update'])
+            ->whereNumber(['colaborador', 'movimentacao'])
+            ->name('efetivo.movimentacoes.update');
+        Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])
+            ->whereNumber(['colaborador', 'movimentacao'])
+            ->name('efetivo.movimentacoes.destroy');
         Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');

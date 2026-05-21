@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Models\ColaboradorMovimentacao;
 use App\Models\SsmaAmbientalRegistro;
 use App\Observers\ColaboradorObserver;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,24 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $vinculo;
+        });
+
+        Route::bind('movimentacao', function (string $value, $route): ColaboradorMovimentacao {
+            $query = ColaboradorMovimentacao::query()->whereKey((int) $value);
+
+            $colaborador = $route->parameter('colaborador');
+            if ($colaborador !== null) {
+                $colaboradorId = is_object($colaborador) ? $colaborador->getKey() : (int) $colaborador;
+                $query->where('colaborador_id', $colaboradorId);
+            }
+
+            $movimentacao = $query->first();
+
+            if ($movimentacao === null) {
+                abort(404, 'Movimentação não encontrada para este colaborador.');
+            }
+
+            return $movimentacao;
         });
     }
 }
