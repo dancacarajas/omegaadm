@@ -1,4 +1,9 @@
-@php $cfg = $config->toArray(); @endphp
+@php
+    $cfg = $config->toArray();
+    $valorMensalCfg = (float) ($cfg['valor_mensal_cheio'] ?? 175);
+    $valorDiarioCfg = (float) ($cfg['valor_diario'] ?? 7.95);
+    $valorBeneficioCadastro = (float) ($beneficio->valor ?? 0);
+@endphp
 
 <div id="modal-cafe-{{ $beneficio->id }}" class="extrato-modal" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="extrato-modal__panel extrato-modal__panel--sm">
@@ -39,12 +44,17 @@
                     <label>
                         <span class="text-[11px] font-bold uppercase text-brand-gray">Valor mensal cheio (R$)</span>
                         <input type="number" step="0.01" min="0" name="valor_mensal_cheio" value="{{ old('valor_mensal_cheio', $cfg['valor_mensal_cheio'] ?? 175) }}" required class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
-                        <p class="mt-1 text-[11px] text-brand-gray">Padrão ACT: R$ 175,00</p>
+                        <p class="mt-1 text-[11px] text-brand-gray">
+                            Salvo nas regras do extrato (ano {{ $cfg['ano_vigencia'] ?? date('Y') }}).
+                            @if ($valorBeneficioCadastro > 0)
+                                Se o cadastro do benefício tiver valor (atual R$ {{ number_format($valorBeneficioCadastro, 2, ',', '.') }}), ele prevalece como teto mensal no cálculo.
+                            @endif
+                        </p>
                     </label>
                     <label>
                         <span class="text-[11px] font-bold uppercase text-brand-gray">Valor por dia trabalhado (R$)</span>
                         <input type="number" step="0.01" min="0" name="valor_diario" value="{{ old('valor_diario', $cfg['valor_diario'] ?? 7.95) }}" required class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
-                        <p class="mt-1 text-[11px] text-brand-gray">Padrão ACT: R$ 7,95</p>
+                        <p class="mt-1 text-[11px] text-brand-gray">Usado no cálculo proporcional (reajuste anual aqui).</p>
                     </label>
                     <label class="sm:col-span-2">
                         <span class="text-[11px] font-bold uppercase text-brand-gray">Valor dia sáb/dom/feriado trabalhado (opcional)</span>
@@ -71,10 +81,10 @@
                 <div class="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs leading-relaxed text-brand-gray">
                     <p class="font-semibold text-brand-black">Como o sistema calcula</p>
                     <ul class="mt-2 list-inside list-disc space-y-1">
-                        <li>Considera apenas <strong>dias úteis</strong> (segunda a sexta, com jornada na escala). Sábado, domingo e feriados cadastrados <strong>não entram</strong> no cálculo nem nos descontos.</li>
-                        <li>Soma o valor diário para cada dia útil do período com <code class="text-[10px]">minutos_trabalhado</code> &gt; 0 no cartão de ponto.</li>
-                        <li>Dia útil só com atestado/justificativa e sem horas trabalhadas → <strong>não paga</strong> aquele dia.</li>
-                        <li>Valor final = dias × valor diário, limitado ao teto mensal se ativo (~22 dias × 7,95 ≈ 175).</li>
+                        <li><strong>R$ {{ number_format($valorMensalCfg, 2, ',', '.') }}</strong> (valor mensal cheio) quando não houver falta/atestado/justificativa sem horas em <strong>dias úteis</strong>.</li>
+                        <li>Caso contrário: soma <strong>R$ {{ number_format($valorDiarioCfg, 2, ',', '.') }}</strong> por dia com horas na apuração (teto mensal acima).</li>
+                        <li><strong>Convocação</strong> em sábado, domingo, feriado ou repouso com horas também recebe o valor diário.</li>
+                        <li>Reajuste anual: altere os campos acima e salve — não é necessário mudar código.</li>
                     </ul>
                 </div>
             </div>

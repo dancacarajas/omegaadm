@@ -14,7 +14,8 @@ use App\Support\Rh\ColaboradorVinculoPonto;
 use Carbon\Carbon;
 
 /**
- * Café da manhã: R$ por dia com minutos trabalhados na apuração (justificativa sem horas não conta).
+ * Café da manhã (ACT): R$ 7,95 por dia com horas na apuração; teto R$ 175 sem falta/atestado/justificativa em dia útil.
+ * Convocação em sábado, domingo, feriado ou repouso com horas trabalhadas também gera o valor diário.
  */
 class CafeDaManhaCalculoService
 {
@@ -76,12 +77,27 @@ class CafeDaManhaCalculoService
 
         $resumo = $this->resumirDiasTrabalhados($colaborador, $inicio, $fim, $config);
         $valorProporcional = round($resumo['valor_total_dias'], 2);
-        $valorFinal = $config->tetoMensalAtivo()
-            ? round(min($valorMensal, $valorProporcional), 2)
-            : $valorProporcional;
-        $diasSemPagamento = $resumo['dias_justificado_sem_trabalho'] + $resumo['dias_sem_trabalho'];
-        $valorDescontado = round($diasSemPagamento * $valorDiario, 2);
-        $valorBrutoApuracao = round($valorProporcional + $valorDescontado, 2);
+        $semPenalidadeDiaUtil = $resumo['dias_justificado_sem_trabalho'] === 0
+            && $resumo['dias_sem_trabalho'] === 0;
+
+        if ($config->tetoMensalAtivo() && $semPenalidadeDiaUtil && $resumo['dias_trabalhados'] > 0) {
+            $valorFinal = round($valorMensal, 2);
+            $valorCheioAplicado = true;
+        } elseif ($config->tetoMensalAtivo()) {
+            $valorFinal = round(min($valorMensal, $valorProporcional), 2);
+            $valorCheioAplicado = false;
+        } else {
+            $valorFinal = $valorProporcional;
+            $valorCheioAplicado = false;
+        }
+
+        $diasSemPagamentoUteis = $resumo['dias_justificado_sem_trabalho'] + $resumo['dias_sem_trabalho'];
+        $valorDescontado = $valorCheioAplicado
+            ? round(max(0, $valorMensal - $valorProporcional), 2)
+            : round($diasSemPagamentoUteis * $valorDiario, 2);
+        $valorBrutoApuracao = $valorCheioAplicado
+            ? $valorMensal
+            : round($valorProporcional + $valorDescontado, 2);
 
         return [
             'aplica' => true,
@@ -96,8 +112,9 @@ class CafeDaManhaCalculoService
             'valor_bruto_apuracao' => $valorBrutoApuracao,
             'valor_descontado' => $valorDescontado,
             'valor_final' => $valorFinal,
+            'valor_cheio_aplicado' => $valorCheioAplicado,
             'dias_apuracao' => $resumo['dias'],
-            'detalhe' => $this->montarDetalhe($resumo, $valorFinal, $valorMensal, $config),
+            'detalhe' => $this->montarDetalhe($resumo, $valorFinal, $valorMensal, $valorCheioAplicado, $config),
         ];
     }
 
@@ -152,28 +169,29 @@ class CafeDaManhaCalculoService
                 continue;
             }
 
-            if (! $this->diaUtilParaApuracaoCafe($colaborador, $dia, $linha)) {
-                continue;
-            }
-
             $minutos = (int) ($linha['minutos_trabalhado'] ?? 0);
             $status = (string) ($linha['status'] ?? '');
             $ehRotulo = (bool) ($linha['eh_rotulo'] ?? false);
-
             $entrada1 = (string) ($linha['entrada_1'] ?? '');
+            $convocacao = $this->diaConvocacaoOuRepouso($colaborador, $dia, $linha);
 
             if (! $ehRotulo && $minutos >= $minMinutos) {
-                $valorDia = $config->valorDiario();
+                $valorDia = $config->valorDiarioParaDia($convocacao);
                 $diasTrabalhados++;
                 $valorTotal += $valorDia;
+                $rotuloConvocacao = $convocacao ? ' (convocação em repouso/feriado)' : '';
                 $diasDetalhe[] = $this->montarItemDia(
                     $dia,
                     'trabalhado',
-                    'Pago — '.$this->formatarMinutos($minutos).' trabalhadas na apuração',
+                    'Pago — '.$this->formatarMinutos($minutos).' trabalhadas na apuração'.$rotuloConvocacao,
                     $valorDia,
                     $minutos
                 );
 
+                continue;
+            }
+
+            if (! $this->diaUtilParaPenalidadeCafe($colaborador, $dia, $linha)) {
                 continue;
             }
 
@@ -288,56 +306,77 @@ class CafeDaManhaCalculoService
     }
 
     /**
-     * @param  array{dias_trabalhados: int, dias_justificado_sem_trabalho: int, valor_total_dias: float}  $resumo
+     * @param  array{dias_trabalhados: int, dias_justificado_sem_trabalho: int, dias_sem_trabalho: int, valor_total_dias: float}  $resumo
      */
-    private function montarDetalhe(array $resumo, float $valorFinal, float $valorMensal, CafeDaManhaRegraConfig $config): string
-    {
-        $partes = [
-            sprintf(
-                '%d dia(s) com horas trabalhadas na apuração × R$ %s',
+    private function montarDetalhe(
+        array $resumo,
+        float $valorFinal,
+        float $valorMensal,
+        bool $valorCheioAplicado,
+        CafeDaManhaRegraConfig $config
+    ): string {
+        $partes = [];
+
+        if ($valorCheioAplicado) {
+            $partes[] = sprintf(
+                'Sem falta/atestado/justificativa em dias úteis — valor integral R$ %s',
+                number_format($valorMensal, 2, ',', '.')
+            );
+            if ($resumo['dias_trabalhados'] > 0) {
+                $partes[] = sprintf(
+                    '(%d dia(s) com horas na apuração, proporcional diário R$ %s)',
+                    $resumo['dias_trabalhados'],
+                    number_format($config->valorDiario(), 2, ',', '.')
+                );
+            }
+        } else {
+            $partes[] = sprintf(
+                '%d dia(s) com horas na apuração × R$ %s',
                 $resumo['dias_trabalhados'],
                 number_format($config->valorDiario(), 2, ',', '.')
-            ),
-        ];
+            );
+        }
 
         if ($resumo['dias_justificado_sem_trabalho'] > 0) {
             $partes[] = sprintf(
-                '%d dia(s) justificado(s)/atestado sem horas na apuração → sem valor diário',
+                '%d dia(s) útil(eis) justificado(s)/atestado sem horas → reduz benefício',
                 $resumo['dias_justificado_sem_trabalho']
             );
         }
 
-        if ($config->tetoMensalAtivo() && $valorFinal >= $valorMensal - 0.01) {
+        if ($resumo['dias_sem_trabalho'] > 0) {
+            $partes[] = sprintf(
+                '%d dia(s) útil(eis) com falta/sem horas → reduz benefício',
+                $resumo['dias_sem_trabalho']
+            );
+        }
+
+        if (! $valorCheioAplicado && $config->tetoMensalAtivo() && $valorFinal >= $valorMensal - 0.01) {
             $partes[] = 'Teto mensal R$ '.number_format($valorMensal, 2, ',', '.').' aplicado.';
         }
 
-        $partes[] = 'Critério: apenas dias úteis com minutos trabalhados no cartão de ponto (sábado, domingo e feriados não entram).';
+        $partes[] = 'Convocação em sábado, domingo, feriado ou repouso com horas trabalhadas também recebe o valor diário.';
 
         return implode(' ', $partes);
     }
 
     /**
-     * Café: apuração e descontos somente em dias úteis (seg–sex, com jornada na escala, sem feriado).
+     * Sábado, domingo, feriado cadastrado ou folga na escala (sem ser dia útil de penalidade).
      *
      * @param  array<string, mixed>  $linha
      */
-    private function diaUtilParaApuracaoCafe(Colaborador $colaborador, Carbon $dia, array $linha): bool
+    private function diaConvocacaoOuRepouso(Colaborador $colaborador, Carbon $dia, array $linha): bool
     {
         if ($dia->isWeekend()) {
-            return false;
+            return true;
         }
 
         if (app(FeriadoPontoService::class)->diaAbonadoPorFeriado($dia)) {
-            return false;
+            return true;
         }
 
         if (app(EscalaPontoRegras::class)->diaAbonadoPorFolgaEscala($colaborador, $dia)) {
-            return false;
-        }
-
-        $status = (string) ($linha['status'] ?? '');
-        if (in_array($status, ['folga', 'feriado'], true)) {
-            return false;
+            return true;
         }
 
         if ((bool) ($linha['eh_rotulo'] ?? false)) {
@@ -347,10 +386,20 @@ class CafeDaManhaCalculoService
                 || $rotulo === 'folga'
                 || str_starts_with($rotulo, 'feriado:')
             ) {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return in_array((string) ($linha['status'] ?? ''), ['folga', 'feriado'], true);
+    }
+
+    /**
+     * Penalidade (falta/justificativa sem horas) só em dia útil com jornada esperada.
+     *
+     * @param  array<string, mixed>  $linha
+     */
+    private function diaUtilParaPenalidadeCafe(Colaborador $colaborador, Carbon $dia, array $linha): bool
+    {
+        return ! $this->diaConvocacaoOuRepouso($colaborador, $dia, $linha);
     }
 }

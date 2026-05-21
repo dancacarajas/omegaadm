@@ -76,10 +76,57 @@ class CafeDaManhaCalculoTest extends TestCase
 
         $this->assertSame($uteis, $calc['dias_trabalhados']);
         $this->assertEqualsWithDelta($uteis * 7.95, $calc['valor_proporcional'], 0.01);
-        $this->assertEqualsWithDelta($uteis * 7.95, $calc['valor_final'], 0.01);
+        $this->assertTrue($calc['valor_cheio_aplicado']);
+        $this->assertEqualsWithDelta(175.0, $calc['valor_final'], 0.01);
     }
 
-    public function test_sabado_domingo_e_feriado_nao_entram_na_apuracao(): void
+    public function test_valor_cheio_175_sem_penalidade_em_dia_util_mesmo_com_menos_dias_trabalhados(): void
+    {
+        [$colab, $beneficio, $vinculo] = $this->cenarioCafe();
+
+        $inicio = Carbon::parse('2026-04-21');
+        $fim = Carbon::parse('2026-05-20');
+        for ($dia = $inicio->copy(); $dia->lte($fim); $dia->addDay()) {
+            if ($dia->isWeekend()) {
+                continue;
+            }
+            $this->diaComBatidas($colab, $dia->copy());
+        }
+
+        $calc = app(CafeDaManhaCalculoService::class)->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            $inicio,
+            $fim
+        );
+
+        $this->assertTrue($calc['valor_cheio_aplicado']);
+        $this->assertEqualsWithDelta(175.0, $calc['valor_final'], 0.01);
+        $this->assertGreaterThan(15, $calc['dias_trabalhados']);
+        $this->assertSame(0, $calc['dias_com_justificativa_sem_trabalho']);
+        $this->assertSame(0, $calc['dias_sem_trabalho']);
+    }
+
+    public function test_sabado_trabalhado_recebe_valor_diario(): void
+    {
+        [$colab, $beneficio, $vinculo] = $this->cenarioCafe();
+
+        $this->diaComBatidas($colab, Carbon::parse('2026-04-11'));
+
+        $calc = app(CafeDaManhaCalculoService::class)->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            Carbon::parse('2026-04-11'),
+            Carbon::parse('2026-04-11')
+        );
+
+        $this->assertSame(1, $calc['dias_trabalhados']);
+        $this->assertEqualsWithDelta(7.95, $calc['valor_proporcional'], 0.01);
+        $this->assertTrue($calc['valor_cheio_aplicado']);
+        $this->assertEqualsWithDelta(175.0, $calc['valor_final'], 0.01);
+    }
+
+    public function test_sabado_domingo_e_feriado_sem_trabalho_nao_penalizam(): void
     {
         [$colab, $beneficio, $vinculo] = $this->cenarioCafe();
 
@@ -117,6 +164,7 @@ class CafeDaManhaCalculoTest extends TestCase
 
         $this->assertSame(1, $calc['dias_trabalhados']);
         $this->assertSame(0, $calc['dias_com_justificativa_sem_trabalho']);
+        $this->assertTrue($calc['valor_cheio_aplicado']);
         $this->assertCount(1, $calc['dias_apuracao']);
         $this->assertSame('2026-04-08', $calc['dias_apuracao'][0]['data']);
     }

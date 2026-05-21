@@ -3,7 +3,8 @@
 namespace App\Support\Rh;
 
 /**
- * Café da manhã: valor por dia com horas trabalhadas na apuração (atestado não gera direito sem batida).
+ * Café da manhã: parâmetros padrão do ACT (fallback). Valores vigentes ficam em
+ * beneficio_extrato_regras.parametros (modal Extrato → Regras) e opcionalmente no campo Valor do benefício.
  */
 final class CafeDaManhaRegraConfig
 {
