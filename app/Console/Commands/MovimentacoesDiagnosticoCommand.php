@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Colaborador;
 use App\Models\ColaboradorMovimentacao;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 class MovimentacoesDiagnosticoCommand extends Command
@@ -13,7 +15,8 @@ class MovimentacoesDiagnosticoCommand extends Command
                             {id? : ID da movimentação (use com --mov) ou colaborador (padrão: colaborador)}
                             {--rota : Verifica se a rota de gestão está registrada}
                             {--mov : O argumento id é colaborador_movimentacoes.id, não colaborador_id}
-                            {--listar : Lista todas as movimentações (id, colaborador, tipo)}';
+                            {--listar : Lista todas as movimentações (id, colaborador, tipo)}
+                            {--http : Simula GET HTTP com /public/ no REQUEST_URI (como o navegador)}';
 
     protected $description = 'Diagnóstico de 404 em /public/rh/movimentacoes/{id} (produção Hostinger)';
 
@@ -24,8 +27,8 @@ class MovimentacoesDiagnosticoCommand extends Command
             $this->line('rh.efetivo.movimentacoes.edit: '.($edit ? 'SIM' : 'NÃO'));
             if ($edit) {
                 $this->line('URL gestão (route): '.route('rh.efetivo.movimentacoes.edit', 1));
-                $this->line('URL pública esperada: /public/rh/movimentacoes/1');
-                $this->line('Legado /editar: /public/rh/movimentacoes/1/editar → redireciona 301');
+                $this->line('URL pública esperada: /public/rh/efetivo/movimentacao/1');
+                $this->line('Legado: /public/rh/movimentacoes/1 → redireciona 301');
             } else {
                 $this->error('Rota ausente → git pull + php artisan route:clear');
             }
@@ -112,9 +115,39 @@ class MovimentacoesDiagnosticoCommand extends Command
 
         $colab = $mov->colaborador;
         $this->info("OK: movimentação {$movId} ({$mov->tipo}) — colaborador {$mov->colaborador_id}".($colab ? ": {$colab->nome}" : ''));
-        $this->line('URL gestão (GET+POST): /public/rh/movimentacoes/'.$movId);
+        $this->line('URL gestão (GET+POST): /public/rh/efetivo/movimentacao/'.$movId);
         $this->line('Rota nomeada: '.route('rh.efetivo.movimentacoes.edit', $mov));
 
+        if ($this->option('http')) {
+            $this->simularHttpGet($movId);
+        }
+
         return self::SUCCESS;
+    }
+
+    private function simularHttpGet(int $movId): void
+    {
+        $_SERVER['REQUEST_URI'] = '/public/rh/efetivo/movimentacao/'.$movId;
+        $_SERVER['SCRIPT_NAME'] = '/public/index.php';
+        $_SERVER['SCRIPT_FILENAME'] = public_path('index.php');
+        $_SERVER['QUERY_STRING'] = '';
+
+        (require base_path('bootstrap/fix-public-request-uri.php'))();
+
+        $request = Request::create($_SERVER['REQUEST_URI'], 'GET');
+
+        $kernel = app(Kernel::class);
+        $response = $kernel->handle($request);
+        $kernel->terminate($request, $response);
+
+        $path = $request->path();
+        $this->line("Simulação HTTP: status {$response->getStatusCode()}, path()={$path}");
+
+        if ($response->getStatusCode() === 404) {
+            $this->error('404 na simulação → path deve ser rh/efetivo/movimentacao/'.$movId.' (sem prefixo public/)');
+            $this->line('Confira bootstrap/fix-public-request-uri.php e .htaccess na raiz do projeto.');
+        } elseif ($response->isRedirection()) {
+            $this->line('Redirect: '.$response->headers->get('Location'));
+        }
     }
 }

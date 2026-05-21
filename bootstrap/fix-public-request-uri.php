@@ -13,12 +13,8 @@ return function (): void {
     $_SERVER['SCRIPT_NAME'] = '/public/index.php';
     $_SERVER['PHP_SELF'] = '/public/index.php';
 
-    $scriptFile = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
-    $viaPublicIndex = str_ends_with($scriptFile, '/public/index.php');
-
-    if (! $viaPublicIndex) {
-        $path = substr($uri, strlen('/public')) ?: '/';
-        $query = $_SERVER['QUERY_STRING'] ?? '';
-        $_SERVER['REQUEST_URI'] = $path.($query !== '' ? '?'.$query : '');
-    }
+    // Sempre normaliza: router precisa de rh/... e não public/rh/... (Hostinger → public/index.php).
+    $path = substr(parse_url($uri, PHP_URL_PATH) ?? $uri, strlen('/public')) ?: '/';
+    $query = parse_url($uri, PHP_URL_QUERY);
+    $_SERVER['REQUEST_URI'] = $path.($query !== null && $query !== '' ? '?'.$query : '');
 };

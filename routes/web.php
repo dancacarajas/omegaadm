@@ -402,10 +402,12 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->whereNumber('beneficio');
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
-        // GET + POST na mesma URL (padrão benefícios — evita 404 com /public/ em produção)
-        Route::match(['get', 'post'], 'movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
+        // Gestão: GET+POST na mesma URL, sob efetivo/ (mesmo prefixo da listagem — evita 404 em /public/)
+        Route::match(['get', 'post'], 'efetivo/movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
             ->whereNumber('movimentacao')
             ->name('efetivo.movimentacoes.edit');
+        Route::get('movimentacoes/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
+            ->whereNumber('movimentacao');
         Route::get('movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
             ->whereNumber('movimentacao');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])

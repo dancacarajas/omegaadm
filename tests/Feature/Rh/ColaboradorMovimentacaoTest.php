@@ -157,6 +157,10 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->actingAs($user)
             ->get('/rh/movimentacoes/'.$mov->id.'/editar')
             ->assertRedirect(route('rh.efetivo.movimentacoes.edit', $mov));
+
+        $this->actingAs($user)
+            ->get('/rh/movimentacoes/'.$mov->id)
+            ->assertRedirect(route('rh.efetivo.movimentacoes.edit', $mov));
     }
 
     public function test_gestao_movimentacao_com_prefixo_public_na_requisicao(): void
@@ -170,16 +174,18 @@ class ColaboradorMovimentacaoTest extends TestCase
             'centro_custo_novo' => 'CC-X',
         ]);
 
+        ($fix = require base_path('bootstrap/fix-public-request-uri.php'))();
+
         $this->actingAs($user)
             ->call(
                 'GET',
-                '/rh/movimentacoes/'.$mov->id,
+                '/rh/efetivo/movimentacao/'.$mov->id,
                 [],
                 [],
                 [],
                 [
                     'SCRIPT_NAME' => '/public/index.php',
-                    'REQUEST_URI' => '/public/rh/movimentacoes/'.$mov->id,
+                    'REQUEST_URI' => '/public/rh/efetivo/movimentacao/'.$mov->id,
                 ]
             )
             ->assertOk()

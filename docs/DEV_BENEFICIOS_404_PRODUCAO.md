@@ -448,13 +448,15 @@ O 404 em **Alterar** (`/public/rh/efetivo/{colab}/movimentacoes/{id}/editar`) e 
 
 | Camada | Benefícios | Movimentações (após alinhar) |
 |--------|------------|------------------------------|
-| Rota | `Route::match(['get','post'], 'beneficios/{beneficio}', show)` | `Route::match(['get','post'], 'movimentacoes/{movimentacao}', editar)` |
-| URL pública | `/public/rh/beneficios/1` | `/public/rh/movimentacoes/3` |
+| Rota | `Route::match(['get','post'], 'beneficios/{beneficio}', show)` | `Route::match(['get','post'], 'efetivo/movimentacao/{movimentacao}', editar)` |
+| URL pública | `/public/rh/beneficios/1` | `/public/rh/efetivo/movimentacao/3` |
 | Formulário | `action="{{ route('rh.beneficios.show', $beneficio) }}"` + POST | `action="{{ route('rh.efetivo.movimentacoes.edit', $movimentacao) }}"` + POST (sem `@method('PUT')`) |
 | Controller | `show()` delega POST para `store` | `editar()` delega POST para `update()` |
 | Legado | redirects de URLs antigas | `.../movimentacoes/{id}/editar` → 301 para `.../movimentacoes/{id}` |
 
-Infra compartilhada (já no projeto): `index.php` raiz, `.htaccess`, `bootstrap/fix-public-request-uri.php`, middleware `ForceRequestRootUrl`.
+Infra compartilhada: `index.php` raiz, `.htaccess`, `bootstrap/fix-public-request-uri.php` (sempre remove `/public` do path do router), middleware `ForceRequestRootUrl`.
+
+URLs antigas `/public/rh/movimentacoes/{id}` redirecionam 301 para `/public/rh/efetivo/movimentacao/{id}`.
 
 ### Deploy movimentações
 
