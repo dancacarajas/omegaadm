@@ -5,7 +5,11 @@ namespace App\Services\Rh;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Models\ColaboradorMovimentacao;
+use App\Models\FrequenciaRegistro;
 use App\Models\HorarioEscalaDia;
+use App\Support\Rh\ColaboradorMovimentacaoTipos;
+use App\Support\Rh\ValeAlimentacaoRegraConfig;
 use App\Support\FrequenciaCalculo;
 use App\Support\Rh\CartaoPontoService;
 use App\Support\Rh\ColaboradorVinculoPonto;
@@ -25,14 +29,7 @@ class ValeAlimentacaoCalculoService
 
     public function usaCalculoAssiduidade(Beneficio $beneficio): bool
     {
-        $nome = mb_strtolower((string) $beneficio->nome);
-        $tipo = mb_strtolower((string) ($beneficio->tipo ?? ''));
-        $codigo = mb_strtolower((string) ($beneficio->codigo ?? ''));
-
-        return str_contains($nome, 'aliment')
-            || str_contains($nome, 'vale')
-            || str_contains($tipo, 'aliment')
-            || in_array($codigo, ['alelo001', 'vale-alimentacao', 'va'], true);
+        return \App\Models\BeneficioExtratoRegra::pareceValeAlimentacao($beneficio);
     }
 
     /**
@@ -41,21 +38,33 @@ class ValeAlimentacaoCalculoService
     public function calcularParaVinculo(
         ColaboradorBeneficio $vinculo,
         Beneficio $beneficio,
-        ?Carbon $mesPagamento = null
+        ?Carbon $mesPagamento = null,
+        ?Carbon $periodoInicioApuracao = null,
+        ?Carbon $periodoFimApuracao = null,
+        bool $forcarRegraAssiduidade = false,
+        ?ValeAlimentacaoRegraConfig $config = null
     ): array {
+        $config ??= ValeAlimentacaoRegraConfig::resolver(null);
         $mesPagamento ??= Carbon::now()->startOfMonth();
         $mesPagamento = $mesPagamento->copy()->startOfMonth();
+
+        [$inicioApuracao, $fimApuracao] = $this->normalizarPeriodoApuracao(
+            $mesPagamento,
+            $periodoInicioApuracao,
+            $periodoFimApuracao
+        );
 
         $valorBase = (float) ($beneficio->valor ?? 0);
         $vazio = [
             'aplica' => false,
             'mes_pagamento' => $mesPagamento->format('m/Y'),
-            'mes_apuracao_faltas' => $mesPagamento->copy()->subMonth()->format('m/Y'),
+            'periodo_apuracao' => $this->formatarPeriodoApuracao($inicioApuracao, $fimApuracao),
             'valor_base' => $valorBase,
             'valor_final' => $valorBase,
         ];
 
-        if (! $this->usaCalculoAssiduidade($beneficio) || $valorBase <= 0) {
+        $aplicaRegra = $forcarRegraAssiduidade || $this->usaCalculoAssiduidade($beneficio);
+        if (! $aplicaRegra || $valorBase <= 0) {
             return $vazio;
         }
 
@@ -74,30 +83,59 @@ class ValeAlimentacaoCalculoService
 
         $colaborador->loadMissing(['horarioEscala.dias', 'horarioEscala.excecoes']);
 
-        $mesApuracaoFaltas = $mesPagamento->copy()->subMonth()->startOfMonth();
-        $faltasInjustificadas = $this->contarFaltasInjustificadasIntegral($colaborador, $mesApuracaoFaltas);
+        $faltasInjustificadas = $this->contarFaltasInjustificadasNoPeriodo($colaborador, $inicioApuracao, $fimApuracao);
 
-        $proporcao = $this->fatorProporcionalMes($colaborador, $mesPagamento);
+        $proporcao = $config->proporcionalAdmissaoDemissao()
+            ? $this->fatorProporcionalMes($colaborador, $mesPagamento)
+            : ['fator' => 1.0, 'dias_uteis_mes' => 0, 'dias_com_direito' => 0, 'faltas_injustificadas' => 0];
         $valorProporcional = round($valorBase * $proporcao['fator'], 2);
 
-        $percentualDesconto = $this->percentualDescontoAssiduidade($faltasInjustificadas);
-        $valorDescontado = round($valorProporcional * $percentualDesconto, 2);
-        $valorFinal = round(max(0, $valorProporcional - $valorDescontado), 2);
+        $percentualDesconto = $config->percentualDescontoPorFaltas($faltasInjustificadas);
+        $isentoAcidente = $this->isentoDescontoPorAcidenteTrabalho($colaborador, $mesPagamento, $config);
+        if ($isentoAcidente) {
+            $percentualDesconto = 0.0;
+        }
+
+        $valorDescontadoAssiduidade = round($valorProporcional * $percentualDesconto, 2);
+        $valorDescontadoProporcional = round(max(0, $valorBase - $valorProporcional), 2);
+        $valorDescontado = round($valorDescontadoProporcional + $valorDescontadoAssiduidade, 2);
+        $valorFinal = round(max(0, $valorProporcional - $valorDescontadoAssiduidade), 2);
+
+        $recargaNatal = $this->calcularRecargaNatal(
+            $vinculo,
+            $colaborador,
+            $config,
+            $faltasInjustificadas,
+            $inicioApuracao,
+            $fimApuracao
+        );
 
         return [
             'aplica' => true,
             'mes_pagamento' => $mesPagamento->format('m/Y'),
-            'mes_apuracao_faltas' => $mesApuracaoFaltas->format('m/Y'),
+            'periodo_apuracao' => $this->formatarPeriodoApuracao($inicioApuracao, $fimApuracao),
             'valor_base' => $valorBase,
             'faltas_injustificadas' => $faltasInjustificadas,
             'percentual_desconto' => (int) round($percentualDesconto * 100),
             'valor_descontado' => $valorDescontado,
+            'valor_descontado_assiduidade' => $valorDescontadoAssiduidade,
+            'valor_descontado_proporcional' => $valorDescontadoProporcional,
             'fator_proporcional' => $proporcao['fator'],
             'dias_uteis_mes' => $proporcao['dias_uteis_mes'],
             'dias_com_direito' => $proporcao['dias_com_direito'],
             'valor_proporcional' => $valorProporcional,
             'valor_final' => $valorFinal,
-            'detalhe' => $this->montarDetalhe($faltasInjustificadas, $percentualDesconto, $proporcao),
+            'isento_acidente_trabalho' => $isentoAcidente,
+            'recarga_natal' => $recargaNatal,
+            'dias_apuracao' => $this->listarDiasApuracaoParaExtrato(
+                $colaborador,
+                $inicioApuracao,
+                $fimApuracao,
+                $mesPagamento,
+                $proporcao,
+                $config->proporcionalAdmissaoDemissao()
+            ),
+            'detalhe' => $this->montarDetalhe($faltasInjustificadas, $percentualDesconto, $proporcao, $config, $isentoAcidente, $recargaNatal),
         ];
     }
 
@@ -105,24 +143,357 @@ class ValeAlimentacaoCalculoService
      * @param  Collection<int, ColaboradorBeneficio>  $vinculos
      * @return array<int, array<string, mixed>>
      */
-    public function calcularParaVinculos(Collection $vinculos, Beneficio $beneficio, ?Carbon $mesPagamento = null): array
-    {
+    public function calcularParaVinculos(
+        Collection $vinculos,
+        Beneficio $beneficio,
+        ?Carbon $mesPagamento = null,
+        ?Carbon $periodoInicioApuracao = null,
+        ?Carbon $periodoFimApuracao = null,
+        bool $forcarRegraAssiduidade = false,
+        ?ValeAlimentacaoRegraConfig $config = null
+    ): array {
         $map = [];
         foreach ($vinculos as $vinculo) {
-            $map[$vinculo->id] = $this->calcularParaVinculo($vinculo, $beneficio, $mesPagamento);
+            $map[$vinculo->id] = $this->calcularParaVinculo(
+                $vinculo,
+                $beneficio,
+                $mesPagamento,
+                $periodoInicioApuracao,
+                $periodoFimApuracao,
+                $forcarRegraAssiduidade,
+                $config
+            );
         }
 
         return $map;
     }
 
-    public function percentualDescontoAssiduidade(int $faltasInjustificadas): float
+    public function contarFaltasInjustificadasNoPeriodo(
+        Colaborador $colaborador,
+        Carbon $periodoInicio,
+        Carbon $periodoFim
+    ): int {
+        return count($this->listarFaltasInjustificadasNoPeriodo($colaborador, $periodoInicio, $periodoFim));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listarFaltasInjustificadasNoPeriodo(
+        Colaborador $colaborador,
+        Carbon $periodoInicio,
+        Carbon $periodoFim
+    ): array {
+        $inicio = $periodoInicio->copy()->startOfDay();
+        $fim = $periodoFim->copy()->startOfDay();
+
+        $cartoes = $this->cartaoPonto->montarCartoes(
+            collect([$colaborador]),
+            $inicio->toDateString(),
+            $fim->toDateString()
+        );
+
+        $linhas = $cartoes[0]['linhas'] ?? [];
+        $dias = [];
+
+        foreach ($linhas as $linha) {
+            if (! $this->linhaEhFaltaInjustificadaIntegral($linha)) {
+                continue;
+            }
+
+            $ymd = (string) ($linha['data_ymd'] ?? '');
+            if ($ymd === '') {
+                continue;
+            }
+
+            $dia = Carbon::parse($ymd)->startOfDay();
+            if ($dia->lt($inicio) || $dia->gt($fim)) {
+                continue;
+            }
+
+            if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dia)) {
+                continue;
+            }
+
+            $entrada1 = (string) ($linha['entrada_1'] ?? 'Falta');
+            $dias[] = $this->montarItemDiaApuracao(
+                $dia,
+                'falta_injustificada',
+                'Falta injustificada',
+                ($entrada1 !== '' ? $entrada1 : 'Falta integral no cartão de ponto').' — conta na assiduidade do vale',
+                'desconto'
+            );
+        }
+
+        usort($dias, fn (array $a, array $b): int => strcmp($a['data'], $b['data']));
+
+        return $dias;
+    }
+
+    /**
+     * @param  array{faltas_injustificadas?: int, dias_uteis_mes: int, dias_com_direito: int, fator: float}  $proporcao
+     * @return list<array<string, mixed>>
+     */
+    public function listarDiasApuracaoParaExtrato(
+        Colaborador $colaborador,
+        Carbon $periodoInicio,
+        Carbon $periodoFim,
+        Carbon $mesPagamento,
+        array $proporcao,
+        bool $incluirProporcionalMes = true
+    ): array {
+        $dias = $this->listarFaltasInjustificadasNoPeriodo($colaborador, $periodoInicio, $periodoFim);
+
+        if (
+            $incluirProporcionalMes
+            && ($proporcao['dias_com_direito'] ?? 0) < ($proporcao['dias_uteis_mes'] ?? 0)
+        ) {
+            $dias = array_merge($dias, $this->listarDiasSemDireitoMesPagamento($colaborador, $mesPagamento));
+        }
+
+        usort($dias, fn (array $a, array $b): int => strcmp($a['data'], $b['data']));
+
+        return $dias;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listarDiasSemDireitoMesPagamento(Colaborador $colaborador, Carbon $mes): array
     {
-        return match (true) {
-            $faltasInjustificadas <= 0 => 0.0,
-            $faltasInjustificadas === 1 => 0.20,
-            $faltasInjustificadas === 2 => 0.50,
-            default => 1.0,
-        };
+        $colaborador->loadMissing(['horarioEscala.dias', 'horarioEscala.excecoes']);
+
+        $inicio = $mes->copy()->startOfMonth();
+        $fim = $mes->copy()->endOfMonth();
+        $dias = [];
+
+        foreach (CarbonPeriod::create($inicio, $fim) as $dia) {
+            $diaEscala = $colaborador->horarioEscalaDiaNaData($dia);
+            if (! $this->diaTemJornadaEscala($diaEscala)) {
+                continue;
+            }
+
+            if (ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dia)) {
+                continue;
+            }
+
+            $dias[] = $this->montarItemDiaApuracao(
+                $dia->copy()->startOfDay(),
+                'sem_direito_mes',
+                'Sem direito no mês',
+                'Dia útil da escala fora do vínculo no mês '.$mes->format('m/Y').' — reduz valor proporcional',
+                'desconto'
+            );
+        }
+
+        return $dias;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function montarItemDiaApuracao(
+        Carbon $dia,
+        string $tipo,
+        string $tipoLabel,
+        string $descricao,
+        string $impacto
+    ): array {
+        $diasSemana = [1 => 'SEG', 2 => 'TER', 3 => 'QUA', 4 => 'QUI', 5 => 'SEX', 6 => 'SAB', 7 => 'DOM'];
+
+        return [
+            'data' => $dia->toDateString(),
+            'data_fmt' => $dia->format('d/m/Y'),
+            'dia_semana' => $diasSemana[(int) $dia->isoWeekday()] ?? '',
+            'tipo' => $tipo,
+            'tipo_label' => $tipoLabel,
+            'descricao' => $descricao,
+            'valor' => 0.0,
+            'minutos_trabalhado' => null,
+            'impacto' => $impacto,
+        ];
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function normalizarPeriodoApuracao(
+        Carbon $mesPagamento,
+        ?Carbon $periodoInicioApuracao,
+        ?Carbon $periodoFimApuracao
+    ): array {
+        $fimPadrao = $mesPagamento->copy()->endOfMonth()->startOfDay();
+        $inicioPadrao = $mesPagamento->copy()->startOfMonth()->startOfDay();
+
+        $inicio = ($periodoInicioApuracao ?? $inicioPadrao)->copy()->startOfDay();
+        $fim = ($periodoFimApuracao ?? $fimPadrao)->copy()->startOfDay();
+
+        if ($fim->lt($inicio)) {
+            [$inicio, $fim] = [$fim, $inicio];
+        }
+
+        return [$inicio, $fim];
+    }
+
+    private function formatarPeriodoApuracao(Carbon $inicio, Carbon $fim): string
+    {
+        if ($inicio->isSameDay($fim)) {
+            return $inicio->format('d/m/Y');
+        }
+
+        return $inicio->format('d/m/Y').' a '.$fim->format('d/m/Y');
+    }
+
+    public function percentualDescontoAssiduidade(int $faltasInjustificadas, ?ValeAlimentacaoRegraConfig $config = null): float
+    {
+        $config ??= ValeAlimentacaoRegraConfig::resolver(null);
+
+        return $config->percentualDescontoPorFaltas($faltasInjustificadas);
+    }
+
+    public function isentoDescontoPorAcidenteTrabalho(
+        Colaborador $colaborador,
+        Carbon $mesPagamento,
+        ValeAlimentacaoRegraConfig $config
+    ): bool {
+        $regra = $config->afastamentoAcidente();
+        if (! ($regra['ativo'] ?? false)) {
+            return false;
+        }
+
+        $limiteMeses = (int) ($regra['meses_limite_integral'] ?? 3);
+        $inicioMes = $mesPagamento->copy()->startOfMonth();
+        $fimMes = $mesPagamento->copy()->endOfMonth();
+
+        $afastamentos = ColaboradorMovimentacao::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->where('tipo', ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS)
+            ->where('especie_beneficio_inss', 'acidente_trabalho')
+            ->where('data_inicio', '<=', $fimMes->toDateString())
+            ->where(function ($q) use ($inicioMes) {
+                $q->whereNull('data_fim')->orWhere('data_fim', '>=', $inicioMes->toDateString());
+            })
+            ->orderBy('data_inicio')
+            ->get();
+
+        if ($afastamentos->isEmpty()) {
+            return false;
+        }
+
+        $mesesAfastado = 0;
+        foreach ($afastamentos as $mov) {
+            $ini = $mov->data_inicio->copy()->startOfMonth();
+            $fim = ($mov->data_fim ?? $fimMes)->copy()->endOfMonth();
+            $cursor = $ini->copy();
+            while ($cursor->lte($fim)) {
+                if ($cursor->isSameMonth($mesPagamento)) {
+                    $mesesAfastado++;
+
+                    break;
+                }
+                $cursor->addMonth();
+            }
+        }
+
+        return $mesesAfastado > 0 && $mesesAfastado <= $limiteMeses;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function calcularRecargaNatal(
+        ColaboradorBeneficio $vinculo,
+        Colaborador $colaborador,
+        ValeAlimentacaoRegraConfig $config,
+        int $faltasInjustificadasPeriodo,
+        Carbon $periodoInicio,
+        Carbon $periodoFim
+    ): array {
+        $natal = $config->recargaNatal();
+        $vazio = [
+            'aplica' => false,
+            'valor' => 0.0,
+            'detalhe' => 'Recarga de Natal desativada na configuração.',
+        ];
+
+        if (! ($natal['ativo'] ?? false)) {
+            return $vazio;
+        }
+
+        $cargo = mb_strtolower((string) ($colaborador->cargo ?? ''));
+        foreach ($config->cargosExcluidosRecargaNatal() as $termo) {
+            if ($termo !== '' && str_contains($cargo, $termo)) {
+                return [
+                    'aplica' => true,
+                    'valor' => 0.0,
+                    'detalhe' => 'Cargo de gestão/coordenação — não elegível à recarga extra de Natal.',
+                ];
+            }
+        }
+
+        if (($natal['exige_sindicalizado'] ?? false) && ! $this->colaboradorElegivelSindicalizado($vinculo, $colaborador)) {
+            return [
+                'aplica' => true,
+                'valor' => 0.0,
+                'detalhe' => 'Recarga de Natal: exige vínculo sindicalizado/contribuinte (marque nas observações do vínculo).',
+            ];
+        }
+
+        $iniAtest = Carbon::parse($natal['periodo_atestados_inicio'])->startOfDay();
+        $fimAtest = Carbon::parse($natal['periodo_atestados_fim'])->endOfDay();
+        $intersecta = $periodoFim->gte($iniAtest) && $periodoInicio->lte($fimAtest);
+
+        if (! $intersecta && ! $periodoFim->between($iniAtest, $fimAtest)) {
+            return [
+                'aplica' => false,
+                'valor' => 0.0,
+                'detalhe' => 'Período fora da vigência da recarga de Natal configurada.',
+            ];
+        }
+
+        $qtdAtestados = FrequenciaRegistro::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->whereBetween('data', [$iniAtest->toDateString(), $fimAtest->toDateString()])
+            ->atestadoMedico()
+            ->count();
+
+        $pctValor = $config->percentualValorRecargaPorAtestados($qtdAtestados);
+        $valorIntegral = (float) ($natal['valor_integral'] ?? 0);
+        $valor = round($valorIntegral * $pctValor, 2);
+
+        if ($faltasInjustificadasPeriodo >= 1) {
+            $perda = ((float) ($natal['perda_uma_falta_injustificada_percentual'] ?? 100)) / 100;
+            $valor = round($valor * (1 - $perda), 2);
+        }
+
+        return [
+            'aplica' => true,
+            'valor' => $valor,
+            'valor_integral' => $valorIntegral,
+            'atestados_periodo' => $qtdAtestados,
+            'percentual_faixa' => (int) round($pctValor * 100),
+            'detalhe' => sprintf(
+                'Recarga Natal: %d atestado(s) no período configurado → %d%% do valor base.',
+                $qtdAtestados,
+                (int) round($pctValor * 100)
+            ).($faltasInjustificadasPeriodo >= 1 ? ' Perda por falta injustificada no período de apuração.' : ''),
+        ];
+    }
+
+    private function colaboradorElegivelSindicalizado(ColaboradorBeneficio $vinculo, Colaborador $colaborador): bool
+    {
+        $texto = mb_strtolower(implode(' ', array_filter([
+            (string) $vinculo->observacoes,
+            (string) $colaborador->observacoes,
+        ])));
+
+        foreach (['sindical', 'simetal', 'associado', 'contribuinte'] as $termo) {
+            if (str_contains($texto, $termo)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function contarFaltasInjustificadasIntegral(Colaborador $colaborador, Carbon $mes): int
@@ -231,8 +602,17 @@ class ValeAlimentacaoCalculoService
     /**
      * @param  array{dias_uteis_mes: int, dias_com_direito: int, fator: float}  $proporcao
      */
-    private function montarDetalhe(int $faltas, float $percentualDesconto, array $proporcao): string
-    {
+    /**
+     * @param  array<string, mixed>  $recargaNatal
+     */
+    private function montarDetalhe(
+        int $faltas,
+        float $percentualDesconto,
+        array $proporcao,
+        ValeAlimentacaoRegraConfig $config,
+        bool $isentoAcidente,
+        array $recargaNatal
+    ): string {
         $partes = [];
 
         if ($proporcao['dias_com_direito'] < $proporcao['dias_uteis_mes']) {
@@ -243,16 +623,16 @@ class ValeAlimentacaoCalculoService
             );
         }
 
-        if ($faltas <= 0) {
-            $partes[] = 'Sem falta injustificada no mês de apuração → valor integral (após proporcional).';
+        if ($isentoAcidente) {
+            $partes[] = 'Afastamento por acidente de trabalho no mês → sem desconto por falta (limite configurado).';
         } else {
-            $partes[] = match ($faltas) {
-                1 => '1 falta injustificada no mês anterior → desconto 20%.',
-                2 => '2 faltas injustificadas no mês anterior → desconto 50%.',
-                default => "{$faltas} faltas injustificadas no mês anterior → desconto 100%.",
-            };
+            $partes[] = $config->textoFaixaDesconto($faltas);
         }
 
-        return implode(' ', $partes);
+        if ($recargaNatal['aplica'] ?? false) {
+            $partes[] = $recargaNatal['detalhe'] ?? '';
+        }
+
+        return implode(' ', array_filter($partes));
     }
 }

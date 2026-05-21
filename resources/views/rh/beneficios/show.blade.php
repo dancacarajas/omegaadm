@@ -119,20 +119,14 @@
         @endphp
         <form method="GET" action="{{ route('rh.beneficios.show', $beneficio) }}" class="border-b border-zinc-100 p-5">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-                @if ($usaCalculoVale ?? false)
-                    <label class="space-y-1.5 lg:col-span-2">
-                        <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Mês pagamento</span>
-                        <input type="month" name="mes" value="{{ $mesReferencia->format('Y-m') }}" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                    </label>
-                @endif
-                <label class="space-y-1.5 {{ ($usaCalculoVale ?? false) ? 'lg:col-span-3' : 'lg:col-span-4' }}">
+                <label class="space-y-1.5 lg:col-span-4">
                     <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Buscar por nome</span>
                     <span class="relative block">
                         <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gray"></i>
                         <input name="busca" value="{{ $busca }}" placeholder="Nome, matrícula ou cargo…" class="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                     </span>
                 </label>
-                <label class="space-y-1.5 lg:col-span-3">
+                <label class="space-y-1.5 lg:col-span-2">
                     <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Cartão</span>
                     <select name="cartao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                         <option value="todos" @selected($cartao === 'todos')>Todos</option>
@@ -140,7 +134,7 @@
                         <option value="pendente" @selected($cartao === 'pendente')>Pendente</option>
                     </select>
                 </label>
-                <label class="space-y-1.5 lg:col-span-3">
+                <label class="space-y-1.5 lg:col-span-2">
                     <span class="text-[11px] font-bold uppercase tracking-wide text-brand-gray">Ordenar por</span>
                     <select name="ordenacao" class="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-black outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                         <option value="alfabetica" @selected($ordenacao === 'alfabetica')>Ordem alfabética (A–Z)</option>
@@ -178,21 +172,19 @@
             @endif
         </form>
 
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 pb-4">
+            <p class="text-sm text-brand-gray">Valores por período e extrato consolidado estão em <strong>Extrato de valores</strong>.</p>
+            <a href="{{ route('rh.beneficios.extrato.regras') }}" class="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy-soft px-3 text-xs font-semibold text-brand-burgundy">
+                <i data-lucide="file-text" class="h-4 w-4"></i>
+                Gerar extrato
+            </a>
+        </div>
+
         <div class="overflow-x-auto">
-            @if ($usaCalculoVale ?? false)
-                <div class="border-b border-amber-100 bg-amber-50/80 px-5 py-3 text-xs text-amber-950">
-                    <p class="font-semibold">Cálculo do vale (mês {{ $mesReferencia->format('m/Y') }})</p>
-                    <p class="mt-1 text-amber-900/90">Valor base do cadastro (R$ {{ number_format((float) $beneficio->valor, 2, ',', '.') }}), proporcional à admissão/demissão no mês e desconto por faltas <strong>injustificadas</strong> da apuração de <strong>{{ $mesReferencia->copy()->subMonth()->format('m/Y') }}</strong>. Faltas justificadas (ACT/legislação) não entram.</p>
-                </div>
-            @endif
-            <table class="w-full min-w-[{{ ($usaCalculoVale ?? false) ? '1280' : '1120' }}px] text-left text-sm">
+            <table class="w-full min-w-[1120px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-white text-xs uppercase tracking-wide text-brand-gray">
                     <tr>
                         <th class="px-5 py-4">Colaborador</th>
-                        @if ($usaCalculoVale ?? false)
-                            <th class="px-5 py-4">Valor mês</th>
-                            <th class="px-5 py-4">Faltas ant.</th>
-                        @endif
                         <th class="px-5 py-4">Direito</th>
                         <th class="px-5 py-4">Cartão</th>
                         <th class="px-5 py-4">Ativo</th>
@@ -203,7 +195,6 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @forelse ($colaboradoresVinculados as $vinculo)
-                        @php $calcVa = ($valoresPorVinculo[$vinculo->id] ?? null); @endphp
                         <form method="POST" action="{{ $urlGestaoBeneficio }}" class="contents">
                             @csrf
                             <tr class="align-top">
@@ -211,32 +202,7 @@
                                 <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
                                 <p class="font-semibold text-brand-black">{{ $vinculo->colaborador->nome }}</p>
                                 <p class="text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: 'Cargo não informado' }}</p>
-                                @if (($calcVa['aplica'] ?? false) && ! empty($calcVa['detalhe']))
-                                    <p class="mt-1 text-[11px] leading-snug text-brand-gray" title="{{ $calcVa['detalhe'] }}">{{ Str::limit($calcVa['detalhe'], 72) }}</p>
-                                @endif
                             </td>
-                            @if ($usaCalculoVale ?? false)
-                                <td class="px-5 py-4">
-                                    @if ($calcVa['aplica'] ?? false)
-                                        <p class="text-base font-bold text-brand-burgundy">R$ {{ number_format((float) $calcVa['valor_final'], 2, ',', '.') }}</p>
-                                        @if (($calcVa['valor_descontado'] ?? 0) > 0)
-                                            <p class="text-[11px] text-brand-gray line-through">R$ {{ number_format((float) ($calcVa['valor_proporcional'] ?? $calcVa['valor_base']), 2, ',', '.') }}</p>
-                                        @endif
-                                    @else
-                                        <span class="text-xs text-brand-gray">—</span>
-                                    @endif
-                                </td>
-                                <td class="px-5 py-4 text-center">
-                                    @if ($calcVa['aplica'] ?? false)
-                                        <span class="inline-flex min-w-[2rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold {{ ($calcVa['faltas_injustificadas'] ?? 0) > 0 ? 'bg-amber-100 text-amber-900' : 'bg-emerald-50 text-emerald-800' }}">
-                                            {{ $calcVa['faltas_injustificadas'] ?? 0 }}
-                                        </span>
-                                        <p class="mt-1 text-[10px] text-brand-gray">{{ $calcVa['mes_apuracao_faltas'] ?? '' }}</p>
-                                    @else
-                                        <span class="text-xs text-brand-gray">—</span>
-                                    @endif
-                                </td>
-                            @endif
                             <td class="px-5 py-4">
                                 <input type="hidden" name="tem_direito" value="0">
                                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
@@ -292,7 +258,7 @@
                         </form>
                     @empty
                         <tr>
-                            <td colspan="{{ ($usaCalculoVale ?? false) ? 9 : 7 }}" class="px-5 py-12 text-center">
+                            <td colspan="7" class="px-5 py-12 text-center">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="users" class="h-7 w-7"></i>
                                 </div>

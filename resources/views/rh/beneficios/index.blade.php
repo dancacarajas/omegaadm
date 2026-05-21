@@ -5,6 +5,14 @@
 @section('page-title', 'Benefícios')
 
 @section('actions')
+    <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-brand-burgundy/30 bg-brand-burgundy/5 px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10" title="Abrir tela para calcular extrato por colaborador e período">
+        <i data-lucide="calculator" class="h-4 w-4"></i>
+        Gerar extrato
+    </a>
+    <a href="{{ route('rh.beneficios.extrato.config') }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy" title="Selecionar benefícios e configurar regras do extrato">
+        <i data-lucide="file-text" class="h-4 w-4"></i>
+        Extrato de valores
+    </a>
     <a href="{{ route('rh.beneficios.create') }}" class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
         <i data-lucide="plus" class="h-4 w-4"></i>
         Novo benefício
@@ -12,6 +20,13 @@
 @endsection
 
 @section('content')
+    @if (session('success'))
+        <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">{{ session('success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">{{ session('error') }}</div>
+    @endif
+
     <section class="mb-5 grid gap-4 md:grid-cols-3">
         <article class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">
@@ -99,6 +114,19 @@
                                         <i data-lucide="pencil" class="h-4 w-4"></i>
                                         Editar
                                     </a>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('rh.beneficios.destroy', $beneficio) }}"
+                                        class="inline"
+                                        onsubmit="return confirm('Excluir este benefício permanentemente? Os vínculos com colaboradores e a configuração de extrato também serão removidos.');"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                            Excluir
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

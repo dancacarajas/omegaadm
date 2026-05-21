@@ -37,7 +37,9 @@ class ValeAlimentacaoCalculoTest extends TestCase
         $calc = app(ValeAlimentacaoCalculoService::class)->calcularParaVinculo(
             $vinculo,
             $beneficio,
-            Carbon::parse('2026-05-01')
+            Carbon::parse('2026-05-01'),
+            Carbon::parse('2026-04-01'),
+            Carbon::parse('2026-04-30')
         );
 
         $this->assertTrue($calc['aplica']);
@@ -65,11 +67,36 @@ class ValeAlimentacaoCalculoTest extends TestCase
         $calc = app(ValeAlimentacaoCalculoService::class)->calcularParaVinculo(
             $vinculo,
             $beneficio,
-            Carbon::parse('2026-05-01')
+            Carbon::parse('2026-05-01'),
+            Carbon::parse('2026-04-01'),
+            Carbon::parse('2026-04-30')
         );
 
         $this->assertSame(0, $calc['faltas_injustificadas']);
         $this->assertEquals(750.0, $calc['valor_final']);
+        Carbon::setTestNow();
+    }
+
+    public function test_soma_faltas_entre_duas_datas(): void
+    {
+        Carbon::setTestNow('2026-05-15');
+        [$colab, $beneficio, $vinculo] = $this->cenarioValeAlimentacao();
+
+        $this->diaUtilComFalta($colab, Carbon::parse('2026-03-10'));
+        $this->diaUtilComFalta($colab, Carbon::parse('2026-04-13'));
+
+        $calc = app(ValeAlimentacaoCalculoService::class)->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            Carbon::parse('2026-05-01'),
+            Carbon::parse('2026-03-01'),
+            Carbon::parse('2026-04-30')
+        );
+
+        $this->assertSame(2, $calc['faltas_injustificadas']);
+        $this->assertSame(50, $calc['percentual_desconto']);
+        $this->assertStringContainsString('01/03/2026', $calc['periodo_apuracao']);
+        $this->assertStringContainsString('30/04/2026', $calc['periodo_apuracao']);
         Carbon::setTestNow();
     }
 

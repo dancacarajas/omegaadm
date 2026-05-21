@@ -23,6 +23,26 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ->assertSee('Novo benefício', false);
     }
 
+    public function test_excluir_beneficio_pela_listagem(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale Teste', 'status' => 'ativo']);
+        $colaborador = Colaborador::query()->create(['nome' => 'João', 'status' => 'ativo']);
+        ColaboradorBeneficio::query()->create([
+            'colaborador_id' => $colaborador->id,
+            'beneficio_id' => $beneficio->id,
+            'tem_direito' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('rh.beneficios.destroy', $beneficio))
+            ->assertRedirect(route('rh.beneficios.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('beneficios', ['id' => $beneficio->id]);
+        $this->assertDatabaseMissing('colaborador_beneficios', ['beneficio_id' => $beneficio->id]);
+    }
+
     public function test_show_retorna_404_quando_beneficio_nao_existe(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);

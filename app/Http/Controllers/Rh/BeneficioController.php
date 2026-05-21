@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
-use App\Services\Rh\ValeAlimentacaoCalculoService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -84,13 +82,6 @@ class BeneficioController extends Controller
 
         $colaboradoresVinculados = $this->filtrarOrdenarVinculos($beneficio->colaboradores, $busca, $ordenacao, $cartao);
 
-        $mesReferencia = $this->mesReferenciaPagamento($request);
-        $calculoVale = app(ValeAlimentacaoCalculoService::class);
-        $usaCalculoVale = $calculoVale->usaCalculoAssiduidade($beneficio);
-        $valoresPorVinculo = $usaCalculoVale
-            ? $calculoVale->calcularParaVinculos($colaboradoresVinculados, $beneficio, $mesReferencia)
-            : [];
-
         $colaboradoresDisponiveis = Colaborador::query()
             ->whereNotIn('id', $beneficio->colaboradores->pluck('colaborador_id'))
             ->when($busca !== '', function ($query) use ($busca) {
@@ -109,25 +100,8 @@ class BeneficioController extends Controller
             'colaboradoresVinculados',
             'ordenacao',
             'busca',
-            'cartao',
-            'mesReferencia',
-            'usaCalculoVale',
-            'valoresPorVinculo'
+            'cartao'
         ));
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, \App\Models\ColaboradorBeneficio>  $vinculos
-     * @return \Illuminate\Support\Collection<int, \App\Models\ColaboradorBeneficio>
-     */
-    private function mesReferenciaPagamento(Request $request): Carbon
-    {
-        $mes = trim((string) $request->input('mes', ''));
-        if ($mes !== '' && preg_match('/^\d{4}-\d{2}$/', $mes)) {
-            return Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
-        }
-
-        return Carbon::now()->startOfMonth();
     }
 
     private function filtrarOrdenarVinculos($vinculos, string $busca, string $ordenacao, string $cartao = 'todos')
@@ -182,11 +156,12 @@ class BeneficioController extends Controller
 
     public function destroy(Beneficio $beneficio)
     {
+        $nome = $beneficio->nome;
         $beneficio->delete();
 
         return redirect()
             ->route('rh.beneficios.index')
-            ->with('success', 'Beneficio removido com sucesso.');
+            ->with('success', "Benefício «{$nome}» excluído com sucesso.");
     }
 
     private function validatedData(Request $request, ?Beneficio $beneficio = null): array

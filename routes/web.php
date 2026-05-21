@@ -18,6 +18,7 @@ use App\Http\Controllers\RdoController;
 use App\Http\Controllers\Rh\CartaoPontoController;
 use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\BeneficioController;
+use App\Http\Controllers\Rh\BeneficioExtratoController;
 use App\Http\Controllers\Rh\ColaboradorController;
 use App\Http\Controllers\Rh\ColaboradorMovimentacaoController;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
@@ -372,6 +373,13 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
+        Route::get('beneficios/extrato/config', [BeneficioExtratoController::class, 'config'])->name('beneficios.extrato.config');
+        Route::post('beneficios/extrato/config', [BeneficioExtratoController::class, 'salvarConfig'])->name('beneficios.extrato.config.salvar');
+        Route::get('beneficios/extrato/regras', [BeneficioExtratoController::class, 'regras'])->name('beneficios.extrato.regras');
+        Route::post('beneficios/extrato/regras/{beneficio}', [BeneficioExtratoController::class, 'salvarRegraBeneficio'])
+            ->whereNumber('beneficio')
+            ->name('beneficios.extrato.regras.salvar');
+        Route::get('beneficios/extrato/gerar', [BeneficioExtratoController::class, 'gerar'])->name('beneficios.extrato.gerar');
         Route::resource('beneficios', BeneficioController::class)->except(['show']);
         // Gestão: GET e POST na mesma URL (/rh/beneficios/{id}) — {beneficio} só numérico (não captura "create")
         Route::match(['get', 'post'], 'beneficios/{beneficio}', [BeneficioController::class, 'show'])

@@ -1,0 +1,356 @@
+<?php
+
+namespace App\Services\Rh;
+
+use App\Models\Beneficio;
+use App\Models\BeneficioExtratoRegra;
+use App\Models\Colaborador;
+use App\Models\ColaboradorBeneficio;
+use App\Support\EscalaPontoRegras;
+use App\Support\FeriadoPontoService;
+use App\Support\Rh\CafeDaManhaRegraConfig;
+use App\Support\Rh\CartaoPontoService;
+use App\Support\Rh\ColaboradorVinculoPonto;
+use Carbon\Carbon;
+
+/**
+ * Café da manhã: R$ por dia com minutos trabalhados na apuração (justificativa sem horas não conta).
+ */
+class CafeDaManhaCalculoService
+{
+    public function __construct(
+        private readonly CartaoPontoService $cartaoPonto
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function calcularParaVinculo(
+        ColaboradorBeneficio $vinculo,
+        Beneficio $beneficio,
+        Carbon $periodoInicio,
+        Carbon $periodoFim,
+        ?CafeDaManhaRegraConfig $config = null
+    ): array {
+        $config ??= CafeDaManhaRegraConfig::resolver(null);
+        $valorMensal = (float) ($beneficio->valor ?? 0) > 0
+            ? (float) $beneficio->valor
+            : $config->valorMensalCheio();
+        $valorDiario = $config->valorDiario();
+
+        $vazio = [
+            'aplica' => false,
+            'tipo_regra' => BeneficioExtratoRegra::TIPO_CAFE_MANHA,
+            'valor_base' => $valorMensal,
+            'valor_diario' => $valorDiario,
+            'valor_final' => 0.0,
+            'dias_apuracao' => [],
+        ];
+
+        if (! $vinculo->tem_direito) {
+            return array_merge($vazio, [
+                'aplica' => true,
+                'detalhe' => 'Sem direito ao benefício neste vínculo.',
+            ]);
+        }
+
+        $colaborador = $vinculo->colaborador;
+        if ($colaborador === null) {
+            return $vazio;
+        }
+
+        [$inicio, $fim] = $this->intersectarPeriodos(
+            $periodoInicio,
+            $periodoFim,
+            Carbon::parse($config->periodoVigenciaInicio())->startOfDay(),
+            Carbon::parse($config->periodoVigenciaFim())->endOfDay()
+        );
+
+        if ($inicio === null || $fim === null) {
+            return array_merge($vazio, [
+                'aplica' => true,
+                'periodo_apuracao' => $this->formatarPeriodo($periodoInicio, $periodoFim),
+                'detalhe' => 'Período fora da vigência do ACT configurado para café da manhã.',
+            ]);
+        }
+
+        $resumo = $this->resumirDiasTrabalhados($colaborador, $inicio, $fim, $config);
+        $valorProporcional = round($resumo['valor_total_dias'], 2);
+        $valorFinal = $config->tetoMensalAtivo()
+            ? round(min($valorMensal, $valorProporcional), 2)
+            : $valorProporcional;
+        $diasSemPagamento = $resumo['dias_justificado_sem_trabalho'] + $resumo['dias_sem_trabalho'];
+        $valorDescontado = round($diasSemPagamento * $valorDiario, 2);
+        $valorBrutoApuracao = round($valorProporcional + $valorDescontado, 2);
+
+        return [
+            'aplica' => true,
+            'tipo_regra' => BeneficioExtratoRegra::TIPO_CAFE_MANHA,
+            'periodo_apuracao' => $this->formatarPeriodo($inicio, $fim),
+            'valor_base' => $valorMensal,
+            'valor_diario' => $valorDiario,
+            'dias_trabalhados' => $resumo['dias_trabalhados'],
+            'dias_com_justificativa_sem_trabalho' => $resumo['dias_justificado_sem_trabalho'],
+            'dias_sem_trabalho' => $resumo['dias_sem_trabalho'],
+            'valor_proporcional' => $valorProporcional,
+            'valor_bruto_apuracao' => $valorBrutoApuracao,
+            'valor_descontado' => $valorDescontado,
+            'valor_final' => $valorFinal,
+            'dias_apuracao' => $resumo['dias'],
+            'detalhe' => $this->montarDetalhe($resumo, $valorFinal, $valorMensal, $config),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   dias_trabalhados: int,
+     *   dias_justificado_sem_trabalho: int,
+     *   dias_sem_trabalho: int,
+     *   valor_total_dias: float,
+     *   dias: list<array<string, mixed>>
+     * }
+     */
+    public function resumirDiasTrabalhados(
+        Colaborador $colaborador,
+        Carbon $periodoInicio,
+        Carbon $periodoFim,
+        CafeDaManhaRegraConfig $config
+    ): array {
+        $inicio = $periodoInicio->copy()->startOfDay();
+        $fim = $periodoFim->copy()->startOfDay();
+        $minMinutos = $config->minutosMinimosDiaTrabalhado();
+
+        $cartoes = $this->cartaoPonto->montarCartoes(
+            collect([$colaborador]),
+            $inicio->toDateString(),
+            $fim->toDateString()
+        );
+
+        $linhas = $cartoes[0]['linhas'] ?? [];
+        $diasTrabalhados = 0;
+        $diasJustificadoSemTrabalho = 0;
+        $diasSemTrabalho = 0;
+        $valorTotal = 0.0;
+        $diasDetalhe = [];
+
+        foreach ($linhas as $linha) {
+            $ymd = (string) ($linha['data_ymd'] ?? '');
+            if ($ymd === '') {
+                continue;
+            }
+
+            $dia = Carbon::parse($ymd)->startOfDay();
+            if ($dia->lt($inicio) || $dia->gt($fim)) {
+                continue;
+            }
+
+            if (! ColaboradorVinculoPonto::contaPontoNaData($colaborador, $dia)) {
+                continue;
+            }
+
+            if (empty($linha['registro_id'])) {
+                continue;
+            }
+
+            if (! $this->diaUtilParaApuracaoCafe($colaborador, $dia, $linha)) {
+                continue;
+            }
+
+            $minutos = (int) ($linha['minutos_trabalhado'] ?? 0);
+            $status = (string) ($linha['status'] ?? '');
+            $ehRotulo = (bool) ($linha['eh_rotulo'] ?? false);
+
+            $entrada1 = (string) ($linha['entrada_1'] ?? '');
+
+            if (! $ehRotulo && $minutos >= $minMinutos) {
+                $valorDia = $config->valorDiario();
+                $diasTrabalhados++;
+                $valorTotal += $valorDia;
+                $diasDetalhe[] = $this->montarItemDia(
+                    $dia,
+                    'trabalhado',
+                    'Pago — '.$this->formatarMinutos($minutos).' trabalhadas na apuração',
+                    $valorDia,
+                    $minutos
+                );
+
+                continue;
+            }
+
+            if ($ehRotulo || $status === 'justificado' || ($linha['atestado'] ?? '') === '1') {
+                $diasJustificadoSemTrabalho++;
+                $diasDetalhe[] = $this->montarItemDia(
+                    $dia,
+                    'justificado_sem_horas',
+                    'Sem valor diário — '.($entrada1 !== '' && $entrada1 !== 'Falta' ? $entrada1 : 'justificado/atestado sem horas na apuração'),
+                    0.0,
+                    $minutos
+                );
+
+                continue;
+            }
+
+            $diasSemTrabalho++;
+            $diasDetalhe[] = $this->montarItemDia(
+                $dia,
+                'sem_horas',
+                'Sem valor diário — falta ou sem minutos trabalhados na apuração',
+                0.0,
+                $minutos
+            );
+        }
+
+        usort($diasDetalhe, fn (array $a, array $b): int => strcmp($a['data'], $b['data']));
+
+        return [
+            'dias_trabalhados' => $diasTrabalhados,
+            'dias_justificado_sem_trabalho' => $diasJustificadoSemTrabalho,
+            'dias_sem_trabalho' => $diasSemTrabalho,
+            'valor_total_dias' => round($valorTotal, 2),
+            'dias' => $diasDetalhe,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function montarItemDia(
+        Carbon $dia,
+        string $tipo,
+        string $descricao,
+        float $valorDia,
+        int $minutos
+    ): array {
+        $diasSemana = [1 => 'SEG', 2 => 'TER', 3 => 'QUA', 4 => 'QUI', 5 => 'SEX', 6 => 'SAB', 7 => 'DOM'];
+
+        return [
+            'data' => $dia->toDateString(),
+            'data_fmt' => $dia->format('d/m/Y'),
+            'dia_semana' => $diasSemana[(int) $dia->isoWeekday()] ?? '',
+            'tipo' => $tipo,
+            'tipo_label' => match ($tipo) {
+                'trabalhado' => 'Dia pago',
+                'justificado_sem_horas' => 'Justificado sem horas',
+                default => 'Sem pagamento',
+            },
+            'descricao' => $descricao,
+            'valor' => $valorDia,
+            'minutos_trabalhado' => $minutos,
+            'impacto' => $valorDia > 0 ? 'credito' : 'desconto',
+        ];
+    }
+
+    private function formatarMinutos(int $minutos): string
+    {
+        if ($minutos <= 0) {
+            return '0h';
+        }
+
+        $h = intdiv($minutos, 60);
+        $m = $minutos % 60;
+
+        return sprintf('%d:%02d', $h, $m);
+    }
+
+    /**
+     * @return array{0: ?Carbon, 1: ?Carbon}
+     */
+    private function intersectarPeriodos(
+        Carbon $pedidoInicio,
+        Carbon $pedidoFim,
+        Carbon $vigenciaInicio,
+        Carbon $vigenciaFim
+    ): array {
+        $inicio = $pedidoInicio->copy()->startOfDay();
+        $fim = $pedidoFim->copy()->startOfDay();
+
+        if ($fim->lt($vigenciaInicio->startOfDay()) || $inicio->gt($vigenciaFim->startOfDay())) {
+            return [null, null];
+        }
+
+        if ($inicio->lt($vigenciaInicio)) {
+            $inicio = $vigenciaInicio->copy()->startOfDay();
+        }
+        if ($fim->gt($vigenciaFim)) {
+            $fim = $vigenciaFim->copy()->startOfDay();
+        }
+
+        return [$inicio, $fim];
+    }
+
+    private function formatarPeriodo(Carbon $inicio, Carbon $fim): string
+    {
+        if ($inicio->isSameDay($fim)) {
+            return $inicio->format('d/m/Y');
+        }
+
+        return $inicio->format('d/m/Y').' a '.$fim->format('d/m/Y');
+    }
+
+    /**
+     * @param  array{dias_trabalhados: int, dias_justificado_sem_trabalho: int, valor_total_dias: float}  $resumo
+     */
+    private function montarDetalhe(array $resumo, float $valorFinal, float $valorMensal, CafeDaManhaRegraConfig $config): string
+    {
+        $partes = [
+            sprintf(
+                '%d dia(s) com horas trabalhadas na apuração × R$ %s',
+                $resumo['dias_trabalhados'],
+                number_format($config->valorDiario(), 2, ',', '.')
+            ),
+        ];
+
+        if ($resumo['dias_justificado_sem_trabalho'] > 0) {
+            $partes[] = sprintf(
+                '%d dia(s) justificado(s)/atestado sem horas na apuração → sem valor diário',
+                $resumo['dias_justificado_sem_trabalho']
+            );
+        }
+
+        if ($config->tetoMensalAtivo() && $valorFinal >= $valorMensal - 0.01) {
+            $partes[] = 'Teto mensal R$ '.number_format($valorMensal, 2, ',', '.').' aplicado.';
+        }
+
+        $partes[] = 'Critério: apenas dias úteis com minutos trabalhados no cartão de ponto (sábado, domingo e feriados não entram).';
+
+        return implode(' ', $partes);
+    }
+
+    /**
+     * Café: apuração e descontos somente em dias úteis (seg–sex, com jornada na escala, sem feriado).
+     *
+     * @param  array<string, mixed>  $linha
+     */
+    private function diaUtilParaApuracaoCafe(Colaborador $colaborador, Carbon $dia, array $linha): bool
+    {
+        if ($dia->isWeekend()) {
+            return false;
+        }
+
+        if (app(FeriadoPontoService::class)->diaAbonadoPorFeriado($dia)) {
+            return false;
+        }
+
+        if (app(EscalaPontoRegras::class)->diaAbonadoPorFolgaEscala($colaborador, $dia)) {
+            return false;
+        }
+
+        $status = (string) ($linha['status'] ?? '');
+        if (in_array($status, ['folga', 'feriado'], true)) {
+            return false;
+        }
+
+        if ((bool) ($linha['eh_rotulo'] ?? false)) {
+            $rotulo = mb_strtolower(trim((string) ($linha['entrada_1'] ?? '')));
+            if (
+                str_contains($rotulo, 'feriado')
+                || $rotulo === 'folga'
+                || str_starts_with($rotulo, 'feriado:')
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

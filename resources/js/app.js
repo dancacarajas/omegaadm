@@ -7,6 +7,7 @@ import './charts/pgu-slide1-premium.js';
 import Stepper from 'bs-stepper';
 import ApexCharts from 'apexcharts';
 import './pgu-dashboard';
+import { initDataBrMasks } from './masks/data-br.js';
 import 'bs-stepper/dist/css/bs-stepper.min.css';
 
 window.Alpine = Alpine;
@@ -17,6 +18,7 @@ Alpine.start();
 
 document.addEventListener('DOMContentLoaded', () => {
     initAppLucideIcons();
+    initDataBrMasks();
 
     const initApexCharts = () => {
         document.querySelectorAll('[data-apex-chart]').forEach((element) => {

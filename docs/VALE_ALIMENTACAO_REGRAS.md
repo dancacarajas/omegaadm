@@ -5,11 +5,13 @@
 | Local | Função |
 |-------|--------|
 | **RH → Benefícios → Editar** | Valor mensal base (ex.: R$ 750,00) |
-| **RH → Benefícios → Gestão (Ver)** | Colunas **Valor mês** e **Faltas ant.** + seletor **Mês pagamento** |
+| **RH → Benefícios → Extrato de valores** (passo 1) | Selecionar benefícios do extrato |
+| **RH → Benefícios → Extrato → Regras** (passo 2) | Modal de configuração por benefício (vigência anual, faixas, Natal, acidente) |
+| **RH → Benefícios → Extrato → Gerar** (passo 3) | Colaborador + período → extrato consolidado |
 | **RH → Frequência / Apuração de ponto** | Fonte das faltas (justificada x injustificada) |
 
-Código: `App\Services\Rh\ValeAlimentacaoCalculoService`  
-Testes: `tests/Feature/Rh/ValeAlimentacaoCalculoTest.php`
+Código: `App\Services\Rh\ValeAlimentacaoCalculoService`, `App\Services\Rh\BeneficioExtratoCalculoService`  
+Testes: `tests/Feature/Rh/ValeAlimentacaoCalculoTest.php`, `tests/Feature/Rh/BeneficioExtratoTest.php`
 
 ## Regras implementadas (MVP)
 
@@ -17,9 +19,9 @@ Testes: `tests/Feature/Rh/ValeAlimentacaoCalculoTest.php`
 
 Valor do campo **Valor** no cadastro do benefício (ex. VALE ALIMENTAÇÃO / ALELO001).
 
-### 2. Desconto por assiduidade (mês anterior)
+### 2. Desconto por assiduidade (período)
 
-Faltas **injustificadas** contadas na **apuração de ponto** do **mês anterior** ao pagamento:
+Configurável no modal **Vale / Auxílio Alimentação** (faixas de faltas × %). Padrão ACT:
 
 | Faltas injustificadas | Desconto |
 |----------------------|----------|
@@ -27,6 +29,8 @@ Faltas **injustificadas** contadas na **apuração de ponto** do **mês anterior
 | 1 | 20% |
 | 2 | 50% |
 | 3+ | 100% |
+
+Faltas **injustificadas** somadas na **apuração de ponto** entre **período inicial** e **período final** do extrato.
 
 - Conta apenas **dia de falta integral** (`minutos_dia_falta` na apuração).
 - **Não** conta: `status = justificado`, folga, feriado.
