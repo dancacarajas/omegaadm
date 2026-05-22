@@ -106,21 +106,15 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
         ];
         $chamado->update(['dados_depois_json' => $depois]);
 
-        $tipos = [
-            MovimentacaoDesligamentoCatalog::ANEXO_FOLHA_PONTO,
-            MovimentacaoDesligamentoCatalog::ANEXO_NADA_CONSTA_ASSINADO,
-            MovimentacaoDesligamentoCatalog::ANEXO_DOCUMENTO_DESLIGAMENTO,
-        ];
-        foreach ($tipos as $tipo) {
-            $path = 'rh/chamados-movimentacao/'.$chamado->id.'/'.$tipo.'.pdf';
-            Storage::disk('public')->put($path, '%PDF-1.4 fake');
-            $chamado->anexos()->create([
-                'nome_arquivo' => $tipo.'.pdf',
-                'caminho' => $path,
-                'tipo_documento' => $tipo,
-                'obrigatorio' => true,
-            ]);
-        }
+        $tipoPacote = MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS;
+        $path = 'rh/chamados-movimentacao/'.$chamado->id.'/pacote.pdf';
+        Storage::disk('public')->put($path, '%PDF-1.4 fake');
+        $chamado->anexos()->create([
+            'nome_arquivo' => 'pacote-documentos.pdf',
+            'caminho' => $path,
+            'tipo_documento' => $tipoPacote,
+            'obrigatorio' => true,
+        ]);
 
         $nada = $chamado->nadaConsta;
         foreach ($nada->itens as $item) {

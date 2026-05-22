@@ -156,8 +156,14 @@ final class MovimentacaoDesligamentoRules
 
         $nada->loadMissing('itens');
 
-        if (! $chamado->anexos->contains(fn ($a) => $a->tipo_documento === MovimentacaoDesligamentoCatalog::ANEXO_NADA_CONSTA_ASSINADO)) {
-            $pendencias[] = 'Anexe o Nada Consta Demissional preenchido e assinado.';
+        $temNadaConstaAnexo = $chamado->anexos->contains(
+            fn ($a) => in_array($a->tipo_documento, [
+                MovimentacaoDesligamentoCatalog::ANEXO_NADA_CONSTA_ASSINADO,
+                MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS,
+            ], true)
+        );
+        if (! $temNadaConstaAnexo) {
+            $pendencias[] = 'Anexe o pacote único de documentos (inclui o Nada Consta assinado) ou o Nada Consta separadamente.';
         }
 
         foreach ($nada->itens as $item) {

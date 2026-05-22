@@ -25,6 +25,9 @@ final class MovimentacaoDesligamentoCatalog
 
     public const ANEXO_CHAMADO_PDF = 'chamado_resumo_pdf';
 
+    /** Pacote único com todos os documentos obrigatórios do desligamento (PDF ou ZIP). */
+    public const ANEXO_PACOTE_DOCUMENTOS = 'pacote_documentos_desligamento';
+
     public const NC_STATUS_PENDENTE_PREENCHIMENTO = 'pendente_preenchimento';
 
     public const NC_STATUS_EM_COLETA = 'em_coleta_assinaturas';
@@ -70,7 +73,28 @@ final class MovimentacaoDesligamentoCatalog
             self::ANEXO_CIENCIA_COLABORADOR => 'Documento de ciência do colaborador',
             self::ANEXO_EMAIL_AUTORIZACAO => 'E-mail ou autorização interna',
             self::ANEXO_CHAMADO_PDF => 'PDF completo do chamado (gerado pelo sistema)',
+            self::ANEXO_PACOTE_DOCUMENTOS => 'Pacote único — documentos obrigatórios do desligamento',
         ];
+    }
+
+    /**
+     * Itens que devem constar no arquivo único (referência para o RH).
+     *
+     * @return list<string>
+     */
+    public static function conteudoEsperadoPacoteDocumentos(?string $tipoRescisao): array
+    {
+        $itens = [
+            self::labelsAnexos()[self::ANEXO_FOLHA_PONTO],
+            self::labelsAnexos()[self::ANEXO_NADA_CONSTA_ASSINADO],
+            self::labelsAnexos()[self::ANEXO_DOCUMENTO_DESLIGAMENTO],
+        ];
+
+        if ($tipoRescisao === 'pedido_demissao') {
+            $itens[] = self::labelsAnexos()[self::ANEXO_CARTA_PEDIDO_DEMISSAO];
+        }
+
+        return $itens;
     }
 
     /** @return array<string, string> */
@@ -118,11 +142,7 @@ final class MovimentacaoDesligamentoCatalog
      */
     public static function anexosObrigatoriosBase(): array
     {
-        return [
-            self::ANEXO_FOLHA_PONTO,
-            self::ANEXO_NADA_CONSTA_ASSINADO,
-            self::ANEXO_DOCUMENTO_DESLIGAMENTO,
-        ];
+        return [self::ANEXO_PACOTE_DOCUMENTOS];
     }
 
     /**
@@ -130,13 +150,7 @@ final class MovimentacaoDesligamentoCatalog
      */
     public static function anexosObrigatoriosPorTipoRescisao(?string $tipoRescisao): array
     {
-        $lista = self::anexosObrigatoriosBase();
-
-        if ($tipoRescisao === 'pedido_demissao') {
-            $lista[] = self::ANEXO_CARTA_PEDIDO_DEMISSAO;
-        }
-
-        return $lista;
+        return [self::ANEXO_PACOTE_DOCUMENTOS];
     }
 
     /**

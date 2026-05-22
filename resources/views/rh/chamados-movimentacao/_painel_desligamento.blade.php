@@ -4,7 +4,9 @@
     $usuarioLogado = auth()->user()?->name ?? '';
     $nada = $chamado->nadaConsta;
     $editavel = ($podeEditar ?? true) && $chamado->isAberto();
-    $tiposUpload = array_diff_key($labelsAnexosDesligamento ?? [], [\App\Support\Rh\MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF => true]);
+    $tipoPacote = \App\Support\Rh\MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS;
+    $pacoteEnviado = $chamado->anexos->firstWhere('tipo_documento', $tipoPacote);
+    $itensPacote = $conteudoPacoteDocumentos ?? \App\Support\Rh\MovimentacaoDesligamentoCatalog::conteudoEsperadoPacoteDocumentos($dados['tipo_rescisao'] ?? null);
     $areasEdit = $areasNadaConstaEditaveis ?? array_keys($labelsAreasNadaConsta ?? []);
 @endphp
 
@@ -70,40 +72,38 @@
         </div>
 
         <div id="secao-sigo-anexos" class="scroll-mt-6">
-            <h4 class="mb-3 text-sm font-bold text-zinc-800">Anexos obrigatórios</h4>
-            <ul class="mb-4 space-y-1 text-xs">
-                @foreach ($anexosObrigatoriosDesligamento ?? [] as $tipo)
-                    @php $ok = $chamado->anexos->contains(fn ($a) => $a->tipo_documento === $tipo); @endphp
-                    <li class="flex items-center gap-2 {{ $ok ? 'text-emerald-700' : 'text-amber-800' }}">
-                        <i data-lucide="{{ $ok ? 'check-circle' : 'circle' }}" class="h-3.5 w-3.5"></i>
-                        {{ $labelsAnexosDesligamento[$tipo] ?? $tipo }}
+            <h4 class="mb-2 text-sm font-bold text-zinc-800">Anexos obrigatórios — arquivo único</h4>
+            <p class="mb-3 text-xs leading-relaxed text-zinc-500">
+                Envie <strong class="text-zinc-700">um único PDF ou ZIP</strong> contendo todos os documentos listados abaixo (páginas reunidas ou compactadas).
+            </p>
+            <ul class="mb-4 space-y-1.5 rounded-xl border border-amber-100/80 bg-amber-50/50 px-3 py-3 text-xs text-amber-950">
+                @foreach ($itensPacote as $item)
+                    <li class="flex items-start gap-2">
+                        <i data-lucide="file-text" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700"></i>
+                        <span>{{ $item }}</span>
                     </li>
                 @endforeach
             </ul>
-            @if ($chamado->anexos->where('tipo_documento', '!=', \App\Support\Rh\MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF)->isNotEmpty())
-                <ul class="mb-4 divide-y rounded-xl border border-zinc-200 text-xs">
-                    @foreach ($chamado->anexos->where('tipo_documento', '!=', \App\Support\Rh\MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF) as $anexo)
-                        <li class="flex justify-between gap-2 px-3 py-2">
-                            <span>{{ $labelsAnexosDesligamento[$anexo->tipo_documento] ?? $anexo->tipo_documento }}</span>
-                            <a href="{{ route('rh.chamados-movimentacao.anexos.download', $anexo) }}" class="font-bold text-brand-burgundy hover:underline">Baixar</a>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
+            <div class="mb-4 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs {{ $pacoteEnviado ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900' }}">
+                <i data-lucide="{{ $pacoteEnviado ? 'check-circle' : 'upload' }}" class="h-4 w-4 shrink-0"></i>
+                @if ($pacoteEnviado)
+                    <span class="flex-1">Pacote enviado: <strong>{{ $pacoteEnviado->nome_arquivo }}</strong></span>
+                    <a href="{{ route('rh.chamados-movimentacao.anexos.download', $pacoteEnviado) }}" class="shrink-0 font-bold text-brand-burgundy hover:underline">Baixar</a>
+                @else
+                    <span>Pacote ainda não enviado.</span>
+                @endif
+            </div>
             @if ($editavel)
-                <form method="POST" action="{{ route('rh.chamados-movimentacao.anexos', $chamado) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
+                <form method="POST" action="{{ route('rh.chamados-movimentacao.anexos', $chamado) }}" enctype="multipart/form-data" class="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 sm:flex-row sm:items-end">
                     @csrf
-                    <label class="text-xs font-semibold text-zinc-600">Tipo
-                        <select name="tipo_documento" required class="mt-1 h-10 rounded-xl border border-zinc-200 px-3 text-sm">
-                            @foreach ($tiposUpload as $k => $l)
-                                <option value="{{ $k }}">{{ $l }}</option>
-                            @endforeach
-                        </select>
+                    <label class="min-w-0 flex-1 text-xs font-semibold text-zinc-600">
+                        Arquivo único (PDF ou ZIP, até 25 MB)
+                        <input type="file" name="arquivo" required accept=".pdf,.zip,application/pdf,application/zip" class="mt-1.5 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy file:px-3 file:py-2 file:text-xs file:font-bold file:text-white">
                     </label>
-                    <label class="text-xs font-semibold text-zinc-600">Arquivo
-                        <input type="file" name="arquivo" required accept=".pdf,.jpg,.jpeg,.png,.webp" class="mt-1 block text-sm">
-                    </label>
-                    <button type="submit" class="inline-flex h-10 items-center rounded-xl border border-zinc-200 bg-white px-4 text-xs font-bold text-brand-burgundy">Enviar</button>
+                    <button type="submit" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-brand-burgundy px-5 text-xs font-bold text-white shadow-sm hover:bg-brand-burgundy-dark">
+                        <i data-lucide="upload" class="h-3.5 w-3.5"></i>
+                        {{ $pacoteEnviado ? 'Substituir pacote' : 'Enviar pacote' }}
+                    </button>
                 </form>
             @endif
         </div>

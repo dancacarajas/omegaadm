@@ -272,6 +272,9 @@ class MovimentacaoChamadoController extends Controller
             'anexosObrigatoriosDesligamento' => MovimentacaoDesligamentoCatalog::anexosObrigatoriosPorTipoRescisao(
                 (string) ($chamado->dados_depois_json['tipo_rescisao'] ?? '')
             ),
+            'conteudoPacoteDocumentos' => MovimentacaoDesligamentoCatalog::conteudoEsperadoPacoteDocumentos(
+                (string) ($chamado->dados_depois_json['tipo_rescisao'] ?? '')
+            ),
             'areasNadaConsta' => MovimentacaoDesligamentoCatalog::areasNadaConsta(),
             'labelsAreasNadaConsta' => MovimentacaoDesligamentoCatalog::labelsAreas(),
             'statusTratativa' => MovimentacaoDesligamentoCatalog::statusTratativa(),
@@ -404,18 +407,19 @@ class MovimentacaoChamadoController extends Controller
         abort_unless($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO, 404);
         $this->abortSeChamadoSomenteLeitura($chamado);
 
-        $tiposUpload = array_keys(array_diff_key(
-            MovimentacaoDesligamentoCatalog::labelsAnexos(),
-            [MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF => true]
-        ));
-
-        $data = $request->validate([
-            'tipo_documento' => ['required', 'string', Rule::in($tiposUpload)],
-            'arquivo' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:15360'],
+        $request->validate([
+            'arquivo' => ['required', 'file', 'mimes:pdf,zip', 'max:25600'],
             'etapa_slug' => ['nullable', 'string', 'max:60'],
         ]);
 
-        $etapa = $chamado->etapas()->where('slug', $data['etapa_slug'] ?? 'cadastro_sigo')->first();
+        $tipoPacote = MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS;
+        $anexosAntigos = $chamado->anexos()->where('tipo_documento', $tipoPacote)->get();
+        foreach ($anexosAntigos as $antigo) {
+            Storage::disk('public')->delete($antigo->caminho);
+            $antigo->delete();
+        }
+
+        $etapa = $chamado->etapas()->where('slug', $request->input('etapa_slug', 'cadastro_sigo'))->first();
         $file = $request->file('arquivo');
         $path = $file->store('rh/chamados-movimentacao/'.$chamado->id, 'public');
 
@@ -424,16 +428,14 @@ class MovimentacaoChamadoController extends Controller
             'etapa_id' => $etapa?->id,
             'nome_arquivo' => $file->getClientOriginalName(),
             'caminho' => $path,
-            'tipo_documento' => $data['tipo_documento'],
-            'obrigatorio' => in_array($data['tipo_documento'], MovimentacaoDesligamentoCatalog::anexosObrigatoriosPorTipoRescisao(
-                (string) ($chamado->dados_depois_json['tipo_rescisao'] ?? '')
-            ), true),
+            'tipo_documento' => $tipoPacote,
+            'obrigatorio' => true,
             'uploaded_by' => $request->user()?->id,
         ]);
 
-        $logService->registrar($chamado, 'anexo_incluido', 'tipo_documento', null, $data['tipo_documento'], $request->user()?->id);
+        $logService->registrar($chamado, 'anexo_incluido', 'tipo_documento', null, $tipoPacote, $request->user()?->id);
 
-        return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Anexo enviado.');
+        return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Pacote de documentos enviado.');
     }
 
     public function atualizarNadaConsta(Request $request, RhMovimentacaoChamado $chamado, MovimentacaoNadaConstaService $nadaService, MovimentacaoLogService $logService)
