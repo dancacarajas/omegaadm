@@ -301,6 +301,46 @@ https://omegaadm.feston.net.br/public/rh/movimentacao/2?debug_movimentacao=1
 | `route_name` | `rh.efetivo.movimentacoes.edit` |
 | `expected_route` | `rh/movimentacao/2` |
 
+Use cache-bust: `?debug_movimentacao=1&_t=123`
+
+### 404 só com sessão logada (próximo passo)
+
+**Frase-chave:** curl externo sem sessão retorna **302** → a rota existe. O **404 logado** deve ser rastreado em **binding / controller / logs**, não mais no `route:list`.
+
+**1. Teste logado:**
+
+```text
+https://omegaadm.feston.net.br/public/rh/movimentacao/2?debug_movimentacao=1&_t=123
+```
+
+| Resultado | Conclusão |
+|-----------|-----------|
+| JSON `reached_controller: true` | Controller OK; 404 sem `?debug` pode ser cache ou outra URL |
+| 404 sem JSON | Não chegou no controller (cache LiteSpeed/browser ou rota antiga) |
+
+**2. Logs (logo após o 404):**
+
+```bash
+tail -n 150 storage/logs/laravel.log
+```
+
+Procurar (só aparecem com `?debug_movimentacao=1`):
+
+| Linha | Significado |
+|-------|-------------|
+| `MOVIMENTACAO PIPELINE INICIO` | Entrou no middleware de trace |
+| `BIND MOVIMENTACAO` | Binding executou |
+| `BIND MOVIMENTACAO FALHOU` | Model não achou id → 404 no binding |
+| `BIND MOVIMENTACAO OK` | Model OK |
+| `MOVIMENTACAO EDITAR ENTROU` | Controller executou |
+| `MOVIMENTACAO HTTP 404` / `MOVIMENTACAO EXCECAO 404` | 404 com mensagem da exceção |
+
+Se **BIND** aparece e depois **FALHOU** → problema no banco/binding.  
+Se **PIPELINE INICIO** sem **BIND** → rota não bateu ou cache serviu 404 antes do PHP.  
+Se nada no log → requisição não passou pelo Laravel (cache estático).
+
+**3. Cache:** sair, limpar dados do site, aba anônima, OPcache/LiteSpeed no painel Hostinger.
+
 ---
 
 ## 11. Testes automatizados (local — todos passando)

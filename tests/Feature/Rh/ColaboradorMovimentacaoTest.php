@@ -204,6 +204,29 @@ class ColaboradorMovimentacaoTest extends TestCase
             ->assertSee('Alterar movimentação', false);
     }
 
+    public function test_debug_movimentacao_retorna_json_com_sessao(): void
+    {
+        config(['app.debug' => false]);
+
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create(['nome' => 'Dbg', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::DESLIGAMENTO,
+            'data_inicio' => '2026-05-01',
+            'tipo_rescisao' => 'pedido_demissao',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.movimentacoes.edit', $mov).'?debug_movimentacao=1&_t=123')
+            ->assertOk()
+            ->assertJson([
+                'reached_controller' => true,
+                'movimentacao_id' => $mov->id,
+                'route_name' => 'rh.efetivo.movimentacoes.edit',
+            ]);
+    }
+
     public function test_listagem_exibe_link_alterar_para_movimentacao_canonica(): void
     {
         $user = User::factory()->create();

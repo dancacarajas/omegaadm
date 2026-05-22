@@ -7,6 +7,7 @@ use App\Models\ColaboradorBeneficio;
 use App\Models\ColaboradorMovimentacao;
 use App\Models\SsmaAmbientalRegistro;
 use App\Observers\ColaboradorObserver;
+use App\Support\Rh\MovimentacaoDebugTrace;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -50,6 +51,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Route::bind('movimentacao', function (string $value, $route): ColaboradorMovimentacao {
+            MovimentacaoDebugTrace::log('BIND MOVIMENTACAO', [
+                'value' => $value,
+                'params' => $route->parameters(),
+            ]);
+
             $query = ColaboradorMovimentacao::query()->whereKey((int) $value);
 
             $colaborador = $route->parameter('colaborador');
@@ -61,8 +67,18 @@ class AppServiceProvider extends ServiceProvider
             $movimentacao = $query->first();
 
             if ($movimentacao === null) {
+                MovimentacaoDebugTrace::log('BIND MOVIMENTACAO FALHOU', [
+                    'value' => $value,
+                    'params' => $route->parameters(),
+                    'filtrou_colaborador' => $colaborador !== null,
+                ]);
                 abort(404, 'Movimentação não encontrada para este colaborador.');
             }
+
+            MovimentacaoDebugTrace::log('BIND MOVIMENTACAO OK', [
+                'movimentacao_id' => $movimentacao->id,
+                'colaborador_id' => $movimentacao->colaborador_id,
+            ]);
 
             return $movimentacao;
         });

@@ -8,6 +8,7 @@ use App\Models\ColaboradorMovimentacao;
 use App\Models\Contrato;
 use App\Services\Rh\ColaboradorMovimentacaoService;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
+use App\Support\Rh\MovimentacaoDebugTrace;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -83,6 +84,12 @@ class ColaboradorMovimentacaoController extends Controller
      */
     public function editar(Request $request, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
     {
+        MovimentacaoDebugTrace::log('MOVIMENTACAO EDITAR ENTROU', [
+            'method' => $request->method(),
+            'movimentacao_id' => $movimentacao->id,
+            'colaborador_id' => $movimentacao->colaborador_id,
+        ], $request);
+
         if ($request->boolean('debug_movimentacao')) {
             $payload = [
                 'reached_controller' => true,
