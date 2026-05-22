@@ -21,6 +21,7 @@ final class MovimentacaoChamadoService
         private readonly MovimentacaoLogService $logService,
         private readonly MovimentacaoNadaConstaService $nadaConstaService,
         private readonly MovimentacaoDesligamentoRules $desligamentoRules,
+        private readonly MovimentacaoSubstituicaoVagaService $substituicaoVagaService,
     ) {}
 
     /**
@@ -55,6 +56,7 @@ final class MovimentacaoChamadoService
 
             if ($tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
                 $this->nadaConstaService->inicializar($chamado);
+                $this->substituicaoVagaService->criarSeSolicitado($chamado->fresh(), $colaborador);
             }
 
             $this->logService->registrar($chamado, 'chamado_aberto', null, null, ['tipo' => $tipo], $solicitanteId);

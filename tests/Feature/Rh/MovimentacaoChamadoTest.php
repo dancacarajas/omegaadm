@@ -3,6 +3,8 @@
 namespace Tests\Feature\Rh;
 
 use App\Models\Colaborador;
+use App\Models\Contrato;
+use App\Models\RecrutamentoVaga;
 use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\User;
 use App\Services\Rh\MovimentacaoChamadoService;
@@ -54,6 +56,62 @@ class MovimentacaoChamadoTest extends TestCase
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(MovimentacaoChamadoService::class)->concluirEtapa($etapaSigo, null, $user->id);
+    }
+
+    public function test_desligamento_preenche_gestor_do_contrato_do_colaborador(): void
+    {
+        $user = User::factory()->create();
+        Contrato::query()->create([
+            'numero' => '286',
+            'centro_custo' => 'CC-286',
+            'nome' => 'Contrato 286',
+            'gestor' => 'Maria Gestora',
+            'status' => 'Ativo',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Com Gestor',
+            'status' => 'ativo',
+            'centro_custo' => '286',
+        ]);
+
+        $this->actingAs($user)->post(route('rh.chamados-movimentacao.store'), array_merge(
+            $this->payloadDesligamento($colab->id),
+            ['gestor_responsavel' => '']
+        ))->assertRedirect();
+
+        $chamado = RhMovimentacaoChamado::query()->firstOrFail();
+        $this->assertSame('Maria Gestora', $chamado->dados_depois_json['gestor_responsavel']);
+    }
+
+    public function test_desligamento_com_substituicao_cria_vaga_no_contrato_do_colaborador(): void
+    {
+        $user = User::factory()->create();
+        $contrato =         Contrato::query()->create([
+            'numero' => '286',
+            'centro_custo' => 'CC-286',
+            'nome' => 'Contrato 286',
+            'gestor' => 'Gestor Contrato',
+            'status' => 'Ativo',
+        ]);
+        $colab = Colaborador::query()->create([
+            'nome' => 'Desligado Substituição',
+            'status' => 'ativo',
+            'cargo' => 'Analista RH',
+            'centro_custo' => $contrato->numero,
+        ]);
+
+        $this->actingAs($user)->post(route('rh.chamados-movimentacao.store'), $this->payloadDesligamento($colab->id))
+            ->assertRedirect();
+
+        $chamado = RhMovimentacaoChamado::query()->firstOrFail();
+        $vaga = RecrutamentoVaga::query()->first();
+
+        $this->assertNotNull($vaga);
+        $this->assertSame('286', $vaga->contrato);
+        $this->assertSame('Substituição', $vaga->tipo);
+        $this->assertSame($chamado->id, $vaga->form_state['origem_desligamento_chamado_id']);
+        $this->assertSame($vaga->id, $chamado->dados_depois_json['recrutamento_vaga_id']);
+        $this->assertSame($contrato->id, $vaga->form_state['origem_desligamento_contrato_id']);
     }
 
     public function test_desligamento_nao_finaliza_sem_anexos_obrigatorios(): void

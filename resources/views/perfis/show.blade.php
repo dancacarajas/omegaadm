@@ -69,5 +69,21 @@
                 @endforeach
             </ul>
         </div>
+
+        <div class="mt-8 border-t border-zinc-200 pt-6">
+            <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">RH — áreas do menu</p>
+            <p class="mt-1 text-sm text-brand-gray">Somente quando o módulo RH estiver liberado no perfil.</p>
+            <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($rhSecoes as $secaoKey => $secaoLabel)
+                    @php $allowed = $perfil->permiteSecaoRh($secaoKey); @endphp
+                    <li class="flex items-center gap-2 rounded-lg border border-zinc-100 bg-zinc-50/80 px-3 py-2 text-sm">
+                        <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full {{ $allowed ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-200 text-zinc-500' }}">
+                            <i data-lucide="{{ $allowed ? 'check' : 'minus' }}" class="h-3.5 w-3.5"></i>
+                        </span>
+                        <span class="font-medium text-brand-black">{{ $secaoLabel }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
     </section>
 @endsection

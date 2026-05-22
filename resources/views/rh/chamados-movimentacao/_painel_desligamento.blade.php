@@ -14,6 +14,26 @@
         <p class="text-xs text-zinc-500">SIGO e Nada Consta são obrigatórios antes da finalização. Áreas do Nada Consta respeitam permissões do perfil.</p>
     </div>
     <div class="space-y-8 p-6 sm:p-8">
+        @if (($dados['havera_substituicao_vaga'] ?? '') === 'sim' && ($vagaSubstituicao ?? null))
+            <div class="flex flex-col gap-3 rounded-2xl border border-sky-200/80 bg-gradient-to-r from-sky-50/90 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm">
+                        <i data-lucide="briefcase" class="h-5 w-5"></i>
+                    </span>
+                    <div>
+                        <p class="text-sm font-bold text-sky-950">Vaga de substituição criada automaticamente</p>
+                        <p class="mt-0.5 text-xs text-sky-800/90">
+                            Contrato (centro de custo): <strong>{{ $vagaSubstituicao->contrato }}</strong>
+                            · {{ $vagaSubstituicao->titulo }}
+                        </p>
+                    </div>
+                </div>
+                <a href="{{ route('rh.recrutamento.edit', $vagaSubstituicao) }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-sky-800">
+                    <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                    Abrir no recrutamento
+                </a>
+            </div>
+        @endif
         <div id="secao-sigo">
             <h4 class="mb-3 flex items-center gap-2 text-sm font-bold text-zinc-800">
                 <i data-lucide="database" class="h-4 w-4 text-brand-burgundy"></i>

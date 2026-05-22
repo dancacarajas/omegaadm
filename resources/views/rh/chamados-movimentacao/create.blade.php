@@ -48,7 +48,7 @@
                         <i data-lucide="user" class="h-3.5 w-3.5 text-brand-burgundy/70"></i>
                         Colaborador
                     </span>
-                    <select name="colaborador_id" required class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium text-zinc-900 outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+                    <select name="colaborador_id" id="colaborador_id" required class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium text-zinc-900 outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
                         <option value="">Selecione o colaborador</option>
                         @foreach ($colaboradores as $c)
                             <option value="{{ $c->id }}" @selected(old('colaborador_id', $colaborador?->id) == $c->id)>{{ $c->nome }}@if($c->matricula) ({{ $c->matricula }})@endif</option>
@@ -73,7 +73,7 @@
                         <i data-lucide="calendar" class="h-3.5 w-3.5 text-brand-burgundy/70"></i>
                         Data prevista / efeito
                     </span>
-                    <input type="date" name="data_efetiva" value="{{ old('data_efetiva', today()->format('Y-m-d')) }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+                    <input type="date" name="data_efetiva" id="data_efetiva" value="{{ old('data_efetiva', today()->format('Y-m-d')) }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
                 </label>
 
                 <label class="space-y-2" id="campo-rescisao">
@@ -116,14 +116,50 @@
 
 @push('scripts')
 <script>
+    window.__gestoresPorColaborador = @json($gestoresPorColaborador ?? []);
+</script>
+<script>
     (function () {
         const tipo = document.getElementById('tipo');
+        const colaboradorSelect = document.getElementById('colaborador_id');
+        const gestorInput = document.getElementById('gestor_responsavel');
+        const gestoresPorColaborador = window.__gestoresPorColaborador || {};
         const campoRescisao = document.getElementById('campo-rescisao');
         const camposDesligamento = document.getElementById('campos-desligamento');
         const formInss = document.getElementById('form-afastamento-inss');
         const inicio = document.getElementById('data_inicio_afastamento');
         const fim = document.getElementById('data_final_atestado');
         const dias = document.getElementById('quantidade_dias');
+        const dataEfetiva = document.getElementById('data_efetiva');
+        const ultimoDiaTrabalhado = document.getElementById('ultimo_dia_trabalhado');
+        const dataPrevistaDesligamento = document.getElementById('data_prevista');
+
+        function addDiasCorridos(isoDate, qtdDias) {
+            if (!isoDate) return '';
+            const partes = isoDate.split('-').map(Number);
+            const d = new Date(partes[0], partes[1] - 1, partes[2]);
+            d.setDate(d.getDate() + qtdDias);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        function syncDatasDesligamento() {
+            if (tipo?.value !== 'desligamento' || !dataEfetiva?.value) return;
+            ultimoDiaTrabalhado.value = dataEfetiva.value;
+            dataPrevistaDesligamento.value = addDiasCorridos(dataEfetiva.value, 10);
+        }
+
+        function syncGestorContrato() {
+            if (!gestorInput || !colaboradorSelect) return;
+            const id = colaboradorSelect.value;
+            if (!id) return;
+            const gestor = gestoresPorColaborador[id];
+            if (gestor) {
+                gestorInput.value = gestor;
+            }
+        }
 
         function calcDias() {
             if (!inicio?.value || !fim?.value || !dias) return;
@@ -155,12 +191,17 @@
                     if (el.name === 'atestado_medico') el.required = t === 'afastamento_inss';
                 });
             }
+            if (t === 'desligamento') syncDatasDesligamento();
         }
         tipo?.addEventListener('change', toggle);
+        colaboradorSelect?.addEventListener('change', syncGestorContrato);
+        dataEfetiva?.addEventListener('input', syncDatasDesligamento);
+        dataEfetiva?.addEventListener('change', syncDatasDesligamento);
         inicio?.addEventListener('change', calcDias);
         fim?.addEventListener('change', calcDias);
         toggle();
         calcDias();
+        syncGestorContrato();
     })();
 </script>
 @endpush

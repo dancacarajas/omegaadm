@@ -262,6 +262,177 @@ class User extends Authenticatable
         return null;
     }
 
+    /**
+     * Áreas do menu RH (chave persistida em permissoes.rh.secoes.*).
+     *
+     * @return array<string, string>
+     */
+    public static function rhSecoesDefinicao(): array
+    {
+        return [
+            'dashboard' => 'Painel RH',
+            'efetivo' => 'Efetivo',
+            'chamados_movimentacao' => 'Movimentações',
+            'beneficios' => 'Benefícios',
+            'recrutamento' => 'Recrutamento',
+            'frequencia_ponto' => 'Frequência — Ponto diário',
+            'frequencia_apuracao' => 'Frequência — Apuração do Ponto',
+            'frequencia_feriados' => 'Frequência — Feriados',
+            'frequencia_justificativas' => 'Frequência — Tipos de justificativa',
+            'horarios' => 'Cadastro de horários',
+            'indicadores_mensais' => 'Indicadores mensais — Painel Executivo',
+        ];
+    }
+
+    /** Nome da rota Laravel → chave de {@see rhSecoesDefinicao()} ou null. */
+    public static function rhSecaoFromRouteName(?string $routeName): ?string
+    {
+        if ($routeName === null || $routeName === '' || ! str_starts_with($routeName, 'rh.')) {
+            return null;
+        }
+
+        if ($routeName === 'rh.dashboard') {
+            return 'dashboard';
+        }
+
+        if (str_starts_with($routeName, 'rh.chamados-movimentacao')) {
+            return 'chamados_movimentacao';
+        }
+
+        if (str_contains($routeName, 'movimentacoes') || str_contains($routeName, 'movimentacao')) {
+            return 'chamados_movimentacao';
+        }
+
+        if (str_starts_with($routeName, 'rh.efetivo')) {
+            return 'efetivo';
+        }
+
+        if (str_starts_with($routeName, 'rh.beneficios')) {
+            return 'beneficios';
+        }
+
+        if (str_starts_with($routeName, 'rh.recrutamento')) {
+            return 'recrutamento';
+        }
+
+        if (str_starts_with($routeName, 'rh.indicadores-mensais')) {
+            return 'indicadores_mensais';
+        }
+
+        if (str_starts_with($routeName, 'rh.frequencia.apuracao')) {
+            return 'frequencia_apuracao';
+        }
+
+        if (str_starts_with($routeName, 'rh.frequencia.feriados')) {
+            return 'frequencia_feriados';
+        }
+
+        if (str_starts_with($routeName, 'rh.frequencia.justificativa-tipos')) {
+            return 'frequencia_justificativas';
+        }
+
+        if (str_starts_with($routeName, 'rh.horarios')) {
+            return 'horarios';
+        }
+
+        if (str_starts_with($routeName, 'rh.frequencia')) {
+            return 'frequencia_ponto';
+        }
+
+        return null;
+    }
+
+    /**
+     * Acesso à área específica do RH (exige permissão no módulo rh + área marcada no perfil).
+     * Se permissoes.rh.secoes não existir (perfis antigos), todas as áreas ficam liberadas.
+     */
+    public function podeSecaoRh(string $secao): bool
+    {
+        if (! array_key_exists($secao, self::rhSecoesDefinicao())) {
+            return false;
+        }
+
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('rh')) {
+            return false;
+        }
+
+        $perfil = $this->relationLoaded('perfil') ? $this->perfil : $this->perfil()->first();
+
+        if (! $perfil || ! $perfil->ativo) {
+            return false;
+        }
+
+        $secoes = data_get($perfil->permissoes, 'rh.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(self::rhSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
+
+    /** Há pelo menos uma área do RH liberada (para exibir o grupo no menu). */
+    public function temAlgumaSecaoRh(): bool
+    {
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('rh')) {
+            return false;
+        }
+
+        foreach (array_keys(self::rhSecoesDefinicao()) as $secao) {
+            if ($this->podeSecaoRh($secao)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function primeiraUrlRhPermitida(): ?string
+    {
+        $rotas = [
+            'dashboard' => fn () => route('rh.dashboard'),
+            'efetivo' => fn () => route('rh.efetivo.index'),
+            'chamados_movimentacao' => fn () => route('rh.chamados-movimentacao.index'),
+            'beneficios' => fn () => route('rh.beneficios.index'),
+            'recrutamento' => fn () => route('rh.recrutamento.index'),
+            'frequencia_ponto' => fn () => route('rh.frequencia.index'),
+            'frequencia_apuracao' => fn () => route('rh.frequencia.apuracao.index'),
+            'frequencia_feriados' => fn () => route('rh.frequencia.feriados.index'),
+            'frequencia_justificativas' => fn () => route('rh.frequencia.justificativa-tipos.index'),
+            'horarios' => fn () => route('rh.horarios.index'),
+            'indicadores_mensais' => fn () => route('rh.indicadores-mensais.painel-executivo'),
+        ];
+
+        foreach ($rotas as $secao => $resolver) {
+            if ($this->podeSecaoRh($secao)) {
+                return $resolver();
+            }
+        }
+
+        return null;
+    }
+
     public function podeAcaoNoModulo(string $modulo, string $acao): bool
     {
         if (! $this->perfil_id) {
@@ -282,7 +453,7 @@ class User extends Authenticatable
     {
         $mapa = [
             'dashboard' => fn () => route('dashboard'),
-            'rh' => fn () => route('rh.dashboard'),
+            'rh' => fn () => $this->primeiraUrlRhPermitida() ?? route('rh.dashboard'),
             'veiculos' => fn () => route('veiculos.index'),
             'sesmt' => fn () => $this->primeiraUrlSesmtPermitida(),
             'contratos' => fn () => route('contratos.index'),

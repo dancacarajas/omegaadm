@@ -45,6 +45,10 @@
                     $podeModulo = fn (string $m) => auth()->user() && auth()->user()->temQualquerPermissaoNoModulo($m);
                     $podeSecaoSesmt = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoSesmt($secao);
                     $temAlgumaSecaoSesmt = fn () => auth()->user() && auth()->user()->temAlgumaSecaoSesmt();
+                    $podeSecaoRh = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoRh($secao);
+                    $temAlgumaSecaoRh = fn () => auth()->user() && auth()->user()->temAlgumaSecaoRh();
+                    $temSecaoRhFrequencia = fn () => collect(['frequencia_ponto', 'frequencia_apuracao', 'frequencia_feriados', 'frequencia_justificativas', 'horarios'])
+                        ->contains(fn (string $s) => $podeSecaoRh($s));
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
                     $indicadoresMensaisOpen = request()->routeIs('rh.indicadores-mensais.*');
@@ -69,7 +73,7 @@
                             </a>
                         @endif
 
-                        @if ($podeModulo('rh'))
+                        @if ($podeModulo('rh') && $temAlgumaSecaoRh())
                         <div data-menu-group="rh">
                             <button type="button" data-menu-toggle="rh" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $rhOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                 <i data-lucide="briefcase-business" class="h-5 w-5"></i>
@@ -78,26 +82,37 @@
                             </button>
 
                             <div data-menu-panel="rh" class="{{ $rhOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                @if ($podeSecaoRh('dashboard'))
                                 <a href="{{ route('rh.dashboard') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.dashboard') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
                                     Painel
                                 </a>
+                                @endif
+                                @if ($podeSecaoRh('efetivo'))
                                 <a href="{{ route('rh.efetivo.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.efetivo.index') || request()->routeIs('rh.efetivo.show') || request()->routeIs('rh.efetivo.create') || request()->routeIs('rh.efetivo.edit') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="users" class="h-4 w-4"></i>
                                     Efetivo
                                 </a>
+                                @endif
+                                @if ($podeSecaoRh('chamados_movimentacao'))
                                 <a href="{{ route('rh.chamados-movimentacao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.chamados-movimentacao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="clipboard-list" class="h-4 w-4"></i>
                                     Movimentações
                                 </a>
+                                @endif
+                                @if ($podeSecaoRh('beneficios'))
                                 <a href="{{ route('rh.beneficios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.beneficios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="hand-heart" class="h-4 w-4"></i>
                                     Benefícios
                                 </a>
+                                @endif
+                                @if ($podeSecaoRh('recrutamento'))
                                 <a href="{{ route('rh.recrutamento.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.recrutamento.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="user-round-search" class="h-4 w-4"></i>
                                     Recrutamento
                                 </a>
+                                @endif
+                                @if ($temSecaoRhFrequencia())
                                 <div data-menu-group="frequencia">
                                     <button type="button" data-menu-toggle="frequencia" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $frequenciaOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                         <i data-lucide="calendar-check" class="h-4 w-4"></i>
@@ -105,28 +120,40 @@
                                         <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $frequenciaOpen ? 'rotate-180' : '' }}" data-menu-chevron="frequencia"></i>
                                     </button>
                                     <div data-menu-panel="frequencia" class="{{ $frequenciaOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
-                                        <a href="{{ route('rh.frequencia.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.index') || request()->routeIs('rh.frequencia.marcacao') || request()->routeIs('rh.frequencia.importar-*') || request()->routeIs('rh.frequencia.exportar-*') || request()->routeIs('rh.frequencia.cartao-ponto.*') || request()->routeIs('rh.frequencia.limpar-marcacoes') || request()->routeIs('rh.frequencia.justificar') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        @if ($podeSecaoRh('frequencia_ponto'))
+                                        <a href="{{ route('rh.frequencia.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.index') || request()->routeIs('rh.frequencia.marcacao') || request()->routeIs('rh.frequencia.importar-*') || request()->routeIs('rh.frequencia.exportar-*') || request()->routeIs('rh.frequencia.cartao-ponto.*') || request()->routeIs('rh.frequencia.limpar-marcacoes') || request()->routeIs('rh.frequencia.justificar') || request()->routeIs('rh.frequencia.extrato-faltas') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="clock" class="h-4 w-4"></i>
                                             Ponto diário
                                         </a>
+                                        @endif
+                                        @if ($podeSecaoRh('frequencia_apuracao'))
                                         <a href="{{ route('rh.frequencia.apuracao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.apuracao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="table-2" class="h-4 w-4"></i>
                                             Apuração do Ponto
                                         </a>
+                                        @endif
+                                        @if ($podeSecaoRh('frequencia_feriados'))
                                         <a href="{{ route('rh.frequencia.feriados.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.feriados.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-off" class="h-4 w-4"></i>
                                             Feriados
                                         </a>
+                                        @endif
+                                        @if ($podeSecaoRh('frequencia_justificativas'))
                                         <a href="{{ route('rh.frequencia.justificativa-tipos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.justificativa-tipos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="file-badge" class="h-4 w-4"></i>
                                             Tipos de justificativa
                                         </a>
+                                        @endif
+                                        @if ($podeSecaoRh('horarios'))
                                         <a href="{{ route('rh.horarios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.horarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-range" class="h-4 w-4"></i>
                                             Cadastro de horários
                                         </a>
+                                        @endif
                                     </div>
                                 </div>
+                                @endif
+                                @if ($podeSecaoRh('indicadores_mensais'))
                                 <div data-menu-group="indicadores-mensais">
                                     <button type="button" data-menu-toggle="indicadores-mensais" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $indicadoresMensaisOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                         <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
@@ -140,6 +167,7 @@
                                         </a>
                                     </div>
                                 </div>
+                                @endif
                             </div>
                         </div>
                         @endif

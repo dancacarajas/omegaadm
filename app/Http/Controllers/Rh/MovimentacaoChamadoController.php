@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
+use App\Models\RecrutamentoVaga;
 use App\Models\Rh\RhMovimentacaoAnexo;
 use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\Rh\RhMovimentacaoChecklistItem;
@@ -15,6 +16,7 @@ use App\Services\Rh\MovimentacaoFinalizacaoService;
 use App\Services\Rh\MovimentacaoLogService;
 use App\Services\Rh\MovimentacaoChamadoPdfService;
 use App\Services\Rh\MovimentacaoNadaConstaService;
+use App\Services\Rh\MovimentacaoSubstituicaoVagaService;
 use App\Services\Rh\MovimentacaoWorkflowService;
 use App\Support\Rh\MovimentacaoChamadoAcesso;
 use App\Support\Rh\MovimentacaoDesligamentoCatalog;
@@ -95,10 +97,19 @@ class MovimentacaoChamadoController extends Controller
                 ->find($request->integer('chamado_origem'));
         }
 
+        $colaboradores = Colaborador::query()->orderBy('nome')->limit(500)->get(['id', 'nome', 'matricula', 'cargo', 'centro_custo', 'tipo_contrato']);
+        $substituicaoVaga = app(MovimentacaoSubstituicaoVagaService::class);
+        $gestoresPorColaborador = $substituicaoVaga->mapGestoresPorColaborador($colaboradores);
+        $gestorContratoInicial = $colaborador
+            ? ($gestoresPorColaborador[$colaborador->id] ?? $substituicaoVaga->gestorDoContrato($colaborador))
+            : '';
+
         return view('rh.chamados-movimentacao.create', [
             'colaborador' => $colaborador,
             'chamadoOrigem' => $chamadoOrigem,
-            'colaboradores' => Colaborador::query()->orderBy('nome')->limit(500)->get(['id', 'nome', 'matricula', 'cargo', 'centro_custo', 'tipo_contrato']),
+            'colaboradores' => $colaboradores,
+            'gestoresPorColaborador' => $gestoresPorColaborador,
+            'gestorContratoInicial' => $gestorContratoInicial,
             'tipo' => $request->query('tipo', MovimentacaoChamadoTipo::DESLIGAMENTO),
             'tipos' => MovimentacaoChamadoTipo::labels(),
             'tiposRescisao' => ColaboradorMovimentacaoTipos::tiposRescisao(),
@@ -130,7 +141,7 @@ class MovimentacaoChamadoController extends Controller
                 'ultimo_dia_trabalhado' => ['required', 'date'],
                 'tipo_rescisao' => ['required', 'string', Rule::in(array_keys(ColaboradorMovimentacaoTipos::tiposRescisao()))],
                 'motivo_texto' => ['required', 'string', 'max:500'],
-                'gestor_responsavel' => ['required', 'string', 'max:120'],
+                'gestor_responsavel' => ['nullable', 'string', 'max:120'],
                 'havera_substituicao_vaga' => ['required', Rule::in(['sim', 'nao'])],
                 'observacoes' => ['nullable', 'string'],
             ]);
@@ -162,6 +173,17 @@ class MovimentacaoChamadoController extends Controller
         $colaborador = Colaborador::query()->findOrFail($data['colaborador_id']);
         unset($data['colaborador_id']);
 
+        if ($data['tipo'] === MovimentacaoChamadoTipo::DESLIGAMENTO) {
+            if (trim((string) ($data['gestor_responsavel'] ?? '')) === '') {
+                $data['gestor_responsavel'] = app(MovimentacaoSubstituicaoVagaService::class)->gestorDoContrato($colaborador);
+            }
+            abort_if(
+                trim((string) ($data['gestor_responsavel'] ?? '')) === '',
+                422,
+                'Gestor responsável não encontrado. Cadastre o gestor no contrato do colaborador ou informe manualmente.'
+            );
+        }
+
         if ($data['tipo'] === MovimentacaoChamadoTipo::AFASTAMENTO_INSS) {
             $data = array_merge($data, $this->montarDadosAfastamentoInss($data, $colaborador));
         }
@@ -176,9 +198,16 @@ class MovimentacaoChamadoController extends Controller
             $this->salvarAnexosAfastamento($request, $chamado, $request->user()?->id);
         }
 
-        return redirect()
-            ->route('rh.chamados-movimentacao.show', $chamado)
-            ->with('success', "Chamado {$chamado->protocolo} aberto. O cadastro do colaborador não foi alterado.");
+        $chamado = $chamado->fresh();
+        $mensagem = "Chamado {$chamado->protocolo} aberto. O cadastro do colaborador não foi alterado.";
+        $redirect = redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', $mensagem);
+
+        $vagaId = $chamado->dados_depois_json['recrutamento_vaga_id'] ?? null;
+        if ($vagaId) {
+            $redirect->with('recrutamento_vaga_id', $vagaId);
+        }
+
+        return $redirect;
     }
 
     public function show(RhMovimentacaoChamado $chamado, MovimentacaoWorkflowService $workflow)
@@ -223,6 +252,14 @@ class MovimentacaoChamadoController extends Controller
 
         $pdfAnexo = $chamado->anexos->firstWhere('tipo_documento', MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF);
 
+        $vagaSubstituicao = null;
+        if ($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
+            $vagaId = $chamado->dados_depois_json['recrutamento_vaga_id'] ?? null;
+            if ($vagaId) {
+                $vagaSubstituicao = RecrutamentoVaga::query()->find($vagaId);
+            }
+        }
+
         return view('rh.chamados-movimentacao.show', [
             'chamado' => $chamado,
             'pendenciasFinalizacao' => $pendencias,
@@ -241,6 +278,7 @@ class MovimentacaoChamadoController extends Controller
             'classificacoesAfastamento' => MovimentacaoAfastamentoInssCatalog::classificacoes(),
             'resultadosFinais' => MovimentacaoAfastamentoInssCatalog::resultadosFinais(),
             'podeVerDadosSensiveis' => $this->podeVerDadosMedicosSensiveis(),
+            'vagaSubstituicao' => $vagaSubstituicao,
         ]);
     }
 
@@ -594,13 +632,18 @@ class MovimentacaoChamadoController extends Controller
     /** @param  array<string, mixed>  $data */
     private function montarDadosDesligamento(array $data, Colaborador $colaborador, ?string $solicitanteNome): array
     {
+        $gestor = trim((string) ($data['gestor_responsavel'] ?? ''));
+        if ($gestor === '') {
+            $gestor = app(MovimentacaoSubstituicaoVagaService::class)->gestorDoContrato($colaborador);
+        }
+
         return [
             'data_efetiva' => $data['data_prevista'] ?? $data['data_efetiva'] ?? null,
             'data_prevista' => $data['data_prevista'] ?? null,
             'ultimo_dia_trabalhado' => $data['ultimo_dia_trabalhado'],
             'tipo_rescisao' => $data['tipo_rescisao'],
             'motivo_texto' => $data['motivo_texto'],
-            'gestor_responsavel' => $data['gestor_responsavel'],
+            'gestor_responsavel' => $gestor,
             'havera_substituicao_vaga' => $data['havera_substituicao_vaga'],
             'observacoes' => $data['observacoes'] ?? null,
             'colaborador_matricula' => $colaborador->matricula,

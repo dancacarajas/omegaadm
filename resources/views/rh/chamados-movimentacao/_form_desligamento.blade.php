@@ -3,15 +3,16 @@
     <div class="grid gap-6 lg:grid-cols-2">
         <label class="space-y-2">
             <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Data prevista do desligamento</span>
-            <input type="date" name="data_prevista" value="{{ old('data_prevista') }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+            <input type="date" name="data_prevista" id="data_prevista" value="{{ old('data_prevista') }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
         </label>
         <label class="space-y-2">
             <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Último dia trabalhado</span>
-            <input type="date" name="ultimo_dia_trabalhado" value="{{ old('ultimo_dia_trabalhado') }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+            <input type="date" name="ultimo_dia_trabalhado" id="ultimo_dia_trabalhado" value="{{ old('ultimo_dia_trabalhado') }}" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
         </label>
         <label class="space-y-2">
             <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Gestor responsável</span>
-            <input type="text" name="gestor_responsavel" value="{{ old('gestor_responsavel') }}" placeholder="Nome do gestor" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+            <input type="text" name="gestor_responsavel" id="gestor_responsavel" value="{{ old('gestor_responsavel', $gestorContratoInicial ?? '') }}" placeholder="Nome do gestor (contrato)" class="h-12 w-full rounded-2xl border border-zinc-200/90 bg-zinc-50/50 px-4 text-sm font-medium outline-none focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+            <span class="text-[10px] font-normal text-zinc-500">Preenchido automaticamente pelo gestor do contrato do colaborador</span>
         </label>
         <label class="space-y-2">
             <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Haverá substituição da vaga?</span>

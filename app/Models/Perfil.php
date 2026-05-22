@@ -56,4 +56,35 @@ class Perfil extends Model
 
         return (bool) ($secoes[$secao] ?? false);
     }
+
+    /**
+     * Se o JSON do perfil ainda não tem rh.secoes, considera todas as áreas liberadas (compatibilidade).
+     */
+    public function permiteSecaoRh(string $secao): bool
+    {
+        if (! array_key_exists($secao, User::rhSecoesDefinicao())) {
+            return false;
+        }
+
+        $secoes = data_get($this->permissoes, 'rh.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(User::rhSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
 }

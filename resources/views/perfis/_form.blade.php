@@ -77,6 +77,26 @@
         </div>
     </div>
 
+    <div class="mt-6 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-5">
+        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">RH — áreas do menu lateral</p>
+        <p class="mt-1 text-sm text-brand-gray">Marque quais opções do RH este perfil pode abrir. Só vale se o módulo <strong class="text-brand-black">RH</strong> estiver liberado na tabela acima.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($rhSecoes as $secaoKey => $secaoLabel)
+                @php
+                    $checked = (bool) old(
+                        "permissoes.rh.secoes.{$secaoKey}",
+                        $rhSecoesInicial[$secaoKey] ?? true,
+                    );
+                @endphp
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-3 shadow-sm transition hover:border-brand-burgundy/40">
+                    <input type="hidden" name="permissoes[rh][secoes][{{ $secaoKey }}]" value="0">
+                    <input type="checkbox" name="permissoes[rh][secoes][{{ $secaoKey }}]" value="1" class="mt-0.5 h-5 w-5 shrink-0 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($checked)>
+                    <span class="text-sm font-semibold text-brand-black">{{ $secaoLabel }}</span>
+                </label>
+            @endforeach
+        </div>
+    </div>
+
     <div class="mt-6 flex justify-end gap-2 border-t border-zinc-100 pt-5">
         <a href="{{ route('perfis.index') }}" class="inline-flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">Cancelar</a>
         <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">

@@ -63,6 +63,8 @@ class PerfilController extends Controller
             'acoes' => self::acoes(),
             'sesmtSecoes' => User::sesmtSecoesDefinicao(),
             'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario(new Perfil(['ativo' => true])),
+            'rhSecoes' => User::rhSecoesDefinicao(),
+            'rhSecoesInicial' => $this->rhSecoesValoresFormulario(new Perfil(['ativo' => true])),
         ]);
     }
 
@@ -82,6 +84,7 @@ class PerfilController extends Controller
             'modulos' => self::modulos(),
             'acoes' => self::acoes(),
             'sesmtSecoes' => User::sesmtSecoesDefinicao(),
+            'rhSecoes' => User::rhSecoesDefinicao(),
         ]);
     }
 
@@ -93,6 +96,8 @@ class PerfilController extends Controller
             'acoes' => self::acoes(),
             'sesmtSecoes' => User::sesmtSecoesDefinicao(),
             'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario($perfi),
+            'rhSecoes' => User::rhSecoesDefinicao(),
+            'rhSecoesInicial' => $this->rhSecoesValoresFormulario($perfi),
         ]);
     }
 
@@ -144,6 +149,11 @@ class PerfilController extends Controller
             $normalized['sesmt']['secoes'][$key] = (bool) data_get($permissoes, "sesmt.secoes.{$key}");
         }
 
+        $normalized['rh']['secoes'] = [];
+        foreach (array_keys(User::rhSecoesDefinicao()) as $key) {
+            $normalized['rh']['secoes'][$key] = (bool) data_get($permissoes, "rh.secoes.{$key}");
+        }
+
         return $normalized;
     }
 
@@ -156,6 +166,21 @@ class PerfilController extends Controller
         $legacy = ! is_array($stored);
         $out = [];
         foreach (array_keys(User::sesmtSecoesDefinicao()) as $key) {
+            $out[$key] = $legacy ? true : (bool) data_get($stored, $key, false);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function rhSecoesValoresFormulario(Perfil $perfil): array
+    {
+        $stored = data_get($perfil->permissoes, 'rh.secoes');
+        $legacy = ! is_array($stored);
+        $out = [];
+        foreach (array_keys(User::rhSecoesDefinicao()) as $key) {
             $out[$key] = $legacy ? true : (bool) data_get($stored, $key, false);
         }
 

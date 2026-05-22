@@ -29,9 +29,17 @@
 
 @section('content')
     @if (session('success'))
-        <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-white px-5 py-4 text-sm text-emerald-900 shadow-sm">
-            <i data-lucide="check-circle-2" class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"></i>
-            <span>{{ session('success') }}</span>
+        <div class="mb-6 flex flex-col gap-2 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-white px-5 py-4 text-sm text-emerald-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+                <i data-lucide="check-circle-2" class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+            @if (session('recrutamento_vaga_id'))
+                <a href="{{ route('rh.recrutamento.edit', session('recrutamento_vaga_id')) }}" class="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800">
+                    <i data-lucide="briefcase" class="h-3.5 w-3.5"></i>
+                    Abrir vaga de substituição
+                </a>
+            @endif
         </div>
     @endif
 
