@@ -25,12 +25,14 @@ class MovimentacoesDiagnosticoCommand extends Command
     public function handle(): int
     {
         if ($this->option('rota')) {
-            $edit = Route::has('rh.efetivo.movimentacoes.edit');
-            $this->line('rh.efetivo.movimentacoes.edit: '.($edit ? 'SIM' : 'NÃO'));
-            if ($edit) {
-                $this->line('URL gestão (route): '.route('rh.efetivo.movimentacoes.edit', 1));
-                $this->line('URL pública esperada: /public/rh/movimentacao/1');
-                $this->line('Legado: /public/rh/efetivo/movimentacao/1 → redireciona 301');
+            $index = Route::has('rh.chamados-movimentacao.index');
+            $show = Route::has('rh.chamados-movimentacao.show');
+            $this->line('rh.chamados-movimentacao.index: '.($index ? 'SIM' : 'NÃO'));
+            $this->line('rh.chamados-movimentacao.show: '.($show ? 'SIM' : 'NÃO'));
+            if ($index) {
+                $this->line('URL lista: '.route('rh.chamados-movimentacao.index'));
+                $this->line('Legado /rh/efetivo/movimentacoes → redireciona para chamados');
+                $this->line('Legado /rh/movimentacao/{id} → redireciona para chamado vinculado');
             } else {
                 $this->error('Rota ausente → git pull + php artisan route:clear');
             }
@@ -117,8 +119,20 @@ class MovimentacoesDiagnosticoCommand extends Command
 
         $colab = $mov->colaborador;
         $this->info("OK: movimentação {$movId} ({$mov->tipo}) — colaborador {$mov->colaborador_id}".($colab ? ": {$colab->nome}" : ''));
-        $this->line('URL gestão (GET+POST): /public/rh/movimentacao/'.$movId);
-        $this->line('Rota nomeada: '.route('rh.efetivo.movimentacoes.edit', $mov));
+        $chamado = \App\Models\Rh\RhMovimentacaoChamado::query()
+            ->where('colaborador_movimentacao_id', $mov->id)
+            ->first();
+
+        if ($chamado !== null) {
+            $this->line('Chamado: '.route('rh.chamados-movimentacao.show', $chamado));
+        } else {
+            $this->line('Sem chamado vinculado — abrir: '.route('rh.chamados-movimentacao.create', [
+                'colaborador' => $mov->colaborador_id,
+                'tipo' => $mov->tipo === 'afastamento_inss' ? 'afastamento_inss' : ($mov->tipo ?? 'desligamento'),
+            ]));
+        }
+
+        $this->line('URL legado (redireciona): /public/rh/movimentacao/'.$movId);
 
         if ($this->option('http')) {
             $this->simularHttpGet($movId);

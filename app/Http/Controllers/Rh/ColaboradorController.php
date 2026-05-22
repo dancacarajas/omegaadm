@@ -101,9 +101,17 @@ class ColaboradorController extends Controller
             'movimentacoes' => fn ($q) => $q->with('registradoPor:id,name')->limit(50),
         ]);
 
+        $chamadosMovimentacao = \App\Models\Rh\RhMovimentacaoChamado::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->with(['solicitante:id,name', 'etapaAtual'])
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+
         return view('rh.colaboradores.show', [
             'colaborador' => $colaborador,
-            'tiposMovimentacao' => \App\Support\Rh\ColaboradorMovimentacaoTipos::labels(),
+            'tiposChamado' => \App\Support\Rh\MovimentacaoChamadoTipo::labels(),
+            'chamadosMovimentacao' => $chamadosMovimentacao,
         ]);
     }
 

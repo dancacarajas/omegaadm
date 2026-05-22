@@ -11,6 +11,7 @@ use App\Support\Rh\MovimentacaoChamadoTipo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RhMovimentacaoChamado extends Model
 {
@@ -19,6 +20,7 @@ class RhMovimentacaoChamado extends Model
     protected $fillable = [
         'protocolo',
         'colaborador_id',
+        'chamado_origem_id',
         'tipo',
         'status',
         'etapa_atual_id',
@@ -43,6 +45,7 @@ class RhMovimentacaoChamado extends Model
 
     protected $casts = [
         'colaborador_id' => 'integer',
+        'chamado_origem_id' => 'integer',
         'dados_antes_json' => 'array',
         'dados_depois_json' => 'array',
         'data_abertura' => 'date',
@@ -55,6 +58,11 @@ class RhMovimentacaoChamado extends Model
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    public function chamadoOrigem(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'chamado_origem_id');
     }
 
     public function etapaAtual(): BelongsTo
@@ -95,6 +103,11 @@ class RhMovimentacaoChamado extends Model
     public function anexos(): HasMany
     {
         return $this->hasMany(RhMovimentacaoAnexo::class, 'chamado_id');
+    }
+
+    public function nadaConsta(): HasOne
+    {
+        return $this->hasOne(RhMovimentacaoNadaConsta::class, 'chamado_id');
     }
 
     public function isAberto(): bool

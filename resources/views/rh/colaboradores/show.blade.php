@@ -9,9 +9,9 @@
         <i data-lucide="arrow-left" class="h-4 w-4"></i>
         Voltar
     </a>
-    <a href="{{ route('rh.efetivo.movimentacoes.create', ['colaborador' => $colaborador, 'tipo' => 'afastamento_inss']) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/40">
-        <i data-lucide="git-branch" class="h-4 w-4"></i>
-        Movimentação
+    <a href="{{ route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id]) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/40">
+        <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+        Novo chamado
     </a>
     <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
         <i data-lucide="pencil" class="h-4 w-4"></i>
@@ -316,23 +316,23 @@
                         <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy text-sm font-bold text-white shadow-md shadow-brand-burgundy/25">06</span>
                         <div class="flex items-center gap-3">
                             <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
-                                <i data-lucide="history" class="h-5 w-5"></i>
+                                <i data-lucide="clipboard-list" class="h-5 w-5"></i>
                             </span>
                             <div>
-                                <h3 class="text-lg font-bold tracking-tight text-zinc-900">Movimentações</h3>
-                                <p class="mt-0.5 text-sm text-zinc-500">{{ $colaborador->movimentacoes->count() }} registro(s) no histórico</p>
+                                <h3 class="text-lg font-bold tracking-tight text-zinc-900">Chamados de movimentação</h3>
+                                <p class="mt-0.5 text-sm text-zinc-500">{{ $chamadosMovimentacao->count() }} chamado(s) deste colaborador</p>
                             </div>
                         </div>
                     </div>
                     <details class="group relative shrink-0">
                         <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 marker:content-none transition hover:bg-brand-burgundy-dark">
                             <i data-lucide="plus" class="h-4 w-4"></i>
-                            Nova movimentação
+                            Novo chamado
                             <i data-lucide="chevron-down" class="h-4 w-4 transition group-open:rotate-180"></i>
                         </summary>
                         <div class="absolute right-0 z-20 mt-2 w-72 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-1.5 shadow-xl ring-1 ring-zinc-100">
-                            @foreach ($tiposMovimentacao as $tipoKey => $tipoLabel)
-                                <a href="{{ route('rh.efetivo.movimentacoes.create', ['colaborador' => $colaborador, 'tipo' => $tipoKey]) }}" class="block rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-brand-burgundy-soft hover:text-brand-burgundy">
+                            @foreach ($tiposChamado as $tipoKey => $tipoLabel)
+                                <a href="{{ route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id, 'tipo' => $tipoKey]) }}" class="block rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-brand-burgundy-soft hover:text-brand-burgundy">
                                     {{ $tipoLabel }}
                                 </a>
                             @endforeach
@@ -341,7 +341,7 @@
                 </div>
 
                 <div class="relative px-6 py-2">
-                    @forelse ($colaborador->movimentacoes as $mov)
+                    @forelse ($chamadosMovimentacao as $ch)
                         <article class="group relative border-b border-zinc-100 py-6 pl-8 last:border-b-0 hover:bg-brand-burgundy/[0.02]">
                             <span class="absolute left-0 top-7 h-3 w-3 rounded-full border-2 border-white bg-brand-burgundy shadow-sm ring-2 ring-brand-burgundy/20"></span>
                             @if (! $loop->last)
@@ -350,54 +350,40 @@
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <time class="text-sm font-bold text-zinc-900">
-                                            {{ $mov->data_inicio->format('d/m/Y') }}
-                                            @if ($mov->data_fim)
-                                                <span class="font-semibold text-zinc-400">→ {{ $mov->data_fim->format('d/m/Y') }}</span>
-                                            @endif
-                                            @include('rh.colaboradores.movimentacoes._situacao', ['mov' => $mov])
-                                        </time>
-                                        <span class="rounded-full bg-brand-burgundy-soft px-2.5 py-0.5 text-xs font-bold text-brand-burgundy">{{ $mov->tipoLabel() }}</span>
+                                        <span class="font-mono text-xs font-bold text-brand-burgundy">{{ $ch->protocolo }}</span>
+                                        <span class="rounded-full bg-brand-burgundy-soft px-2.5 py-0.5 text-xs font-bold text-brand-burgundy">{{ $ch->tipoLabel() }}</span>
+                                        <span class="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-bold text-zinc-600">{{ $ch->statusLabel() }}</span>
                                     </div>
-                                    <p class="mt-3 text-[15px] leading-relaxed text-zinc-700">{{ $mov->resumoAlteracao() }}</p>
-                                    @if ($mov->registradoPor)
+                                    <p class="mt-2 text-sm text-zinc-600">
+                                        @if ($ch->data_efetiva)
+                                            Efeito: {{ $ch->data_efetiva->format('d/m/Y') }}
+                                        @endif
+                                        @if ($ch->etapaAtual)
+                                            · Etapa: {{ $ch->etapaAtual->nome }}
+                                        @endif
+                                    </p>
+                                    @if ($ch->solicitante)
                                         <p class="mt-2 flex items-center gap-1.5 text-xs text-zinc-400">
                                             <i data-lucide="user-check" class="h-3 w-3"></i>
-                                            {{ $mov->registradoPor->name }}
+                                            {{ $ch->solicitante->name }}
                                         </p>
                                     @endif
                                 </div>
-                                <div class="flex shrink-0 flex-wrap gap-2">
-                                    @if ($mov->isPendente())
-                                        <a href="{{ route('rh.efetivo.movimentacoes.edit', $mov) }}#finalizar" class="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">
-                                            <i data-lucide="check-circle" class="h-3.5 w-3.5"></i>
-                                            Finalizar
-                                        </a>
-                                    @endif
-                                    <a href="{{ route('rh.efetivo.movimentacoes.edit', $mov) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-brand-burgundy shadow-sm hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
-                                        <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
-                                        Alterar
-                                    </a>
-                                    <form method="POST" action="{{ route('rh.efetivo.movimentacoes.destroy', [$colaborador, $mov]) }}" class="inline" onsubmit="return confirm('Remover este registro?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-xl border border-red-200/80 bg-white px-3 text-xs font-bold text-red-600 shadow-sm hover:bg-red-50">
-                                            <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
-                                            Excluir
-                                        </button>
-                                    </form>
-                                </div>
+                                <a href="{{ route('rh.chamados-movimentacao.show', $ch) }}" class="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl bg-brand-burgundy px-3 text-xs font-bold text-white shadow-sm hover:bg-brand-burgundy-dark">
+                                    <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+                                    Ver chamado
+                                </a>
                             </div>
                         </article>
                     @empty
                         <div class="py-14 text-center">
                             <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400">
-                                <i data-lucide="history" class="h-7 w-7"></i>
+                                <i data-lucide="clipboard-list" class="h-7 w-7"></i>
                             </span>
-                            <p class="mt-4 text-base font-semibold text-zinc-500">Nenhuma movimentação registrada</p>
-                            <a href="{{ route('rh.efetivo.movimentacoes.create', ['colaborador' => $colaborador, 'tipo' => 'afastamento_inss']) }}" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-burgundy-soft px-4 py-2 text-sm font-bold text-brand-burgundy hover:bg-brand-burgundy/10">
+                            <p class="mt-4 text-base font-semibold text-zinc-500">Nenhum chamado de movimentação</p>
+                            <a href="{{ route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id]) }}" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-burgundy-soft px-4 py-2 text-sm font-bold text-brand-burgundy hover:bg-brand-burgundy/10">
                                 <i data-lucide="plus" class="h-4 w-4"></i>
-                                Registrar evento
+                                Abrir chamado
                             </a>
                         </div>
                     @endforelse

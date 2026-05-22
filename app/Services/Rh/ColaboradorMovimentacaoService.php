@@ -15,7 +15,7 @@ final class ColaboradorMovimentacaoService
         $tipo = (string) $data['tipo'];
         $payload = $this->montarPayload($colaborador, $data);
         $payload['registrado_por_user_id'] = $userId;
-        $payload = array_merge($payload, $this->metadadosSituacaoInicial($payload));
+        $payload = array_merge($payload, $this->metadadosSituacaoInicial($data));
 
         $movimentacao = ColaboradorMovimentacao::create($payload);
 
@@ -329,6 +329,13 @@ final class ColaboradorMovimentacaoService
         $tipo = (string) ($payload['tipo'] ?? '');
 
         if ($tipo === ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS) {
+            if (! empty($payload['forcar_finalizada'])) {
+                return [
+                    'situacao' => ColaboradorMovimentacaoSituacao::FINALIZADA,
+                    'finalizada_em' => now(),
+                ];
+            }
+
             return ['situacao' => ColaboradorMovimentacaoSituacao::PENDENTE];
         }
 

@@ -6,6 +6,7 @@ use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
 use App\Models\User;
+use App\Services\Rh\ColaboradorMovimentacaoService;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -30,12 +31,12 @@ class ColaboradorBeneficioDesligamentoTest extends TestCase
             'beneficio_ativo' => true,
         ]);
 
-        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.store', $colab), [
+        app(ColaboradorMovimentacaoService::class)->registrar($colab, [
             'tipo' => ColaboradorMovimentacaoTipos::DESLIGAMENTO,
             'data_inicio' => '2026-04-30',
             'tipo_rescisao' => 'sem_justa_causa',
             'motivo_texto' => 'Encerramento',
-        ])->assertRedirect();
+        ], $user->id);
 
         $vinculo->refresh();
         $this->assertFalse($vinculo->tem_direito);
@@ -92,12 +93,12 @@ class ColaboradorBeneficioDesligamentoTest extends TestCase
             'beneficio_ativo' => true,
         ]);
 
-        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.store', $colab), [
+        app(ColaboradorMovimentacaoService::class)->registrar($colab, [
             'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
             'data_inicio' => today()->toDateString(),
             'especie_beneficio_inss' => 'auxilio_doenca',
             'cid' => 'M54.5',
-        ]);
+        ], $user->id);
 
         $vinculo->refresh();
         $this->assertTrue($vinculo->tem_direito);

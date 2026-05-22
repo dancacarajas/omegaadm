@@ -6,6 +6,7 @@ use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\Rh\RhMovimentacaoChecklistItem;
 use App\Models\Rh\RhMovimentacaoEtapa;
 use App\Support\Rh\MovimentacaoChamadoStatus;
+use App\Support\Rh\MovimentacaoChamadoTipo;
 use App\Support\Rh\MovimentacaoEtapaStatus;
 use App\Support\Rh\MovimentacaoWorkflowCatalog;
 use Illuminate\Support\Str;
@@ -14,6 +15,8 @@ final class MovimentacaoWorkflowService
 {
     public function __construct(
         private readonly MovimentacaoLogService $logService,
+        private readonly MovimentacaoAfastamentoInssRules $afastamentoInssRules,
+        private readonly MovimentacaoDesligamentoRules $desligamentoRules,
     ) {}
 
     public function instanciarEtapas(RhMovimentacaoChamado $chamado, string $tipo): void
@@ -70,6 +73,14 @@ final class MovimentacaoWorkflowService
 
     public function podeFinalizar(RhMovimentacaoChamado $chamado): array
     {
+        if ($chamado->tipo === MovimentacaoChamadoTipo::AFASTAMENTO_INSS) {
+            return $this->afastamentoInssRules->pendenciasFinalizacao($chamado);
+        }
+
+        if ($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
+            return $this->desligamentoRules->pendenciasFinalizacao($chamado);
+        }
+
         $pendencias = [];
 
         foreach ($chamado->etapas as $etapa) {
@@ -79,11 +90,6 @@ final class MovimentacaoWorkflowService
             if (! $etapa->isConcluida()) {
                 $pendencias[] = "Etapa pendente: {$etapa->nome}";
             }
-            foreach ($etapa->checklistItens as $item) {
-                if ($item->obrigatorio && ! in_array($item->status, ['ok', 'nao_aplica'], true)) {
-                    $pendencias[] = "Checklist: {$etapa->nome} → {$item->nome}";
-                }
-            }
         }
 
         return $pendencias;
@@ -91,13 +97,23 @@ final class MovimentacaoWorkflowService
 
     public function avancarEtapaAtual(RhMovimentacaoChamado $chamado): void
     {
-        $chamado->load('etapas');
+        $this->sincronizarStatusChamado($chamado->fresh(['etapas']));
+    }
+
+    /** Recalcula etapa atual e status do chamado conforme progresso das etapas. */
+    public function sincronizarStatusChamado(RhMovimentacaoChamado $chamado): void
+    {
+        if (! $chamado->isAberto()) {
+            return;
+        }
+
+        $chamado->loadMissing('etapas');
         $proxima = $chamado->etapas->first(fn ($e) => ! $e->isConcluida());
 
         if ($proxima === null) {
             $chamado->update([
                 'etapa_atual_id' => null,
-                'status' => MovimentacaoChamadoStatus::EM_EXECUCAO,
+                'status' => MovimentacaoChamadoStatus::AGUARDANDO_FINALIZACAO,
             ]);
 
             return;
@@ -110,6 +126,11 @@ final class MovimentacaoWorkflowService
             ]);
         }
 
-        $chamado->update(['etapa_atual_id' => $proxima->id]);
+        $statusChamado = MovimentacaoWorkflowCatalog::statusChamadoParaEtapa($chamado->tipo, $proxima->slug);
+        $payload = ['etapa_atual_id' => $proxima->id];
+        if ($statusChamado !== null) {
+            $payload['status'] = $statusChamado;
+        }
+        $chamado->update($payload);
     }
 }

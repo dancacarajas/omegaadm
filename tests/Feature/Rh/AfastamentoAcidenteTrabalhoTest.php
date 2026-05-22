@@ -5,6 +5,7 @@ namespace Tests\Feature\Rh;
 use App\Models\Colaborador;
 use App\Models\ColaboradorMovimentacao;
 use App\Models\User;
+use App\Services\Rh\ColaboradorMovimentacaoService;
 use App\Support\Rh\AfastamentoAcidenteTrabalho;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use Carbon\Carbon;
@@ -23,12 +24,13 @@ class AfastamentoAcidenteTrabalhoTest extends TestCase
             'status' => 'ativo',
         ]);
 
-        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.store', $colab), [
+        app(ColaboradorMovimentacaoService::class)->registrar($colab, [
             'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
             'data_inicio' => '2026-02-01',
             'especie_beneficio_inss' => 'acidente_trabalho',
             'cid' => 'S82.0',
-        ])->assertRedirect();
+            'forcar_finalizada' => true,
+        ], $user->id);
 
         $situacao = AfastamentoAcidenteTrabalho::situacaoValeAlimentacaoNoMes(
             $colab->fresh(),

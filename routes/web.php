@@ -20,7 +20,7 @@ use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\BeneficioExtratoController;
 use App\Http\Controllers\Rh\ColaboradorController;
-use App\Http\Controllers\Rh\ColaboradorMovimentacaoController;
+use App\Models\Rh\RhMovimentacaoChamado;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\ApuracaoPontoController;
 use App\Http\Controllers\Rh\FeriadoController;
@@ -325,35 +325,53 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::prefix('rh')->name('rh.')->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
 
-        // Movimentações — gestão na mesma profundidade que benefícios (rh/beneficios/{id} → rh/movimentacao/{id})
+        // Movimentações de RH (módulo único — substitui cadastro direto antigo)
         Route::prefix('chamados-movimentacao')->name('chamados-movimentacao.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'index'])->name('index');
             Route::get('/criar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'store'])->name('store');
+            Route::patch('/{chamado}/dados-afastamento', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'atualizarDadosAfastamento'])->name('dados-afastamento')->whereNumber('chamado');
+            Route::patch('/{chamado}/sigo', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'atualizarSigo'])->name('sigo')->whereNumber('chamado');
+            Route::post('/{chamado}/anexos', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'salvarAnexos'])->name('anexos')->whereNumber('chamado');
+            Route::patch('/{chamado}/nada-consta', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'atualizarNadaConsta'])->name('nada-consta')->whereNumber('chamado');
+            Route::post('/{chamado}/nada-consta/validar-rh', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'validarNadaConstaRh'])->name('nada-consta.validar-rh')->whereNumber('chamado');
+            Route::post('/nada-consta-itens/{item}/anexo', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'anexoItemNadaConsta'])->name('nada-consta-item.anexo')->whereNumber('item');
+            Route::post('/checklist/{item}/toggle', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'toggleChecklist'])->name('checklist.toggle')->whereNumber('item');
+            Route::get('/anexos/{anexo}/download', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'downloadAnexo'])->name('anexos.download')->whereNumber('anexo');
+            Route::get('/{chamado}/pdf', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'pdf'])->name('pdf')->whereNumber('chamado');
             Route::get('/{chamado}', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'show'])->name('show')->whereNumber('chamado');
             Route::post('/etapas/{etapa}/concluir', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirEtapa'])->name('etapas.concluir')->whereNumber('etapa');
             Route::post('/{chamado}/finalizar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'finalizar'])->name('finalizar')->whereNumber('chamado');
             Route::post('/{chamado}/cancelar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'cancelar'])->name('cancelar')->whereNumber('chamado');
         });
 
-        Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
-        Route::match(['get', 'post'], 'movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
+        $redirectLegadoMovimentacao = function (\App\Models\ColaboradorMovimentacao $movimentacao) {
+            $chamado = RhMovimentacaoChamado::query()
+                ->where('colaborador_movimentacao_id', $movimentacao->id)
+                ->first();
+
+            if ($chamado !== null) {
+                return redirect()->route('rh.chamados-movimentacao.show', $chamado, 301);
+            }
+
+            return redirect()->route('rh.chamados-movimentacao.create', [
+                'colaborador' => $movimentacao->colaborador_id,
+                'tipo' => $movimentacao->tipo === 'afastamento_inss' ? 'afastamento_inss' : ($movimentacao->tipo ?? 'desligamento'),
+            ], 301);
+        };
+
+        Route::get('efetivo/movimentacoes', fn () => redirect()->route('rh.chamados-movimentacao.index', [], 301))
+            ->name('efetivo.movimentacoes.index');
+        Route::get('movimentacao/{movimentacao}', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::get('efetivo/movimentacao/{movimentacao}', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::get('movimentacoes/{movimentacao}', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::get('movimentacoes/{movimentacao}/editar', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::get('efetivo/movimentacoes/{movimentacao}/editar', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::match(['get', 'post'], 'movimentacao/{movimentacao}', $redirectLegadoMovimentacao)
             ->whereNumber('movimentacao')
             ->name('efetivo.movimentacoes.edit');
-        Route::post('movimentacao/{movimentacao}/finalizar', [ColaboradorMovimentacaoController::class, 'finalizar'])
-            ->whereNumber('movimentacao')
-            ->name('efetivo.movimentacoes.finalizar');
-        Route::post('movimentacao/{movimentacao}/cancelar', [ColaboradorMovimentacaoController::class, 'cancelar'])
-            ->whereNumber('movimentacao')
-            ->name('efetivo.movimentacoes.cancelar');
-        Route::get('efetivo/movimentacao/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
-        Route::get('movimentacoes/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
-        Route::get('movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
-        Route::get('efetivo/movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
+        Route::post('movimentacao/{movimentacao}/finalizar', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
+        Route::post('movimentacao/{movimentacao}/cancelar', $redirectLegadoMovimentacao)->whereNumber('movimentacao');
 
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::get('frequencia/extrato-faltas', [FrequenciaController::class, 'extratoFaltas'])->name('frequencia.extrato-faltas');
@@ -432,23 +450,15 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->whereNumber('beneficio');
-        Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])
-            ->whereNumber('colaborador')
-            ->name('efetivo.movimentacoes.create');
-        Route::post('efetivo/{colaborador}/movimentacoes', [ColaboradorMovimentacaoController::class, 'store'])
+        Route::get('efetivo/{colaborador}/movimentacoes/criar', function (\App\Models\Colaborador $colaborador) {
+            return redirect()->route('rh.chamados-movimentacao.create', [
+                'colaborador' => $colaborador->id,
+                'tipo' => request()->query('tipo', 'desligamento'),
+            ], 301);
+        })->whereNumber('colaborador')->name('efetivo.movimentacoes.create');
+        Route::post('efetivo/{colaborador}/movimentacoes', fn (\App\Models\Colaborador $colaborador) => redirect()->route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id], 301))
             ->whereNumber('colaborador')
             ->name('efetivo.movimentacoes.store');
-        Route::get('efetivo/{colaborador}/movimentacoes/{movimentacao}/editar', function (
-            \App\Models\Colaborador $colaborador,
-            \App\Models\ColaboradorMovimentacao $movimentacao
-        ) {
-            abort_unless((int) $movimentacao->colaborador_id === (int) $colaborador->id, 404);
-
-            return redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301);
-        })->whereNumber(['colaborador', 'movimentacao'])->name('efetivo.movimentacoes.edit.legado');
-        Route::delete('efetivo/{colaborador}/movimentacoes/{movimentacao}', [ColaboradorMovimentacaoController::class, 'destroy'])
-            ->whereNumber(['colaborador', 'movimentacao'])
-            ->name('efetivo.movimentacoes.destroy');
         Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');

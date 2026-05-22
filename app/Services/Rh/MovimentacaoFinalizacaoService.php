@@ -6,6 +6,7 @@ use App\Models\Colaborador;
 use App\Models\Rh\RhMovimentacaoChamado;
 use App\Support\Rh\MovimentacaoChamadoStatus;
 use App\Support\Rh\MovimentacaoChamadoTipo;
+use App\Support\Rh\MovimentacaoDesligamentoCatalog;
 use Illuminate\Support\Facades\DB;
 
 final class MovimentacaoFinalizacaoService
@@ -14,6 +15,8 @@ final class MovimentacaoFinalizacaoService
         private readonly MovimentacaoWorkflowService $workflowService,
         private readonly MovimentacaoLogService $logService,
         private readonly ColaboradorMovimentacaoService $movimentacaoLegadaService,
+        private readonly MovimentacaoAfastamentoInssRules $afastamentoInssRules,
+        private readonly MovimentacaoChamadoPdfService $pdfService,
     ) {}
 
     public function finalizar(RhMovimentacaoChamado $chamado, ?int $usuarioId = null): RhMovimentacaoChamado
@@ -40,7 +43,12 @@ final class MovimentacaoFinalizacaoService
 
             $this->logService->registrar($chamado, 'chamado_finalizado', null, null, ['movimentacao_id' => $mov->id], $usuarioId);
 
-            return $chamado->fresh();
+            if ($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
+                $pdf = $this->pdfService->gerarEArmazenar($chamado->fresh(), $usuarioId);
+                $this->logService->registrar($chamado, 'pdf_gerado', 'anexo_id', null, (string) $pdf->id, $usuarioId);
+            }
+
+            return $chamado->fresh(['anexos', 'nadaConsta']);
         });
     }
 
@@ -48,16 +56,20 @@ final class MovimentacaoFinalizacaoService
     private function montarPayloadMovimentacao(RhMovimentacaoChamado $chamado): array
     {
         $depois = $chamado->dados_depois_json ?? [];
+
+        if ($chamado->tipo === MovimentacaoChamadoTipo::AFASTAMENTO_INSS) {
+            return $this->afastamentoInssRules->payloadMovimentacaoLegada($chamado, $depois);
+        }
+
         $tipo = MovimentacaoChamadoTipo::tipoMovimentacaoLegado($chamado->tipo);
 
-        $base = array_merge($depois, [
+        return array_merge($depois, [
             'tipo' => $tipo,
-            'data_inicio' => $depois['data_efetiva'] ?? $depois['data_inicio'] ?? $chamado->data_efetiva?->format('Y-m-d') ?? today()->toDateString(),
+            'data_inicio' => $depois['ultimo_dia_trabalhado'] ?? $depois['data_efetiva'] ?? $depois['data_inicio'] ?? $chamado->data_efetiva?->format('Y-m-d') ?? today()->toDateString(),
             'data_fim' => $depois['data_fim'] ?? null,
+            'tipo_rescisao' => $depois['tipo_rescisao'] ?? null,
             'motivo_texto' => $depois['motivo_texto'] ?? $chamado->motivo,
             'observacoes' => $depois['observacoes'] ?? $chamado->observacao,
         ]);
-
-        return $base;
     }
 }

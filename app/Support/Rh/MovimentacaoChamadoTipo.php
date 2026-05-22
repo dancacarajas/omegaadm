@@ -12,6 +12,8 @@ final class MovimentacaoChamadoTipo
 
     public const MUDANCA_FUNCAO = 'mudanca_funcao';
 
+    public const AFASTAMENTO_INSS = 'afastamento_inss';
+
     /** @return array<string, string> */
     public static function labels(): array
     {
@@ -20,6 +22,7 @@ final class MovimentacaoChamadoTipo
             self::TRANSFERENCIA_CONTRATO => 'Transferência de contrato',
             self::PROMOCAO => 'Promoção',
             self::MUDANCA_FUNCAO => 'Mudança de função',
+            self::AFASTAMENTO_INSS => 'Afastamento INSS / Previdenciário',
         ];
     }
 
@@ -42,6 +45,7 @@ final class MovimentacaoChamadoTipo
             self::TRANSFERENCIA_CONTRATO => ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO,
             self::PROMOCAO => ColaboradorMovimentacaoTipos::PROMOCAO,
             self::MUDANCA_FUNCAO => ColaboradorMovimentacaoTipos::MUDANCA_FUNCAO,
+            self::AFASTAMENTO_INSS => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
             default => $tipo,
         };
     }

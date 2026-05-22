@@ -86,8 +86,8 @@
                                     <i data-lucide="users" class="h-4 w-4"></i>
                                     Efetivo
                                 </a>
-                                <a href="{{ route('rh.efetivo.movimentacoes.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.efetivo.movimentacoes.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="git-branch" class="h-4 w-4"></i>
+                                <a href="{{ route('rh.chamados-movimentacao.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.chamados-movimentacao.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
                                     Movimentações
                                 </a>
                                 <a href="{{ route('rh.beneficios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('rh.beneficios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
