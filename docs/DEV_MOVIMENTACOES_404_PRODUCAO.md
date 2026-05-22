@@ -1,6 +1,6 @@
 # Relatório técnico — 404 em Movimentações / botão Alterar (produção)
 
-> **Causa raiz (ambiente Hostinger):** leia primeiro **[DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md)** — este arquivo é detalhe do módulo Movimentações, não substitui o checklist sistêmico.
+> **Leia primeiro:** [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md) — **Benefícios em produção já funciona**; use como referência e compare este módulo (não tratar como “ambiente inteiro quebrado”).
 
 **Projeto:** omegaadm / omega286  
 **URL produção (falha):** `https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2`  
@@ -21,9 +21,19 @@
 | Banco produção (exemplo) | `mov_id=2` existe (`afastamento_inss`, colab 34) |
 | Erros `pinComponent.js` / `chrome-extension` | Extensão do navegador — **ignorar** |
 
-**Hipótese principal:** o código e os testes automatizados estão corretos no repositório; em produção falta **deploy completo**, **`route:cache` antigo**, ou o **path que o Laravel recebe** ainda não casa com `rh/efetivo/movimentacao/{id}` (mesma classe de problema que benefícios, documentada no outro MD).
+**Referência:** `https://omegaadm.feston.net.br/public/rh/beneficios/1` funciona (GET+POST). O rewrite `/public` **não está globalmente quebrado**.
 
-**Hipótese secundária:** 404 do **model binding** (`colaborador_movimentacoes.id = 2` inexistente no ambiente testado) — improvável se `movimentacoes:diagnostico 2 --mov` retornou OK.
+**Cobrança correta:** espelhar o padrão de Benefícios e achar **o que ainda difere** em Movimentações:
+
+| Suspeita | Detalhe |
+|----------|---------|
+| Deploy / route cache | Rota `efetivo/movimentacao/{id}` ausente no servidor |
+| Ordem de rotas | `efetivo/movimentacao/{id}` antes de `efetivo/{colaborador}` |
+| Link HTML antigo | `href` ainda com `/movimentacoes/.../editar` |
+| **Singular vs plural** | Gestão = `movimentacao`; listagem = `movimentacoes` |
+| Model binding | Registro `mov_id` inexistente (raro se `--mov` OK) |
+
+Mensagem pronta para o dev: seção 9 de [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md).
 
 ---
 

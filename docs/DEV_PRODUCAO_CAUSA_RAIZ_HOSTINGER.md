@@ -8,39 +8,56 @@
 
 ---
 
-## 1. Conclusão executiva (para gestão e dev)
+## 1. Conclusão executiva (atualizada)
 
-**Não é defeito isolado de Benefícios nem de Movimentações.**
+### Benefícios = referência funcional em produção
 
-Dois módulos com o mesmo padrão de falha em produção indicam **problema sistêmico de ambiente**:
+Se **Benefícios** abre e **Salvar/Excluir/Vincular** funcionam em:
 
-| Fator | Efeito |
-|-------|--------|
-| Document root na **raiz** do projeto (`omegaadm`) | URL pública obrigada a usar `/public/...` |
-| Laravel registra rotas como `rh/beneficios/{id}`, `rh/efetivo/movimentacao/{id}` | Router precisa receber path **sem** prefixo `public/` |
-| Rewrite + `REQUEST_URI` + cache de rota/view | Rotas dinâmicas falham intermitente ou por módulo |
-| Remendos por tela | Listagem pode abrir; **Alterar / Salvar / POST** quebram |
+```text
+https://omegaadm.feston.net.br/public/rh/beneficios/1
+```
 
-**Correção profissional (definitiva):** apontar o document root da Hostinger para `omegaadm/public` e usar `APP_URL=https://omegaadm.feston.net.br` **sem** `/public`. URLs ficam iguais ao localhost.
+então **não dá para afirmar que o ambiente inteiro está quebrado**. O rewrite, a base `/public` e o padrão GET+POST em rota dinâmica **já foram validados** em pelo menos uma tela.
 
-**Enquanto não mudar o document root:** é obrigatório que o fix de `/public` funcione para **todas** as rotas dinâmicas (não só um módulo). Ver seções 4 e 6.
+### Movimentações = investigar diferenças (não “consertar o universo de novo”)
 
-Documentos por módulo (detalhe técnico):
+O 404 em **Alterar** em `/public/rh/efetivo/movimentacao/{id}` é **parecido** com o que benefícios tinha, mas a cobrança correta agora é:
 
-- [DEV_BENEFICIOS_404_PRODUCAO.md](./DEV_BENEFICIOS_404_PRODUCAO.md)
-- [DEV_MOVIMENTACOES_404_PRODUCAO.md](./DEV_MOVIMENTACOES_404_PRODUCAO.md)
+> **Benefícios já funciona. Compare Movimentações com Benefícios e encontre o que ainda está diferente** em rota, ordem de rota, cache, link no HTML, singular/plural ou model binding.
+
+| Hipótese para Movimentações | Por que é plausível |
+|---------------------------|---------------------|
+| Rota ausente ou **route cache** antigo | Benefícios no commit novo; movimentações não deployada |
+| Ordem de rota (`efetivo/{colaborador}` antes de `efetivo/movimentacao/{id}`) | Laravel pode confundir segmentos |
+| **Link antigo** no HTML (cache de view) | `href` ainda aponta para URL legada |
+| **Singular vs plural** (`movimentacao` vs `movimentacoes`) | Gestão = singular; listagem = plural |
+| Model binding / registro inexistente | 404 após rota casar |
+| Deploy incompleto (`< 05aa59b`) | Código certo só no Git |
+
+### Melhoria de infra (opcional, não bloqueante para fechar Movimentações)
+
+Apontar document root para `omegaadm/public` e `APP_URL` sem `/public` continua sendo a **solução mais limpa** a longo prazo ([HOSTINGER_DOCUMENT_ROOT.md](./HOSTINGER_DOCUMENT_ROOT.md)). Não substitui o checklist de comparação com Benefícios enquanto Movimentações estiver 404.
+
+Documentos:
+
+- [DEV_BENEFICIOS_404_PRODUCAO.md](./DEV_BENEFICIOS_404_PRODUCAO.md) — referência que funciona
+- [DEV_MOVIMENTACOES_404_PRODUCAO.md](./DEV_MOVIMENTACOES_404_PRODUCAO.md) — caso aberto
 - [HOSTINGER_DOCUMENT_ROOT.md](./HOSTINGER_DOCUMENT_ROOT.md)
 
 ---
 
 ## 2. Casos confirmados
 
-### Benefícios
+### Benefícios (referência — OK em produção)
 
-- URL produção: `/public/rh/beneficios/{id}`
-- POST Salvar / Excluir / Vincular já foram alvo de correção (`Route::match` GET+POST, `fix-public-request-uri`, etc.)
+- URL: `/public/rh/beneficios/{id}`
+- `Route::match(['get','post'], 'beneficios/{beneficio}', show)` — mesma URL para GET e POST
+- Infra: `fix-public-request-uri`, `ForceRequestRootUrl`, forms com `route('rh.beneficios.show', $beneficio)`
 
-### Movimentações (caso atual)
+**Use este módulo como espelho** ao depurar Movimentações.
+
+### Movimentações (caso aberto)
 
 | Ambiente | URL botão **Alterar** | Resultado |
 |----------|------------------------|-----------|
@@ -75,7 +92,7 @@ Commits relevantes em `main` (ordem aproximada):
 - `app/Support/PublicWebBase.php`
 - `config/app.php` → `force_public_url` default `true` em `APP_ENV=production`
 
-Se produção ainda retorna 404 com commit `>= 05aa59b`, o gargalo é **deploy, cache, rewrite ou document root** — não falta de rota no Git.
+Se Benefícios funciona no mesmo servidor e Movimentações retorna 404 com commit `>= 05aa59b`, o gargalo é **específico de Movimentações** (deploy dessa rota, cache, ordem, link, binding) — não “rewrite global quebrado”.
 
 ---
 
@@ -269,79 +286,133 @@ head -25 public/index.php
 
 ---
 
-## 7. Árvore de decisão (dev)
+## 7. Benefícios vs Movimentações (o que comparar)
+
+| Item | Benefícios (OK) | Movimentações (404) |
+|------|-----------------|---------------------|
+| Path router | `rh/beneficios/{beneficio}` | `rh/efetivo/movimentacao/{movimentacao}` |
+| Métodos | GET + POST (match) | GET + POST (match) |
+| Controller | `BeneficioController@show` | `ColaboradorMovimentacaoController@editar` |
+| Form action | `route('rh.beneficios.show', $beneficio)` | `route('rh.efetivo.movimentacoes.edit', $mov)` |
+| Armadilha de nome | `beneficios/create` excluído do show | **singular** `movimentacao` vs **plural** `movimentacoes` (listagem) |
+| Ordem no `web.php` | match antes de resource | match no **topo** do grupo `rh` (commit `05aa59b`) |
+| Legado | redirects para `beneficios.show` | redirects 301 para `efetivo.movimentacao/{id}` |
+
+Se Benefícios passa e Movimentações não, com mesmo `git log` e mesmo `route:clear`, foco em: **route:list**, **href do botão**, **diagnostico --http**, **debug_movimentacao=1**.
+
+---
+
+## 8. Árvore de decisão (dev)
 
 ```mermaid
 flowchart TD
-    A[404 em /public/rh/.../id] --> B{git log >= 05aa59b?}
-    B -->|Não| C[git pull + clear caches]
-    B -->|Sim| D{route:list tem efetivo/movimentacao?}
-    D -->|Não| E[route:clear + rm bootstrap/cache/routes*]
-    D -->|Sim| F{diagnostico --http 200?}
-    F -->|Não| G{path no debug tem public/?}
-    G -->|Sim| H[Corrigir fix-public / .htaccess / index.php]
-    G -->|Não| I[Binding / registro inexistente]
-    F -->|Sim| J{Browser ainda 404?}
-    J -->|Sim| K[href HTML / cache browser / CDN]
-    J -->|Não| L[Resolvido]
-    H --> M{Ainda falha?}
-    M -->|Sim| N[Mudar document root para omegaadm/public]
+    A[404 Movimentações Alterar] --> B{Benefícios /public/rh/beneficios/1 OK?}
+    B -->|Não| C[Infra /public global - seção 4 e 6]
+    B -->|Sim| D{git log >= 05aa59b?}
+    D -->|Não| E[git pull + clear caches]
+    D -->|Sim| F{route:list efetivo/movimentacao?}
+    F -->|Não| G[route:clear + deploy rota]
+    F -->|Sim| H{diagnostico --http 200?}
+    H -->|Não| I[Ordem rota / binding / path]
+    H -->|Sim| J{href HTML correto?}
+    J -->|Não| K[view:clear / deploy views]
+    J -->|Sim| L{debug_movimentacao dd?}
+    L -->|Não| M[Rota/cache/link antes do controller]
+    L -->|Sim| N[Controller/binding/view]
 ```
 
 ---
 
-## 8. Mensagem pronta para o desenvolvedor (copiar/colar)
+## 9. Mensagem pronta para o desenvolvedor (copiar/colar)
 
 ```text
-Agora o mesmo tipo de problema apareceu em outra tela: Movimentações, botão Alterar.
+Entendi. Benefícios em produção já foi corrigido e está funcionando.
 
-Isso confirma que não é um defeito isolado de Benefícios. É um problema sistêmico de produção envolvendo URL com /public, rotas dinâmicas, rewrite/cache/deploy ou document root.
+Então agora precisamos usar Benefícios como referência funcional e comparar com Movimentações.
 
-O caso atual:
-Produção com erro:
-https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2
+Se Benefícios funciona em:
+https://omegaadm.feston.net.br/public/rh/beneficios/1
 
-Localhost funciona:
-http://127.0.0.1:2080/rh/efetivo/movimentacao/2
+então o rewrite/base /public já está funcionando pelo menos para uma rota dinâmica GET/POST.
 
-Preciso que você pare de tratar módulo por módulo e resolva a causa raiz do ambiente.
+Logo, no caso de Movimentações, preciso que você investigue o que está diferente, principalmente:
 
-Documentação no repositório:
+1. A rota de Movimentações existe em produção?
+
+Rodar:
+php artisan route:list --path=efetivo/movimentacao
+
+Precisa aparecer:
+GET|POST|HEAD rh/efetivo/movimentacao/{movimentacao}
+
+2. O servidor está realmente no commit correto?
+
+Rodar:
+git log -1 --oneline
+
+Precisa estar no commit 05aa59b ou mais recente, conforme documentação.
+
+3. Limpar cache real de rota:
+
+php artisan route:clear
+php artisan optimize:clear
+php artisan config:clear
+php artisan view:clear
+rm -f bootstrap/cache/routes*.php
+
+4. Verificar se a rota de Movimentações está registrada antes das rotas genéricas de efetivo.
+
+A rota:
+rh/efetivo/movimentacao/{movimentacao}
+
+precisa ficar antes de qualquer rota genérica tipo:
+rh/efetivo/{colaborador}
+
+porque senão o Laravel pode interpretar "movimentacao" como parâmetro de colaborador e cair em 404.
+
+5. Verificar o HTML do botão Alterar.
+
+No navegador, inspecionar o botão Alterar e confirmar se o href está exatamente assim:
+
+/public/rh/efetivo/movimentacao/2
+
+e não alguma URL antiga como:
+
+/public/rh/movimentacoes/2/editar
+/public/rh/efetivo/movimentacoes/2/editar
+/public/rh/efetivo/34/movimentacoes/2/editar
+
+6. Rodar diagnóstico:
+
+php artisan movimentacoes:diagnostico --rota
+php artisan movimentacoes:diagnostico --listar
+php artisan movimentacoes:diagnostico 2 --mov
+php artisan movimentacoes:diagnostico 2 --mov --http
+
+7. Testar com debug:
+
+https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2?debug_movimentacao=1
+
+Se o debug aparecer, a requisição chegou no controller e o erro está em binding/controller/view.
+Se o debug não aparecer, o erro está antes do controller: rota, cache, ordem de rota, deploy ou link errado.
+
+Documentação:
 docs/DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md
 docs/DEV_MOVIMENTACOES_404_PRODUCAO.md
 docs/DEV_BENEFICIOS_404_PRODUCAO.md
-docs/HOSTINGER_DOCUMENT_ROOT.md
 
-Executar checklist completo em produção (seção 6 do DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md).
+Conclusão: Benefícios funcionando prova que o ambiente consegue operar com /public. Agora Movimentações precisa ser ajustado no mesmo padrão, mas a investigação deve focar na diferença entre as duas rotas, especialmente ordem das rotas, cache, link gerado e model binding.
 
-Conclusão: agora temos dois módulos com problema semelhante em produção. Não quero mais remendo por tela. Preciso da correção definitiva do ambiente.
-
-A solução profissional é ajustar o document root da Hostinger para:
-omegaadm/public
-
-E deixar:
-APP_URL=https://omegaadm.feston.net.br
-Sem /public.
-
-Depois disso, todas as URLs devem ficar sem /public, igual localhost:
-https://omegaadm.feston.net.br/rh/beneficios/1
-https://omegaadm.feston.net.br/rh/efetivo/movimentacao/2
-
-Se não for possível mudar o document root agora, então precisa garantir que o fix de /public funcione para todas as rotas dinâmicas, não só Benefícios.
-
-Entrega final:
-- causa raiz confirmada;
-- print/retorno do route:list;
-- retorno do diagnóstico --http;
-- confirmação de teste real no navegador;
-- Benefícios funcionando;
-- Movimentações funcionando;
-- nenhuma tela RH com 404 em ação de editar/salvar/excluir.
+Atenção singular/plural:
+- listagem: rh/efetivo/movimentacoes (plural)
+- gestão Alterar: rh/efetivo/movimentacao/{id} (singular)
 ```
 
 ---
 
-## 9. Referência rápida — arquivos de infra
+## 10. Referência rápida — arquivos de infra
+
+---
 
 | Arquivo | Papel |
 |---------|--------|
