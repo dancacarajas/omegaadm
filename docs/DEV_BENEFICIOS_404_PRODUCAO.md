@@ -442,7 +442,11 @@ Com o fix em `index.php`, deve comportar-se como produção corrigida.
 
 ---
 
-## 16. Mesmo padrão — Movimentações (Alterar / Salvar)
+## 16. Movimentações (Alterar / Salvar) — documento completo
+
+Handoff detalhado (commits, rotas, checklist SSH, testes): **[DEV_MOVIMENTACOES_404_PRODUCAO.md](./DEV_MOVIMENTACOES_404_PRODUCAO.md)**
+
+Resumo rápido:
 
 O 404 em **Alterar** (`/public/rh/efetivo/{colab}/movimentacoes/{id}/editar`) e em **Salvar** (PUT) segue a mesma causa e a mesma correção de benefícios.
 
