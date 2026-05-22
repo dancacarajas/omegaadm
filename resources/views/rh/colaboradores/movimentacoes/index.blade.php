@@ -5,6 +5,10 @@
 @section('page-title', 'Movimentações de efetivo')
 
 @section('actions')
+    <a href="{{ route('rh.chamados-movimentacao.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-burgundy-dark">
+        <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+        Chamados de movimentação
+    </a>
     <a href="{{ route('rh.efetivo.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
         <i data-lucide="arrow-left" class="h-4 w-4"></i>
         Voltar ao efetivo
@@ -16,6 +20,10 @@
         $filtrosAtivos = filled($busca) || filled($tipoFiltro) || filled($situacaoFiltro);
         $totalPagina = $movimentacoes->count();
     @endphp
+
+    <div class="mb-6 rounded-xl border border-brand-burgundy/30 bg-brand-burgundy-soft/40 px-5 py-4 text-sm text-brand-black">
+        <strong>Novo fluxo:</strong> movimentações sensíveis devem ser abertas como <a href="{{ route('rh.chamados-movimentacao.index') }}" class="font-bold text-brand-burgundy underline">Chamados de Movimentação</a> (etapas, aprovações, evidências). O cadastro só muda na finalização do chamado.
+    </div>
 
     @if (session('success'))
         <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-white px-5 py-4 text-sm text-emerald-900 shadow-sm">

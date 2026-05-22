@@ -326,6 +326,16 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
 
         // Movimentações — gestão na mesma profundidade que benefícios (rh/beneficios/{id} → rh/movimentacao/{id})
+        Route::prefix('chamados-movimentacao')->name('chamados-movimentacao.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'index'])->name('index');
+            Route::get('/criar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'store'])->name('store');
+            Route::get('/{chamado}', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'show'])->name('show')->whereNumber('chamado');
+            Route::post('/etapas/{etapa}/concluir', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirEtapa'])->name('etapas.concluir')->whereNumber('etapa');
+            Route::post('/{chamado}/finalizar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'finalizar'])->name('finalizar')->whereNumber('chamado');
+            Route::post('/{chamado}/cancelar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'cancelar'])->name('cancelar')->whereNumber('chamado');
+        });
+
         Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
         Route::match(['get', 'post'], 'movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
             ->whereNumber('movimentacao')
