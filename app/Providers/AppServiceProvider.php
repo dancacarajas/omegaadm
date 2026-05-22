@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Colaborador;
+use App\Services\ConfiguracaoEmailService;
 use App\Models\ColaboradorBeneficio;
 use App\Models\ColaboradorMovimentacao;
 use App\Models\SsmaAmbientalRegistro;
@@ -26,6 +27,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        try {
+            app(ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
+        } catch (\Throwable) {
+            // Tabela ainda não migrada ou ambiente de instalação.
+        }
+
         Colaborador::observe(ColaboradorObserver::class);
 
         Route::bind('ambiental', function (string $value): SsmaAmbientalRegistro {

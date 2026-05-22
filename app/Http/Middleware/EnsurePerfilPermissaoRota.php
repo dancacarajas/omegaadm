@@ -44,6 +44,13 @@ class EnsurePerfilPermissaoRota
             }
         }
 
+        if ($modulo === 'configuracoes') {
+            $acao = $this->acaoConfiguracoesParaRota($routeName);
+            if ($acao !== null && ! $user->podeAcaoNoModulo('configuracoes', $acao)) {
+                abort(403, 'Seu perfil não tem permissão para esta ação em Configurações.');
+            }
+        }
+
         if ($modulo === 'rh' && ! $user->podeExecutarRotaRh($routeName)) {
             $secao = User::rhSecaoFromRouteName($routeName);
             if ($secao !== null && ! $user->podeSecaoRh($secao)) {
@@ -102,6 +109,23 @@ class EnsurePerfilPermissaoRota
             return 'rdo';
         }
 
+        if (str_starts_with($name, 'configuracoes.')) {
+            return 'configuracoes';
+        }
+
         return null;
+    }
+
+    private function acaoConfiguracoesParaRota(?string $routeName): ?string
+    {
+        if ($routeName === null) {
+            return null;
+        }
+
+        if (str_contains($routeName, '.testar') || str_contains($routeName, '.update')) {
+            return 'editar';
+        }
+
+        return 'visualizar';
     }
 }

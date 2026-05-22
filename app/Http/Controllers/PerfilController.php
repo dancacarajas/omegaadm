@@ -21,6 +21,7 @@ class PerfilController extends Controller
             'medicao' => 'Medição',
             'rdo' => 'RDO',
             'acessos' => 'Acessos',
+            'configuracoes' => 'Configurações',
         ];
     }
 

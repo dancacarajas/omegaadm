@@ -83,6 +83,10 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($perfil->acessoTotalAoSistema()) {
+            return true;
+        }
+
         $matriz = $perfil->permissoes[$modulo] ?? null;
         if (! is_array($matriz)) {
             return false;
@@ -376,6 +380,10 @@ class User extends Authenticatable
             return 'chamados_movimentacao';
         }
 
+        if (str_starts_with($routeName, 'rh.efetivo.contrato-webcard')) {
+            return 'efetivo';
+        }
+
         if (str_starts_with($routeName, 'rh.efetivo')) {
             return 'efetivo';
         }
@@ -518,6 +526,10 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($perfil->acessoTotalAoSistema()) {
+            return true;
+        }
+
         return (bool) data_get($perfil->permissoes, "{$modulo}.{$acao}", false);
     }
 
@@ -534,6 +546,7 @@ class User extends Authenticatable
             'medicao' => fn () => route('medicao.index'),
             'rdo' => fn () => route('rdo.index'),
             'acessos' => fn () => route('usuarios.index'),
+            'configuracoes' => fn () => route('configuracoes.email.edit'),
         ];
 
         foreach ($mapa as $modulo => $resolver) {

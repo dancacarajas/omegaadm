@@ -12,6 +12,7 @@
         "laravel/tinker": "^2.10.1",
         "phpoffice/phppresentation": "^1.2",
         "phpoffice/phpspreadsheet": "^4.5",
+        "setasign/fpdi-tcpdf": "^2.3",
         "spatie/browsershot": "^5.3"
     },
     "require-dev": {

@@ -2,6 +2,7 @@
 
 use App\Models\Beneficio;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ConfiguracaoEmailController;
 use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ContratoHistogramaController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Rh\BeneficioColaboradorController;
 use App\Http\Controllers\Rh\BeneficioController;
 use App\Http\Controllers\Rh\BeneficioExtratoController;
 use App\Http\Controllers\Rh\ColaboradorController;
+use App\Http\Controllers\Rh\ContratoWebcardController;
 use App\Models\Rh\RhMovimentacaoChamado;
 use App\Http\Controllers\Rh\DashboardController as RhDashboardController;
 use App\Http\Controllers\Rh\ApuracaoPontoController;
@@ -229,6 +231,12 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::resource('contratos', ContratoController::class);
     Route::resource('usuarios', UsuarioController::class);
     Route::resource('perfis', PerfilController::class);
+
+    Route::prefix('configuracoes')->name('configuracoes.')->group(function () {
+        Route::get('/email', [ConfiguracaoEmailController::class, 'edit'])->name('email.edit');
+        Route::put('/email', [ConfiguracaoEmailController::class, 'update'])->name('email.update');
+        Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
+    });
 
     Route::post('/veiculos/solicitacoes', [VeiculoController::class, 'storeSolicitacao'])->name('veiculos.solicitacoes.store');
     Route::get('/veiculos/solicitacoes/{solicitacao}/edit', [VeiculoController::class, 'editSolicitacao'])->name('veiculos.solicitacoes.edit');
@@ -459,6 +467,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('efetivo/{colaborador}/movimentacoes', fn (\App\Models\Colaborador $colaborador) => redirect()->route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id], 301))
             ->whereNumber('colaborador')
             ->name('efetivo.movimentacoes.store');
+        Route::get('efetivo/{colaborador}/contrato-webcard/pdf', [ContratoWebcardController::class, 'pdf'])
+            ->whereNumber('colaborador')
+            ->name('efetivo.contrato-webcard.pdf');
         Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');

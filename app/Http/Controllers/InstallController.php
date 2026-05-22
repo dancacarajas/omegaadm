@@ -197,7 +197,7 @@ class InstallController extends Controller
 
     private function adminPermissoes(): array
     {
-        $modules = ['dashboard', 'rh', 'veiculos', 'sesmt', 'contratos', 'patrimonial', 'medicao', 'rdo', 'acessos'];
+        $modules = ['dashboard', 'rh', 'veiculos', 'sesmt', 'contratos', 'patrimonial', 'medicao', 'rdo', 'acessos', 'configuracoes'];
         $permissoes = [];
 
         foreach ($modules as $module) {

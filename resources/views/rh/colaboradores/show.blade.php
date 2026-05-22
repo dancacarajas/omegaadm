@@ -25,6 +25,12 @@
             Editar ficha
         </a>
     @endif
+    @if (auth()->user()?->podeSecaoRh('efetivo'))
+        <a href="{{ route('rh.efetivo.contrato-webcard.pdf', $colaborador) }}" target="_blank" rel="noopener" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy" title="Contrato de adesão WebCard no papel timbrado, com dados do colaborador">
+            <i data-lucide="file-text" class="h-4 w-4"></i>
+            Contrato WebCard
+        </a>
+    @endif
 @endsection
 
 @section('content')

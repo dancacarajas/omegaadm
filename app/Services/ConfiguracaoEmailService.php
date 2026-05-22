@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\SistemaConfiguracaoEmail;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+
+final class ConfiguracaoEmailService
+{
+    /** @return array<string, string> */
+    public static function mailersDisponiveis(): array
+    {
+        return [
+            'smtp' => 'SMTP',
+            'log' => 'Log (desenvolvimento)',
+            'array' => 'Array (teste em memória)',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public static function criptografiasDisponiveis(): array
+    {
+        return [
+            '' => 'Nenhuma',
+            'tls' => 'TLS',
+            'ssl' => 'SSL',
+        ];
+    }
+
+    public function aplicarConfiguracaoRuntime(?SistemaConfiguracaoEmail $registro = null): void
+    {
+        $registro ??= $this->registroSeExistir();
+
+        if ($registro === null) {
+            return;
+        }
+
+        $mailer = $registro->mail_mailer ?: 'smtp';
+        Config::set('mail.default', $mailer);
+
+        if ($mailer === 'smtp') {
+            $scheme = match ($registro->mail_encryption) {
+                'ssl' => 'smtps',
+                'tls' => 'smtp',
+                default => null,
+            };
+
+            Config::set('mail.mailers.smtp.host', $registro->mail_host ?? '127.0.0.1');
+            Config::set('mail.mailers.smtp.port', $registro->mail_port ?: 587);
+            Config::set('mail.mailers.smtp.username', $registro->mail_username);
+            Config::set('mail.mailers.smtp.password', $registro->mail_password);
+            Config::set('mail.mailers.smtp.scheme', $scheme);
+        }
+
+        Config::set('mail.from.address', $registro->mail_from_address ?? config('mail.from.address'));
+        Config::set('mail.from.name', $registro->mail_from_name ?? config('mail.from.name'));
+    }
+
+    public function registroSeExistir(): ?SistemaConfiguracaoEmail
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('sistema_configuracao_email')) {
+            return null;
+        }
+
+        return SistemaConfiguracaoEmail::query()->find(1);
+    }
+
+    /** @return array<string, mixed> */
+    public function dadosParaFormulario(): array
+    {
+        $registro = SistemaConfiguracaoEmail::registro()->loadMissing('updatedBy');
+
+        return [
+            'registro' => $registro,
+            'mail_mailer' => $registro->mail_mailer,
+            'mail_encryption' => $registro->mail_encryption ?? '',
+            'mail_host' => $registro->mail_host,
+            'mail_port' => $registro->mail_port,
+            'mail_username' => $registro->mail_username,
+            'mail_from_name' => $registro->mail_from_name,
+            'mail_from_address' => $registro->mail_from_address,
+            'senha_configurada' => $registro->senhaConfigurada(),
+            'ultima_atualizacao' => $registro->updated_at,
+            'atualizado_por' => $registro->updatedBy?->name,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $dados
+     */
+    public function salvar(array $dados, ?int $usuarioId = null): SistemaConfiguracaoEmail
+    {
+        $registro = SistemaConfiguracaoEmail::registro();
+
+        $payload = [
+            'mail_mailer' => $dados['mail_mailer'],
+            'mail_encryption' => filled($dados['mail_encryption'] ?? null) ? $dados['mail_encryption'] : null,
+            'mail_host' => $dados['mail_host'] ?? null,
+            'mail_port' => (int) ($dados['mail_port'] ?? 587),
+            'mail_username' => $dados['mail_username'] ?? null,
+            'mail_from_name' => $dados['mail_from_name'] ?? null,
+            'mail_from_address' => $dados['mail_from_address'] ?? null,
+            'updated_by_id' => $usuarioId,
+        ];
+
+        if (filled($dados['mail_password'] ?? null)) {
+            $payload['mail_password'] = $dados['mail_password'];
+        }
+
+        $registro->update($payload);
+        $registro = $registro->fresh();
+
+        $this->sincronizarEnv($registro);
+        $this->aplicarConfiguracaoRuntime($registro);
+
+        return $registro;
+    }
+
+    public function enviarTeste(string $destinatario): void
+    {
+        $this->aplicarConfiguracaoRuntime();
+
+        Mail::raw(
+            "Este é um e-mail de teste enviado pelo sistema ".config('app.name').".\n\n"
+            .'Data/hora: '.now()->format('d/m/Y H:i:s')."\n"
+            .'Se você recebeu esta mensagem, a configuração SMTP está funcionando.',
+            function ($message) use ($destinatario) {
+                $message->to($destinatario)
+                    ->subject('Teste de e-mail — '.config('app.name'));
+            }
+        );
+    }
+
+    private function sincronizarEnv(SistemaConfiguracaoEmail $registro): void
+    {
+        $envPath = base_path('.env');
+
+        if (! is_file($envPath)) {
+            return;
+        }
+
+        $scheme = match ($registro->mail_encryption) {
+            'ssl' => 'smtps',
+            'tls' => 'smtp',
+            default => null,
+        };
+
+        $vars = [
+            'MAIL_MAILER' => $registro->mail_mailer,
+            'MAIL_SCHEME' => $scheme ?? 'null',
+            'MAIL_HOST' => $registro->mail_host ?? '',
+            'MAIL_PORT' => (string) ($registro->mail_port ?: 587),
+            'MAIL_USERNAME' => $registro->mail_username ?? '',
+            'MAIL_FROM_ADDRESS' => $registro->mail_from_address ?? '',
+            'MAIL_FROM_NAME' => $registro->mail_from_name ?? config('app.name'),
+        ];
+
+        if ($registro->senhaConfigurada()) {
+            $vars['MAIL_PASSWORD'] = $registro->mail_password;
+        }
+
+        $content = file_get_contents($envPath);
+
+        foreach ($vars as $key => $value) {
+            $line = $key.'='.$this->quoteEnv($value);
+            if (preg_match('/^'.preg_quote($key, '/').'=/m', $content)) {
+                $content = preg_replace('/^'.preg_quote($key, '/').'=.*/m', $line, $content);
+            } else {
+                $content .= PHP_EOL.$line;
+            }
+        }
+
+        file_put_contents($envPath, $content);
+    }
+
+    private function quoteEnv(string $value): string
+    {
+        if ($value === '' || Str::contains($value, [' ', '#', '"', "'"])) {
+            return '"'.str_replace('"', '\"', $value).'"';
+        }
+
+        return $value;
+    }
+}

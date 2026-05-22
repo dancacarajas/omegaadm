@@ -26,6 +26,12 @@ class Perfil extends Model
         return $this->hasMany(User::class);
     }
 
+    /** Perfil mestre: acesso a todos os módulos/ações, inclusive os criados depois. */
+    public function acessoTotalAoSistema(): bool
+    {
+        return strcasecmp(trim((string) $this->nome), 'Administrador') === 0;
+    }
+
     /**
      * Se o JSON do perfil ainda não tem sesmt.secoes, considera todas as áreas liberadas (compatibilidade).
      */

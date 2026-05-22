@@ -50,8 +50,15 @@
                     $temAlgumaSecaoRh = fn () => auth()->user() && auth()->user()->temAlgumaSecaoRh();
                     $temSecaoRhFrequencia = fn () => collect(['frequencia_ponto', 'frequencia_apuracao', 'frequencia_feriados', 'frequencia_justificativas', 'horarios'])
                         ->contains(fn (string $s) => $podeSecaoRh($s));
+                    $temSecaoRhRelatorios = fn () => collect(['frequencia_ponto', 'beneficios', 'recrutamento'])
+                        ->contains(fn (string $s) => $podeSecaoRh($s));
                     $rhOpen = request()->routeIs('rh.*');
                     $frequenciaOpen = request()->routeIs('rh.frequencia.*') || request()->routeIs('rh.horarios.*');
+                    $relatoriosOpen = request()->routeIs('rh.frequencia.extrato-faltas')
+                        || request()->routeIs('rh.frequencia.cartao-ponto.*')
+                        || request()->routeIs('rh.beneficios.extrato.*')
+                        || request()->routeIs('rh.recrutamento.painel-preenchimento*')
+                        || request()->routeIs('rh.efetivo.contrato-webcard.*');
                     $indicadoresMensaisOpen = request()->routeIs('rh.indicadores-mensais.*');
                     $veiculosOpen = request()->routeIs('veiculos.*');
                     $veiculosFrotaOpen = request()->routeIs('veiculos.frota.*') || request()->routeIs('veiculos.manutencoes.*');
@@ -60,6 +67,7 @@
                     $patrimonialOpen = request()->routeIs('patrimonial.*');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
+                    $configuracoesOpen = request()->routeIs('configuracoes.*');
                     $ssmaOpen = request()->routeIs('sesmt.*');
                     $ssmaIndicadoresMensaisOpen = request()->routeIs('sesmt.indicadores-mensais.*');
                     $ssmaRegistrosTstOpen = request()->routeIs('sesmt.registros-tst.*');
@@ -149,6 +157,39 @@
                                         <a href="{{ route('rh.horarios.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.horarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                             <i data-lucide="calendar-range" class="h-4 w-4"></i>
                                             Cadastro de horários
+                                        </a>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endif
+                                @if ($temSecaoRhRelatorios())
+                                <div data-menu-group="relatorios">
+                                    <button type="button" data-menu-toggle="relatorios" class="group flex h-10 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $relatoriosOpen ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                        <i data-lucide="file-bar-chart" class="h-4 w-4"></i>
+                                        <span class="flex-1 text-left">Relatórios</span>
+                                        <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $relatoriosOpen ? 'rotate-180' : '' }}" data-menu-chevron="relatorios"></i>
+                                    </button>
+                                    <div data-menu-panel="relatorios" class="{{ $relatoriosOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                        @if ($podeSecaoRh('frequencia_ponto'))
+                                        <a href="{{ route('rh.frequencia.extrato-faltas') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.extrato-faltas') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="file-text" class="h-4 w-4"></i>
+                                            Extrato de ausências
+                                        </a>
+                                        <a href="{{ route('rh.frequencia.index') }}#relatorio-cartao-ponto" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.frequencia.cartao-ponto.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="id-card" class="h-4 w-4"></i>
+                                            Cartão de ponto (PDF)
+                                        </a>
+                                        @endif
+                                        @if ($podeSecaoRh('beneficios'))
+                                        <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.beneficios.extrato.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="receipt" class="h-4 w-4"></i>
+                                            Extrato de benefícios
+                                        </a>
+                                        @endif
+                                        @if ($podeSecaoRh('recrutamento'))
+                                        <a href="{{ route('rh.recrutamento.painel-preenchimento') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('rh.recrutamento.painel-preenchimento*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                            <i data-lucide="users-round" class="h-4 w-4"></i>
+                                            Painel de preenchimento
                                         </a>
                                         @endif
                                     </div>
@@ -366,6 +407,22 @@
                                     RDO
                                 </a>
                                 @endif
+                            </div>
+                        </div>
+                        @endif
+
+                        @if ($podeModulo('configuracoes'))
+                        <div data-menu-group="configuracoes">
+                            <button type="button" data-menu-toggle="configuracoes" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $configuracoesOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="settings" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Configurações</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $configuracoesOpen ? 'rotate-180' : '' }}" data-menu-chevron="configuracoes"></i>
+                            </button>
+                            <div data-menu-panel="configuracoes" class="{{ $configuracoesOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('configuracoes.email.edit') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('configuracoes.email.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="mail" class="h-4 w-4"></i>
+                                    E-mail
+                                </a>
                             </div>
                         </div>
                         @endif

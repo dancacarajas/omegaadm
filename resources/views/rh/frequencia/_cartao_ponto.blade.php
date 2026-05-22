@@ -7,7 +7,7 @@
         : '';
 @endphp
 
-<section class="mb-5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+<section id="relatorio-cartao-ponto" class="mb-5 scroll-mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
     <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
         <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Relatório</p>
         <h2 class="mt-1 text-xl font-bold text-brand-black">Cartão de ponto (PDF)</h2>
