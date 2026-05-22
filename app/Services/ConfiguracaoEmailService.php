@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Mail\LayoutHtmlMail;
 use App\Models\SistemaConfiguracaoEmail;
+use App\Support\EmailLayout;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -148,15 +150,14 @@ final class ConfiguracaoEmailService
     {
         $this->aplicarConfiguracaoRuntime();
 
-        Mail::raw(
-            "Este é um e-mail de teste enviado pelo sistema ".config('app.name').".\n\n"
-            .'Data/hora: '.now()->format('d/m/Y H:i:s')."\n"
-            .'Se você recebeu esta mensagem, a configuração SMTP está funcionando.',
-            function ($message) use ($destinatario) {
-                $message->to($destinatario)
-                    ->subject('Teste de e-mail — '.config('app.name'));
-            }
-        );
+        $html = EmailLayout::render('emails.teste-envio', [
+            'enviadoEm' => now()->format('d/m/Y H:i:s'),
+        ]);
+
+        Mail::to($destinatario)->send(new LayoutHtmlMail(
+            $html,
+            'Teste de e-mail — '.config('app.name')
+        ));
     }
 
     private function sincronizarEnv(SistemaConfiguracaoEmail $registro): void

@@ -16,30 +16,27 @@
                     <img src="{{ asset('logo.png') }}" alt="Omega Service" class="h-auto w-56 object-contain">
                 </div>
 
+                @if (session('success'))
+                    <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
                 <section class="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm">
                     <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Recuperação de acesso</p>
-                    <h1 class="mt-2 text-3xl font-black text-brand-black">Redefinir senha</h1>
-                    <p class="mt-2 text-sm leading-6 text-brand-gray">Informe o e-mail cadastrado e defina uma nova senha para acessar o sistema.</p>
+                    <h1 class="mt-2 text-3xl font-black text-brand-black">Esqueci minha senha</h1>
+                    <p class="mt-2 text-sm leading-6 text-brand-gray">Informe o e-mail cadastrado. Enviaremos um link para você criar uma nova senha.</p>
 
-                    <form method="POST" action="{{ route('password.update.simple') }}" class="mt-6 space-y-4">
+                    <form method="POST" action="{{ route('password.email') }}" class="mt-6 space-y-4">
                         @csrf
                         <label class="block">
                             <span class="text-xs font-bold uppercase text-brand-gray">E-mail cadastrado</span>
                             <input type="email" name="email" value="{{ old('email') }}" required autofocus class="mt-1 h-12 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
                             @error('email') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
                         </label>
-                        <label class="block">
-                            <span class="text-xs font-bold uppercase text-brand-gray">Nova senha</span>
-                            <input type="password" name="password" required class="mt-1 h-12 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                            @error('password') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
-                        </label>
-                        <label class="block">
-                            <span class="text-xs font-bold uppercase text-brand-gray">Confirmar nova senha</span>
-                            <input type="password" name="password_confirmation" required class="mt-1 h-12 w-full rounded-lg border border-zinc-200 px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                        </label>
                         <button class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-bold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                            <i data-lucide="key-round" class="h-4 w-4"></i>
-                            Redefinir senha
+                            <i data-lucide="mail" class="h-4 w-4"></i>
+                            Enviar link de recuperação
                         </button>
                     </form>
 

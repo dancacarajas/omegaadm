@@ -115,4 +115,14 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    | Nome exibido no rodapé dos e-mails transacionais (layout HTML).
+    */
+    'brand_name' => env('MAIL_BRAND_NAME', 'Omega Adm CT 286'),
+
+    /*
+    | E-mails automáticos de login (cadastro, recuperação e alteração de senha).
+    */
+    'auth_emails_enabled' => env('MAIL_AUTH_EMAILS_ENABLED', true),
+
 ];

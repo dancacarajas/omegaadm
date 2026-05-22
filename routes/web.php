@@ -2,6 +2,7 @@
 
 use App\Models\Beneficio;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AuthEmailPreviewController;
 use App\Http\Controllers\ConfiguracaoEmailController;
 use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
@@ -65,7 +66,9 @@ Route::middleware(['installed', 'guest'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
     Route::get('/esqueci-senha', [AuthController::class, 'showForgot'])->name('password.request');
-    Route::post('/esqueci-senha', [AuthController::class, 'resetPassword'])->name('password.update.simple');
+    Route::post('/esqueci-senha', [AuthController::class, 'sendResetLink'])->name('password.email');
+    Route::get('/redefinir-senha/{token}', [AuthController::class, 'showReset'])->name('password.reset');
+    Route::post('/redefinir-senha', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installed', 'auth'])->name('logout');
@@ -234,6 +237,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
 
     Route::prefix('configuracoes')->name('configuracoes.')->group(function () {
         Route::get('/email', [ConfiguracaoEmailController::class, 'edit'])->name('email.edit');
+        Route::get('/email/layout-preview', [ConfiguracaoEmailController::class, 'previewLayout'])->name('email.layout-preview');
+        Route::get('/email/preview/auth/{tipo}', [AuthEmailPreviewController::class, 'show'])->name('email.preview.auth');
         Route::put('/email', [ConfiguracaoEmailController::class, 'update'])->name('email.update');
         Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
     });

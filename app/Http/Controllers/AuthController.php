@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuthEmailService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -75,18 +80,71 @@ class AuthController extends Controller
         return view('auth.forgot-password');
     }
 
-    public function resetPassword(Request $request)
+    public function sendResetLink(Request $request, AuthEmailService $authEmail)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $request->input('email'))->first();
+
+        if ($user !== null) {
+            $token = Password::broker()->createToken($user);
+            if (! $authEmail->enviarRecuperacaoSenha($user, $token)) {
+                Log::warning('Link de recuperação de senha não enviado por falha de SMTP.', [
+                    'email' => $user->email,
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha em alguns minutos. Verifique também a caixa de spam.');
+    }
+
+    public function showReset(Request $request, string $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => $request->query('email', old('email')),
+        ]);
+    }
+
+    public function resetPassword(Request $request, AuthEmailService $authEmail)
     {
         $data = $request->validate([
+            'token' => ['required', 'string'],
             'email' => ['required', 'email', 'exists:users,email'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        $user = User::where('email', $data['email'])->firstOrFail();
-        $user->forceFill([
-            'password' => Hash::make($data['password']),
-            'status' => $user->status === 'bloqueado' ? 'ativo' : $user->status,
-        ])->save();
+        $status = Password::broker()->reset(
+            [
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'password_confirmation' => $data['password_confirmation'] ?? $data['password'],
+                'token' => $data['token'],
+            ],
+            function (User $user, string $password) use ($authEmail) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                    'status' => $user->status === 'bloqueado' ? 'ativo' : $user->status,
+                ])->save();
+
+                event(new PasswordReset($user));
+
+                if (! $authEmail->enviarSenhaRedefinida($user)) {
+                    Log::warning('Confirmação de senha redefinida não enviada por falha de SMTP.', [
+                        'email' => $user->email,
+                    ]);
+                }
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => 'Link inválido ou expirado. Solicite uma nova recuperação de senha.',
+            ]);
+        }
 
         return redirect()->route('login')->with('success', 'Senha redefinida com sucesso. Entre com a nova senha.');
     }

@@ -6,6 +6,7 @@ use App\Models\Colaborador;
 use App\Models\Contrato;
 use App\Models\Perfil;
 use App\Models\User;
+use App\Services\AuthEmailService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -47,16 +48,27 @@ class UsuarioController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, AuthEmailService $authEmail)
     {
         $data = $this->validatedData($request);
         $contratos = $data['contratos'] ?? [];
+        $senhaPlana = $data['password'];
         unset($data['contratos']);
 
         $usuario = User::create($data);
         $usuario->contratos()->sync($usuario->todos_contratos ? [] : $contratos);
 
-        return redirect()->route('usuarios.show', $usuario)->with('success', 'Usuário cadastrado com sucesso.');
+        $emailEnviado = $authEmail->enviarUsuarioCadastrado(
+            $usuario,
+            $senhaPlana,
+            $request->user()?->name
+        );
+
+        $flash = $emailEnviado
+            ? ['success' => 'Usuário cadastrado com sucesso. Um e-mail com os dados de acesso foi enviado.']
+            : ['warning' => 'Usuário cadastrado com sucesso, porém o e-mail de acesso não foi enviado. Configure o SMTP em Configurações → E-mail e informe a senha ao usuário manualmente.'];
+
+        return redirect()->route('usuarios.show', $usuario)->with($flash);
     }
 
     public function show(User $usuario)
@@ -76,20 +88,30 @@ class UsuarioController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $usuario)
+    public function update(Request $request, User $usuario, AuthEmailService $authEmail)
     {
         $data = $this->validatedData($request, $usuario);
         $contratos = $data['contratos'] ?? [];
         unset($data['contratos']);
 
-        if (blank($data['password'] ?? null)) {
+        $senhaAlterada = filled($data['password'] ?? null);
+        if (! $senhaAlterada) {
             unset($data['password']);
         }
 
         $usuario->update($data);
         $usuario->contratos()->sync($usuario->todos_contratos ? [] : $contratos);
 
-        return redirect()->route('usuarios.show', $usuario)->with('success', 'Usuário atualizado com sucesso.');
+        $flash = ['success' => 'Usuário atualizado com sucesso.'];
+
+        if ($senhaAlterada) {
+            $emailEnviado = $authEmail->enviarSenhaAlteradaAdmin($usuario, $request->user()?->name);
+            if (! $emailEnviado) {
+                $flash = ['warning' => 'Usuário atualizado e senha alterada, porém o e-mail de aviso não foi enviado. Configure o SMTP em Configurações → E-mail.'];
+            }
+        }
+
+        return redirect()->route('usuarios.show', $usuario)->with($flash);
     }
 
     public function destroy(User $usuario)

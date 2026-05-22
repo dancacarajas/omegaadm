@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\SistemaConfiguracaoEmail;
 use App\Services\ConfiguracaoEmailService;
+use App\Services\AuthEmailService;
+use App\Support\EmailLayout;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +19,7 @@ class ConfiguracaoEmailController extends Controller
         return view('configuracoes.email', array_merge($dados, [
             'mailers' => ConfiguracaoEmailService::mailersDisponiveis(),
             'criptografias' => ConfiguracaoEmailService::criptografiasDisponiveis(),
+            'authEmailPreviews' => AuthEmailService::tiposPreview(),
         ]));
     }
 
@@ -52,6 +55,13 @@ class ConfiguracaoEmailController extends Controller
         return redirect()
             ->route('configuracoes.email.edit')
             ->with('success', 'Configuração de e-mail salva com sucesso.');
+    }
+
+    public function previewLayout()
+    {
+        $html = EmailLayout::render('emails.exemplo-aprovacao', ['preview' => true]);
+
+        return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
     public function testar(Request $request, ConfiguracaoEmailService $service)
