@@ -1,5 +1,7 @@
 # Hostinger — Document Root correto para Laravel
 
+**Handoff completo (404 Benefícios + Movimentações + checklist):** [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md)
+
 ## Problema
 
 Site acessado como `https://dominio/public/rh/...` com document root na **raiz do projeto** → Laravel recebe path `public/rh/...` → **404** em POST/GET.

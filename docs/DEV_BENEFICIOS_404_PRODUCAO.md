@@ -1,5 +1,7 @@
 # Relatório técnico — 404 em Benefícios (produção)
 
+> **Causa raiz (ambiente Hostinger):** leia primeiro **[DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md)** — problema sistêmico `/public` + rotas dinâmicas; benefícios foi o primeiro módulo afetado.
+
 **Projeto:** omegaadm / omega286  
 **URL produção:** `https://omegaadm.feston.net.br/public/rh/beneficios/1`  
 **URL localhost (funciona):** `http://127.0.0.1:2080/rh/beneficios/1`  

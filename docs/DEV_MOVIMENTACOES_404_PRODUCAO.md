@@ -1,5 +1,7 @@
 # Relatório técnico — 404 em Movimentações / botão Alterar (produção)
 
+> **Causa raiz (ambiente Hostinger):** leia primeiro **[DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md)** — este arquivo é detalhe do módulo Movimentações, não substitui o checklist sistêmico.
+
 **Projeto:** omegaadm / omega286  
 **URL produção (falha):** `https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2`  
 **URL localhost (OK):** `http://127.0.0.1:2080/rh/efetivo/movimentacao/2`  
