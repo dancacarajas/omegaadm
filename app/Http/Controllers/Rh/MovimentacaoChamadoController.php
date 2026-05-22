@@ -11,6 +11,7 @@ use App\Models\Rh\RhMovimentacaoChecklistItem;
 use App\Models\Rh\RhMovimentacaoEtapa;
 use App\Models\Rh\RhMovimentacaoNadaConstaItem;
 use App\Services\Rh\MovimentacaoChamadoService;
+use App\Services\Rh\MovimentacaoDesligamentoAutoProgressaoService;
 use App\Services\Rh\MovimentacaoDesligamentoRules;
 use App\Services\Rh\MovimentacaoFinalizacaoService;
 use App\Services\Rh\MovimentacaoLogService;
@@ -224,6 +225,16 @@ class MovimentacaoChamadoController extends Controller
             'comentarios.usuario:id,name',
         ]);
 
+        if ($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
+            if ($chamado->nadaConsta !== null) {
+                app(MovimentacaoNadaConstaService::class)->sincronizarItensComCatalogo($chamado->nadaConsta);
+                $chamado->load('nadaConsta.itens');
+            }
+
+            app(MovimentacaoDesligamentoAutoProgressaoService::class)
+                ->sincronizar($chamado, auth()->id());
+        }
+
         $workflow->sincronizarStatusChamado($chamado);
         $chamado->refresh();
         $chamado->load([
@@ -399,6 +410,9 @@ class MovimentacaoChamadoController extends Controller
         $chamado->update(['dados_depois_json' => $depois]);
         $logService->registrar($chamado, 'sigo_atualizado', null, null, null, $request->user()?->id);
 
+        $chamado = $chamado->fresh(['etapas', 'anexos', 'nadaConsta.itens']);
+        app(MovimentacaoDesligamentoAutoProgressaoService::class)->sincronizar($chamado, $request->user()?->id);
+
         return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Dados do SIGO salvos.');
     }
 
@@ -434,6 +448,9 @@ class MovimentacaoChamadoController extends Controller
         ]);
 
         $logService->registrar($chamado, 'anexo_incluido', 'tipo_documento', null, $tipoPacote, $request->user()?->id);
+
+        $chamado = $chamado->fresh(['etapas', 'anexos', 'nadaConsta.itens']);
+        app(MovimentacaoDesligamentoAutoProgressaoService::class)->sincronizar($chamado, $request->user()?->id);
 
         return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Pacote de documentos enviado.');
     }
@@ -513,6 +530,9 @@ class MovimentacaoChamadoController extends Controller
         abort_if($nada === null, 422);
 
         $nadaService->validarRh($nada, auth()->id());
+
+        $chamado = $chamado->fresh(['etapas', 'anexos', 'nadaConsta.itens']);
+        app(MovimentacaoDesligamentoAutoProgressaoService::class)->sincronizar($chamado, auth()->id());
 
         return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Nada Consta validado pelo RH.');
     }

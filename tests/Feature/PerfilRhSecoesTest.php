@@ -51,6 +51,25 @@ class PerfilRhSecoesTest extends TestCase
 
         $this->assertTrue($user->podeSecaoRh('efetivo'));
         $this->assertFalse($user->podeSecaoRh('chamados_movimentacao'));
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.index'))
+            ->assertOk()
+            ->assertDontSee('Novo colaborador', false);
+
+        $colab = \App\Models\Colaborador::query()->create([
+            'nome' => 'Teste SSMA',
+            'status' => 'ativo',
+            'matricula' => '9999',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.edit', $colab))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.create'))
+            ->assertForbidden();
     }
 
     public function test_store_perfil_persiste_secoes_rh(): void

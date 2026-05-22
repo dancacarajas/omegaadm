@@ -7,6 +7,10 @@ use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\Rh\RhMovimentacaoNadaConstaItem;
 use App\Models\User;
 use App\Services\Rh\MovimentacaoChamadoService;
+use App\Services\Rh\MovimentacaoDesligamentoAutoProgressaoService;
+use App\Services\Rh\MovimentacaoDesligamentoChecklistAutoService;
+use App\Services\Rh\MovimentacaoDesligamentoRules;
+use App\Services\Rh\MovimentacaoNadaConstaService;
 use App\Services\Rh\MovimentacaoFinalizacaoService;
 use App\Support\Rh\MovimentacaoChamadoStatus;
 use App\Support\Rh\MovimentacaoChamadoTipo;
@@ -60,6 +64,143 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
             $chamado->fresh()->anexos()->where('tipo_documento', MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF)->exists()
         );
         $this->assertSame(MovimentacaoChamadoStatus::CONCLUIDO, $chamado->fresh()->status);
+    }
+
+    public function test_checklist_solicitacao_marca_automatico_com_dados_do_chamado(): void
+    {
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        app(MovimentacaoDesligamentoChecklistAutoService::class)->sincronizar($chamado->fresh(['etapas.checklistItens', 'colaborador']), $user->id);
+
+        $etapa = $chamado->fresh('etapas.checklistItens')->etapas->firstWhere('slug', 'solicitacao');
+        $porSlug = $etapa->checklistItens->pluck('status', 'slug');
+
+        $this->assertSame('concluido', $porSlug['dados-do-colaborador-contrato-e-funcao-conferidos']);
+        $this->assertSame('concluido', $porSlug['data-prevista-e-ultimo-dia-trabalhado-informados']);
+        $this->assertSame('concluido', $porSlug['tipo-de-rescisao-e-motivo-registrados']);
+        $this->assertSame('concluido', $porSlug['gestor-e-substituicao-de-vaga-informados']);
+    }
+
+    public function test_checklist_cadastro_sigo_marca_automatico_com_sigo_e_pacote(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $depois = $chamado->dados_depois_json ?? [];
+        $depois['sigo'] = [
+            'cadastrado' => true,
+            'data_cadastro' => '2026-05-11',
+            'responsavel_cadastro' => 'RH Teste',
+        ];
+        $chamado->update(['dados_depois_json' => $depois]);
+
+        $path = 'rh/chamados-movimentacao/'.$chamado->id.'/pacote.pdf';
+        Storage::disk('public')->put($path, '%PDF-1.4');
+        $chamado->anexos()->create([
+            'nome_arquivo' => 'pacote.pdf',
+            'caminho' => $path,
+            'tipo_documento' => MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS,
+            'obrigatorio' => true,
+        ]);
+
+        app(MovimentacaoDesligamentoChecklistAutoService::class)
+            ->sincronizar($chamado->fresh(['etapas.checklistItens', 'anexos']), $user->id);
+
+        $etapa = $chamado->fresh('etapas.checklistItens')->etapas->firstWhere('slug', 'cadastro_sigo');
+        $porSlug = $etapa->checklistItens->pluck('status', 'slug');
+
+        $this->assertSame('concluido', $porSlug['desligamento-cadastrado-no-sigo']);
+        $this->assertSame('concluido', $porSlug['folha-de-ponto-anexada']);
+        $this->assertSame('concluido', $porSlug['documento-do-desligamento-anexado']);
+        $this->assertSame('concluido', $porSlug['anexos-obrigatorios-por-tipo-de-rescisao-conferidos']);
+    }
+
+    public function test_auto_progressao_conclui_solicitacao_e_cadastro_sigo_com_pacote(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $depois = $chamado->dados_depois_json ?? [];
+        $depois['sigo'] = [
+            'cadastrado' => true,
+            'data_cadastro' => '2026-05-11',
+            'responsavel_cadastro' => 'RH Teste',
+        ];
+        $chamado->update(['dados_depois_json' => $depois]);
+
+        $path = 'rh/chamados-movimentacao/'.$chamado->id.'/pacote.pdf';
+        Storage::disk('public')->put($path, '%PDF-1.4');
+        $chamado->anexos()->create([
+            'nome_arquivo' => 'pacote.pdf',
+            'caminho' => $path,
+            'tipo_documento' => MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS,
+            'obrigatorio' => true,
+        ]);
+
+        app(MovimentacaoDesligamentoAutoProgressaoService::class)
+            ->sincronizar($chamado->fresh(['etapas', 'anexos', 'nadaConsta.itens']), $user->id);
+
+        $slugs = $chamado->fresh('etapas')->etapas->filter(fn ($e) => $e->isConcluida())->pluck('slug')->all();
+
+        $this->assertContains('solicitacao', $slugs);
+        $this->assertContains('cadastro_sigo', $slugs);
+        $this->assertNotContains('nada_consta', $slugs);
+    }
+
+    public function test_sincronizar_remove_itens_fora_do_catalogo(): void
+    {
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+        $nada = $chamado->nadaConsta;
+
+        RhMovimentacaoNadaConstaItem::query()->create([
+            'nada_consta_id' => $nada->id,
+            'area' => 'rh',
+            'item' => 'cracha_funcional',
+            'status_tratativa' => MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA,
+        ]);
+        RhMovimentacaoNadaConstaItem::query()->create([
+            'nada_consta_id' => $nada->id,
+            'area' => 'financeiro',
+            'item' => 'despesas_prestacao',
+            'status_tratativa' => MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA,
+        ]);
+
+        app(MovimentacaoNadaConstaService::class)->sincronizarItensComCatalogo($nada->fresh('itens'));
+
+        $slugs = $nada->fresh('itens')->itens->pluck('item')->all();
+        $areas = $nada->fresh('itens')->itens->pluck('area')->unique()->all();
+
+        $this->assertNotContains('cracha_funcional', $slugs);
+        $this->assertNotContains('emprestimo_consignado', $slugs);
+        $this->assertNotContains('webcard_adiantamentos', $slugs);
+        $this->assertNotContains('adiantamentos', $slugs);
+        $this->assertNotContains('despesas_prestacao', $slugs);
+        $this->assertNotContains('financeiro', $areas);
+    }
+
+    public function test_pacote_documentos_dispensa_conferencia_item_a_item_do_nada_consta(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $path = 'rh/chamados-movimentacao/'.$chamado->id.'/pacote.pdf';
+        Storage::disk('public')->put($path, '%PDF-1.4');
+        $chamado->anexos()->create([
+            'nome_arquivo' => 'pacote.pdf',
+            'caminho' => $path,
+            'tipo_documento' => MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS,
+            'obrigatorio' => true,
+        ]);
+
+        $pendencias = app(MovimentacaoDesligamentoRules::class)->pendenciasNadaConsta($chamado->fresh(['anexos', 'nadaConsta.itens']));
+
+        $this->assertCount(1, $pendencias);
+        $this->assertStringContainsString('Valide o Nada Consta', $pendencias[0]);
     }
 
     public function test_anexo_item_nada_consta(): void

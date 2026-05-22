@@ -57,6 +57,9 @@ final class MovimentacaoChamadoService
             if ($tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
                 $this->nadaConstaService->inicializar($chamado);
                 $this->substituicaoVagaService->criarSeSolicitado($chamado->fresh(), $colaborador);
+                $chamado = $chamado->fresh(['etapas.checklistItens', 'colaborador', 'anexos', 'nadaConsta.itens']);
+                app(MovimentacaoDesligamentoChecklistAutoService::class)->sincronizar($chamado, $solicitanteId);
+                app(MovimentacaoDesligamentoAutoProgressaoService::class)->sincronizar($chamado, $solicitanteId);
             }
 
             $this->logService->registrar($chamado, 'chamado_aberto', null, null, ['tipo' => $tipo], $solicitanteId);

@@ -31,7 +31,7 @@ Módulo: `/rh/chamados-movimentacao` (tipo **Desligamento**).
 | `chamados_movimentacao_validar_rh` | Validar Nada Consta (RH) |
 | `chamados_movimentacao_area_{area}` | Editar itens da área no Nada Consta |
 
-Áreas: `almoxarifado_obra`, `almoxarifado_central`, `patrimonio`, `transportes`, `financeiro`, `rh`.
+Áreas: `almoxarifado_obra`, `almoxarifado_central`, `patrimonio`, `transportes`.
 
 Usuário **sem perfil** mantém acesso total (compatibilidade).
 
@@ -44,6 +44,10 @@ Usuário **sem perfil** mantém acesso total (compatibilidade).
 
 - `rh_movimentacao_nada_consta`
 - `rh_movimentacao_nada_consta_itens` (anexos por item: evidência, termo de baixa, autorização de desconto)
+
+## Checklist automático
+
+Itens de checklist são marcados como **OK** automaticamente quando o chamado já contém os dados (ex.: datas na abertura, SIGO salvo, pacote de documentos enviado, Nada Consta validado). A sincronização roda ao abrir o chamado, salvar SIGO/anexos/Nada Consta e na progressão automática de etapas.
 
 ## Testes
 

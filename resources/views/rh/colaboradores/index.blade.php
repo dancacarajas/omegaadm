@@ -5,22 +5,35 @@
 @section('page-title', 'Efetivo')
 
 @section('actions')
-    <a href="{{ route('rh.chamados-movimentacao.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
-        <i data-lucide="clipboard-list" class="h-4 w-4 text-brand-burgundy"></i>
-        Movimentações
-    </a>
-    <a href="{{ route('rh.efetivo.exportar-excel', request()->only(['busca', 'cargo', 'ordenacao'])) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
-        <i data-lucide="download" class="h-4 w-4"></i>
-        Exportar
-    </a>
-    <a href="{{ route('rh.efetivo.create') }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-        <i data-lucide="user-plus" class="h-4 w-4"></i>
-        Novo colaborador
-    </a>
+    @php
+        $podeRhCriar = auth()->user()?->podeAcaoNoModulo('rh', 'criar') ?? true;
+        $podeRhVisualizar = auth()->user()?->podeAcaoNoModulo('rh', 'visualizar') ?? true;
+    @endphp
+    @if (auth()->user()?->podeSecaoRh('chamados_movimentacao'))
+        <a href="{{ route('rh.chamados-movimentacao.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
+            <i data-lucide="clipboard-list" class="h-4 w-4 text-brand-burgundy"></i>
+            Movimentações
+        </a>
+    @endif
+    @if ($podeRhVisualizar)
+        <a href="{{ route('rh.efetivo.exportar-excel', request()->only(['busca', 'cargo', 'ordenacao'])) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
+            <i data-lucide="download" class="h-4 w-4"></i>
+            Exportar
+        </a>
+    @endif
+    @if ($podeRhCriar)
+        <a href="{{ route('rh.efetivo.create') }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+            <i data-lucide="user-plus" class="h-4 w-4"></i>
+            Novo colaborador
+        </a>
+    @endif
 @endsection
 
 @section('content')
     @php
+        $podeRhCriar = auth()->user()?->podeAcaoNoModulo('rh', 'criar') ?? true;
+        $podeRhEditar = auth()->user()?->podeAcaoNoModulo('rh', 'editar') ?? true;
+        $podeRhExcluir = auth()->user()?->podeAcaoNoModulo('rh', 'excluir') ?? true;
         $mobilizacaoLabel = [
             'pendente' => 'Pendente',
             'postado_sgc' => 'Postado no SGC',
@@ -145,6 +158,7 @@
         </article>
     </section>
 
+    @if ($podeRhCriar)
     {{-- Importação --}}
     <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
         <div class="border-b border-zinc-100 bg-gradient-to-r from-zinc-50/80 to-white px-6 py-4">
@@ -173,6 +187,7 @@
             </button>
         </form>
     </section>
+    @endif
 
     {{-- Listagem --}}
     <section class="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
@@ -257,6 +272,7 @@
             </form>
         </div>
 
+        @if ($podeRhExcluir)
         <form method="POST" action="{{ route('rh.efetivo.excluir-massa') }}" id="form-exclusao-massa" class="hidden border-b border-red-100 bg-gradient-to-r from-red-50/90 to-white px-6 py-3" data-barra-exclusao onsubmit="return confirm('Remover permanentemente os colaboradores selecionados do efetivo? Esta ação não pode ser desfeita.');">
             @csrf
             @foreach (request()->only(['busca', 'ordenacao', 'cargo']) as $key => $val)
@@ -274,14 +290,17 @@
                 </button>
             </div>
         </form>
+        @endif
 
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1120px] text-left text-sm">
                 <thead class="border-b border-zinc-200 bg-zinc-50/80 text-[11px] font-bold uppercase tracking-wider text-brand-gray">
                     <tr>
+                        @if ($podeRhExcluir)
                         <th class="w-12 px-4 py-4">
                             <input type="checkbox" id="efetivo-selecionar-todos" class="rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20" title="Selecionar todos desta página" aria-label="Selecionar todos">
                         </th>
+                        @endif
                         <th class="px-5 py-4">Colaborador</th>
                         <th class="px-5 py-4">Matrícula</th>
                         <th class="px-5 py-4">Cargo</th>
@@ -300,9 +319,11 @@
                             $dotClass = $statusDot[$st] ?? $statusDot['ativo'];
                         @endphp
                         <tr class="transition hover:bg-zinc-50/80" data-linha-efetivo>
+                            @if ($podeRhExcluir)
                             <td class="px-4 py-4 text-center">
                                 <input type="checkbox" form="form-exclusao-massa" name="colaborador_ids[]" value="{{ $colaborador->id }}" class="cb-efetivo rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy/20" aria-label="Selecionar {{ $colaborador->nome }}">
                             </td>
+                            @endif
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
                                     @if (filled($colaborador->foto_path))
@@ -353,21 +374,24 @@
                                         <i data-lucide="eye" class="h-3.5 w-3.5"></i>
                                         Ver
                                     </a>
+                                    @if ($podeRhEditar)
                                     <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-burgundy px-3 text-xs font-bold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
                                         <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                         Editar
                                     </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-5 py-16 text-center">
+                            <td colspan="{{ $podeRhExcluir ? 9 : 8 }}" class="px-5 py-16 text-center">
                                 <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-burgundy-soft text-brand-burgundy">
                                     <i data-lucide="user-plus" class="h-8 w-8"></i>
                                 </div>
                                 <p class="mt-5 text-lg font-bold text-brand-black">Nenhum colaborador cadastrado</p>
                                 <p class="mt-1 text-sm text-brand-gray">Cadastre manualmente ou importe uma planilha.</p>
+                                @if ($podeRhCriar)
                                 <div class="mt-6 flex flex-wrap justify-center gap-3">
                                     <a href="{{ route('rh.efetivo.create') }}" class="inline-flex items-center gap-2 rounded-2xl bg-brand-burgundy px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 hover:bg-brand-burgundy-dark">
                                         <i data-lucide="user-plus" class="h-4 w-4"></i>
@@ -378,6 +402,7 @@
                                         Baixar modelo
                                     </a>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

@@ -5,22 +5,33 @@
 @section('page-title', 'Ficha do colaborador')
 
 @section('actions')
+    @php
+        $podeRhEditar = auth()->user()?->podeAcaoNoModulo('rh', 'editar') ?? true;
+        $podeChamados = auth()->user()?->podeSecaoRh('chamados_movimentacao') ?? false;
+    @endphp
     <a href="{{ route('rh.efetivo.index') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
         <i data-lucide="arrow-left" class="h-4 w-4"></i>
         Voltar
     </a>
-    <a href="{{ route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id]) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/40">
-        <i data-lucide="clipboard-list" class="h-4 w-4"></i>
-        Novo chamado
-    </a>
-    <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-        <i data-lucide="pencil" class="h-4 w-4"></i>
-        Editar ficha
-    </a>
+    @if ($podeChamados)
+        <a href="{{ route('rh.chamados-movimentacao.create', ['colaborador' => $colaborador->id]) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy/40">
+            <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+            Novo chamado
+        </a>
+    @endif
+    @if ($podeRhEditar)
+        <a href="{{ route('rh.efetivo.edit', $colaborador) }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+            <i data-lucide="pencil" class="h-4 w-4"></i>
+            Editar ficha
+        </a>
+    @endif
 @endsection
 
 @section('content')
     @php
+        $podeRhEditar = auth()->user()?->podeAcaoNoModulo('rh', 'editar') ?? true;
+        $podeRhExcluir = auth()->user()?->podeAcaoNoModulo('rh', 'excluir') ?? true;
+        $podeChamados = auth()->user()?->podeSecaoRh('chamados_movimentacao') ?? false;
         $item = fn ($label, $value, bool $wide = false) => [
             'label' => $label,
             'value' => filled($value) ? $value : '—',
@@ -77,6 +88,7 @@
             <div class="pointer-events-none absolute right-1/4 top-1/2 h-24 w-24 rounded-full bg-brand-burgundy-soft/[0.12] blur-xl"></div>
 
             <div class="relative flex flex-col gap-7 lg:flex-row lg:items-start">
+                @if ($podeRhEditar)
                 <form
                     id="ficha-foto-form"
                     method="POST"
@@ -123,6 +135,17 @@
                         <i data-lucide="camera" class="h-4 w-4"></i>
                     </span>
                 </form>
+                @else
+                <div class="relative shrink-0">
+                    @if (filled($colaborador->foto_path))
+                        <img src="{{ $colaborador->urlFotoPerfil() }}" alt="" class="h-32 w-32 rounded-full object-cover shadow-2xl shadow-black/30 ring-4 ring-white/90 sm:h-36 sm:w-36">
+                    @else
+                        <div class="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-white/25 to-white/5 text-4xl font-bold text-white shadow-2xl ring-4 ring-white/90 sm:h-36 sm:w-36 sm:text-5xl">
+                            {{ $iniciais ?: mb_strtoupper(mb_substr($colaborador->nome, 0, 1)) }}
+                        </div>
+                    @endif
+                </div>
+                @endif
 
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
@@ -310,6 +333,7 @@
                 ],
             ])
 
+            @if ($podeChamados)
             <section id="movimentacoes" class="ficha-secao scroll-mt-28 overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-md shadow-zinc-200/40 ring-1 ring-zinc-100">
                 <div class="flex flex-col gap-4 border-b border-zinc-100 bg-gradient-to-r from-brand-burgundy/[0.04] via-zinc-50/90 to-white px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
                     <div class="flex items-center gap-4">
@@ -389,6 +413,7 @@
                     @endforelse
                 </div>
             </section>
+            @endif
 
             @include('rh.colaboradores._ficha_secao', [
                 'id' => 'sgc',
@@ -405,6 +430,7 @@
                 ],
             ])
 
+            @if ($podeRhExcluir)
             <section class="overflow-hidden rounded-3xl border border-red-200/60 bg-gradient-to-br from-red-50/80 via-white to-white p-6 shadow-sm ring-1 ring-red-100/80">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-start gap-3">
@@ -426,6 +452,7 @@
                     </form>
                 </div>
             </section>
+            @endif
         </div>
     </div>
 

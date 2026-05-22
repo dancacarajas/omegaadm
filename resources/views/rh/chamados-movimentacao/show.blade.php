@@ -179,17 +179,22 @@
                         @if ($etapa->checklistItens->isNotEmpty())
                             <ul class="mt-4 space-y-2">
                                 @foreach ($etapa->checklistItens as $item)
-                                    <li class="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-                                        @if (($podeEditar ?? true) && $chamado->isAberto())
+                                    <li class="flex flex-wrap items-center gap-2 text-xs {{ $item->status === 'concluido' ? 'text-emerald-800' : 'text-zinc-600' }}">
+                                        @if ($item->status === 'concluido')
+                                            <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
+                                                <i data-lucide="check-square" class="h-3.5 w-3.5"></i>
+                                                OK
+                                            </span>
+                                        @elseif (($podeEditar ?? true) && $chamado->isAberto())
                                             <form method="POST" action="{{ route('rh.chamados-movimentacao.checklist.toggle', $item) }}" class="inline">
                                                 @csrf
                                                 <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-1 font-semibold hover:bg-zinc-50">
-                                                    <i data-lucide="{{ $item->status === 'concluido' ? 'check-square' : 'square' }}" class="h-3.5 w-3.5"></i>
-                                                    {{ $item->status === 'concluido' ? 'Desmarcar' : 'Concluir' }}
+                                                    <i data-lucide="square" class="h-3.5 w-3.5"></i>
+                                                    Concluir
                                                 </button>
                                             </form>
                                         @else
-                                            <i data-lucide="{{ $item->status === 'concluido' ? 'check-square' : 'square' }}" class="h-3.5 w-3.5 text-zinc-400"></i>
+                                            <i data-lucide="square" class="h-3.5 w-3.5 text-zinc-400"></i>
                                         @endif
                                         <span>{{ $item->nome }}</span>
                                     </li>
@@ -249,7 +254,7 @@
 @push('scripts')
 <script>
     (function () {
-        document.querySelectorAll('[data-accordion-pendencias], [data-accordion-grupo]').forEach(function (el) {
+        document.querySelectorAll('[data-accordion-pendencias], [data-accordion-grupo], [data-accordion-nada-consta]').forEach(function (el) {
             var chevron = el.querySelector('summary [data-lucide="chevron-down"]');
             if (!chevron) return;
             var sync = function () {

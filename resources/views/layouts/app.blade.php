@@ -46,6 +46,7 @@
                     $podeSecaoSesmt = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoSesmt($secao);
                     $temAlgumaSecaoSesmt = fn () => auth()->user() && auth()->user()->temAlgumaSecaoSesmt();
                     $podeSecaoRh = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoRh($secao);
+                    $podeRhAcao = fn (string $acao) => auth()->user() && auth()->user()->podeAcaoNoModulo('rh', $acao);
                     $temAlgumaSecaoRh = fn () => auth()->user() && auth()->user()->temAlgumaSecaoRh();
                     $temSecaoRhFrequencia = fn () => collect(['frequencia_ponto', 'frequencia_apuracao', 'frequencia_feriados', 'frequencia_justificativas', 'horarios'])
                         ->contains(fn (string $s) => $podeSecaoRh($s));

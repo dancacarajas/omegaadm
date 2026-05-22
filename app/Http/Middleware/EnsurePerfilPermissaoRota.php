@@ -44,11 +44,13 @@ class EnsurePerfilPermissaoRota
             }
         }
 
-        if ($modulo === 'rh') {
+        if ($modulo === 'rh' && ! $user->podeExecutarRotaRh($routeName)) {
             $secao = User::rhSecaoFromRouteName($routeName);
             if ($secao !== null && ! $user->podeSecaoRh($secao)) {
                 abort(403, 'Seu perfil não tem acesso a esta área do RH.');
             }
+
+            abort(403, 'Seu perfil não tem permissão para esta ação no RH.');
         }
 
         return $next($request);

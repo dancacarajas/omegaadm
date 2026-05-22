@@ -109,7 +109,8 @@ final class MovimentacaoDesligamentoRules
         $sigo = $chamado->dados_depois_json['sigo'] ?? [];
         $pendencias = [];
 
-        if (empty($sigo['cadastrado'])) {
+        $cadastrado = $sigo['cadastrado'] ?? false;
+        if (! filter_var($cadastrado, FILTER_VALIDATE_BOOLEAN)) {
             $pendencias[] = 'Cadastre o desligamento no SIGO (marque como cadastrado).';
         }
         if (blank($sigo['data_cadastro'] ?? null)) {
@@ -164,6 +165,16 @@ final class MovimentacaoDesligamentoRules
         );
         if (! $temNadaConstaAnexo) {
             $pendencias[] = 'Anexe o pacote único de documentos (inclui o Nada Consta assinado) ou o Nada Consta separadamente.';
+
+            return $pendencias;
+        }
+
+        if (MovimentacaoDesligamentoCatalog::chamadoTemPacoteDocumentos($chamado)) {
+            if (! $nada->validado_rh) {
+                $pendencias[] = 'Valide o Nada Consta pelo RH (botão na seção Nada Consta).';
+            }
+
+            return $pendencias;
         }
 
         foreach ($nada->itens as $item) {
@@ -182,7 +193,7 @@ final class MovimentacaoDesligamentoRules
             }
 
             if ($item->tem_debito) {
-                $pendencias = array_merge($pendencias, $this->pendenciasAnexosItem($item));
+                $pendencias = array_merge($pendencias, $this->pendenciasAnexosItem($item, $chamado));
             }
         }
 
@@ -221,6 +232,13 @@ final class MovimentacaoDesligamentoRules
         return $this->pendenciasSigo($chamado) === [];
     }
 
+    public function anexosObrigatoriosCompletos(RhMovimentacaoChamado $chamado): bool
+    {
+        $chamado->loadMissing('anexos');
+
+        return $this->pendenciasAnexos($chamado) === [];
+    }
+
     public function nadaConstaCompleto(RhMovimentacaoChamado $chamado): bool
     {
         return $this->pendenciasNadaConsta($chamado) === [];
@@ -229,8 +247,12 @@ final class MovimentacaoDesligamentoRules
     /**
      * @return list<string>
      */
-    private function pendenciasAnexosItem(RhMovimentacaoNadaConstaItem $item): array
+    private function pendenciasAnexosItem(RhMovimentacaoNadaConstaItem $item, RhMovimentacaoChamado $chamado): array
     {
+        if (MovimentacaoDesligamentoCatalog::chamadoTemPacoteDocumentos($chamado)) {
+            return [];
+        }
+
         $pendencias = [];
         $area = MovimentacaoDesligamentoCatalog::labelArea($item->area);
 

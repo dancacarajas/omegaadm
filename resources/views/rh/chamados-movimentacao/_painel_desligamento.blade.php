@@ -8,6 +8,10 @@
     $pacoteEnviado = $chamado->anexos->firstWhere('tipo_documento', $tipoPacote);
     $itensPacote = $conteudoPacoteDocumentos ?? \App\Support\Rh\MovimentacaoDesligamentoCatalog::conteudoEsperadoPacoteDocumentos($dados['tipo_rescisao'] ?? null);
     $areasEdit = $areasNadaConstaEditaveis ?? array_keys($labelsAreasNadaConsta ?? []);
+    $nadaItensPendentes = $nada
+        ? $nada->itens->filter(fn ($i) => $i->tem_debito === null || $i->pendenciaAberta())->count()
+        : 0;
+    $abrirNadaConsta = $nada && ($editavel && (! $nada->validado_rh || $nadaItensPendentes > 0));
 @endphp
 
 <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
@@ -106,14 +110,45 @@
                     </button>
                 </form>
             @endif
+            @if ($pacoteEnviado && ($sigo['cadastrado'] ?? false))
+                <p class="mt-3 rounded-xl border border-sky-200/80 bg-sky-50/80 px-3 py-2.5 text-[11px] leading-relaxed text-sky-950">
+                    <i data-lucide="info" class="mr-1 inline h-3.5 w-3.5"></i>
+                    SIGO e pacote salvos: as etapas <strong>Solicitação</strong> e <strong>Cadastro no SIGO</strong> são concluídas automaticamente ao recarregar.
+                    Com o pacote único, não é preciso conferir item a item no Nada Consta — use o botão <strong>Validar Nada Consta (RH)</strong> abaixo para liberar a etapa seguinte.
+                </p>
+            @endif
         </div>
 
         @if ($nada)
-            <div id="secao-nada-consta" class="scroll-mt-6">
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h4 class="text-sm font-bold text-zinc-800">Nada Consta Demissional</h4>
-                    <span class="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-bold uppercase">{{ $nada->statusLabel() }}</span>
-                </div>
+            <details
+                id="secao-nada-consta"
+                data-accordion-nada-consta
+                class="scroll-mt-6 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm ring-1 ring-zinc-100"
+                @if ($abrirNadaConsta) open @endif
+            >
+                <summary class="flex cursor-pointer list-none items-center gap-3 bg-gradient-to-r from-brand-burgundy/[0.05] via-zinc-50/90 to-white px-4 py-3.5 transition hover:from-brand-burgundy/[0.08] [&::-webkit-details-marker]:hidden">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm">
+                        <i data-lucide="clipboard-check" class="h-4 w-4"></i>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-zinc-900">Nada Consta Demissional</span>
+                        <span class="block text-[11px] text-zinc-500">Clique para expandir · conferência por área e validação RH</span>
+                    </span>
+                    <span class="hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase sm:inline {{ $nada->validado_rh ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700' }}">{{ $nada->statusLabel() }}</span>
+                    @if ($nadaItensPendentes > 0 && ! $nada->validado_rh)
+                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold tabular-nums text-amber-900">{{ $nadaItensPendentes }}</span>
+                    @elseif ($nada->validado_rh)
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <i data-lucide="check" class="h-4 w-4"></i>
+                        </span>
+                    @endif
+                    <i data-lucide="chevron-down" class="h-5 w-5 shrink-0 text-brand-burgundy transition-transform duration-200"></i>
+                </summary>
+
+                <div class="space-y-6 border-t border-zinc-100/80 px-4 py-4 sm:px-5 sm:py-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 sm:hidden">
+                        <span class="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-bold uppercase">{{ $nada->statusLabel() }}</span>
+                    </div>
                 @if ($editavel)
                     <form method="POST" action="{{ route('rh.chamados-movimentacao.nada-consta', $chamado) }}" class="space-y-6">
                         @csrf
@@ -177,25 +212,22 @@
                                                         <input type="text" name="itens[{{ $item->id }}][responsavel_nome]" value="{{ $item->responsavel_nome ?? $usuarioLogado }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs">
                                                     </label>
                                                 </div>
-                                                <div class="mt-3 flex flex-wrap gap-2 border-t border-zinc-100 pt-3">
-                                                    @foreach (['evidencia' => 'Evidência', 'termo_baixa' => 'Termo de baixa', 'autorizacao_desconto' => 'Autorização desconto'] as $tipoAnexo => $labelAnexo)
-                                                        <form method="POST" action="{{ route('rh.chamados-movimentacao.nada-consta-item.anexo', $item) }}" enctype="multipart/form-data" class="inline-flex flex-wrap items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1">
-                                                            @csrf
-                                                            <input type="hidden" name="tipo" value="{{ $tipoAnexo }}">
-                                                            <span class="text-[10px] font-bold text-zinc-600">{{ $labelAnexo }}</span>
-                                                            <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png,.webp" class="max-w-[140px] text-[10px]" required>
-                                                            <button type="submit" class="text-[10px] font-bold text-brand-burgundy">OK</button>
-                                                        </form>
-                                                    @endforeach
-                                                </div>
+                                                @if ($pacoteEnviado)
+                                                    <p class="mt-2 flex items-start gap-1.5 text-[10px] leading-snug text-zinc-500">
+                                                        <i data-lucide="info" class="mt-0.5 h-3 w-3 shrink-0 text-zinc-400"></i>
+                                                        Evidências por item não são necessárias — use o pacote único de documentos enviado acima.
+                                                    </p>
+                                                @endif
                                             @else
                                                 <p class="text-[10px] text-zinc-600">Débito: {{ $item->tem_debito === null ? '—' : ($item->tem_debito ? 'Sim' : 'Não') }} · {{ $item->statusTratativaLabel() }}</p>
                                             @endif
-                                            <div class="mt-2 flex flex-wrap gap-2 text-[10px]">
-                                                @if ($item->anexoEvidencia)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoEvidencia) }}" class="text-brand-burgundy font-bold">Evidência</a>@endif
-                                                @if ($item->anexoTermoBaixa)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoTermoBaixa) }}" class="text-brand-burgundy font-bold">Termo baixa</a>@endif
-                                                @if ($item->anexoAutorizacaoDesconto)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoAutorizacaoDesconto) }}" class="text-brand-burgundy font-bold">Aut. desconto</a>@endif
-                                            </div>
+                                            @if (! $pacoteEnviado && ($item->anexoEvidencia || $item->anexoTermoBaixa || $item->anexoAutorizacaoDesconto))
+                                                <div class="mt-2 flex flex-wrap gap-2 text-[10px]">
+                                                    @if ($item->anexoEvidencia)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoEvidencia) }}" class="font-bold text-brand-burgundy">Evidência</a>@endif
+                                                    @if ($item->anexoTermoBaixa)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoTermoBaixa) }}" class="font-bold text-brand-burgundy">Termo baixa</a>@endif
+                                                    @if ($item->anexoAutorizacaoDesconto)<a href="{{ route('rh.chamados-movimentacao.anexos.download', $item->anexoAutorizacaoDesconto) }}" class="font-bold text-brand-burgundy">Aut. desconto</a>@endif
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
@@ -217,7 +249,8 @@
                 @else
                     <p class="text-sm text-zinc-600">Status: {{ $nada->statusLabel() }} · Validado RH: {{ $nada->validado_rh ? 'Sim' : 'Não' }}</p>
                 @endif
-            </div>
+                </div>
+            </details>
         @endif
     </div>
 </section>

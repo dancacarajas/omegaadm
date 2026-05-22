@@ -47,7 +47,7 @@
     <div class="border-t border-amber-100/80 px-3 py-3 sm:px-4">
         <p class="mb-3 px-1 text-[10px] text-zinc-500">
             <i data-lucide="lightbulb" class="mr-1 inline h-3 w-3 text-amber-600"></i>
-            Ordem sugerida: SIGO → Nada Consta → etapas
+            Salvar SIGO ou enviar o pacote não zera tudo de uma vez: etapas prontas são concluídas automaticamente; com pacote único, falta validar pelo RH e concluir checklists das etapas seguintes.
         </p>
 
         <div class="space-y-2">

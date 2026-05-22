@@ -2,6 +2,8 @@
 
 namespace App\Support\Rh;
 
+use App\Models\Rh\RhMovimentacaoChamado;
+
 /**
  * Catálogo do fluxo de desligamento: anexos, Nada Consta por área e status.
  */
@@ -153,6 +155,15 @@ final class MovimentacaoDesligamentoCatalog
         return [self::ANEXO_PACOTE_DOCUMENTOS];
     }
 
+    public static function chamadoTemPacoteDocumentos(RhMovimentacaoChamado $chamado): bool
+    {
+        $chamado->loadMissing('anexos');
+
+        return $chamado->anexos->contains(
+            fn ($a) => $a->tipo_documento === self::ANEXO_PACOTE_DOCUMENTOS
+        );
+    }
+
     /**
      * @return array<string, list<array{slug: string, nome: string}>>
      */
@@ -179,15 +190,6 @@ final class MovimentacaoDesligamentoCatalog
                 ['slug' => 'avarias', 'nome' => 'Verificar pendência de avarias'],
                 ['slug' => 'devolucao_veiculo', 'nome' => 'Devolução do veículo ou equipamento (checklist)'],
             ],
-            'financeiro' => [
-                ['slug' => 'emprestimo_consignado', 'nome' => 'Empréstimo consignado'],
-                ['slug' => 'adiantamentos', 'nome' => 'Adiantamentos'],
-                ['slug' => 'despesas_prestacao', 'nome' => 'Despesas e prestações de conta'],
-            ],
-            'rh' => [
-                ['slug' => 'cracha_funcional', 'nome' => 'Devolução de crachá funcional'],
-                ['slug' => 'webcard_adiantamentos', 'nome' => 'Cartão Web Card ou outros adiantamentos'],
-            ],
         ];
     }
 
@@ -199,8 +201,6 @@ final class MovimentacaoDesligamentoCatalog
             'almoxarifado_central' => 'Almoxarifado Central',
             'patrimonio' => 'Patrimônio',
             'transportes' => 'Transportes',
-            'financeiro' => 'Financeiro',
-            'rh' => 'RH',
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\Rh\RhMovimentacaoNadaConsta;
 use App\Models\Rh\RhMovimentacaoNadaConstaItem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use App\Support\Rh\MovimentacaoDesligamentoCatalog;
 use App\Support\Rh\MovimentacaoChamadoTipo;
 
@@ -48,6 +49,59 @@ final class MovimentacaoNadaConstaService
                 ]);
             }
         }
+
+        return $nada->fresh('itens');
+    }
+
+    /**
+     * Remove itens fora do catálogo e cria os que faltarem (ex.: após alteração de regras).
+     */
+    public function sincronizarItensComCatalogo(RhMovimentacaoNadaConsta $nada): RhMovimentacaoNadaConsta
+    {
+        $nada->loadMissing('itens.anexoEvidencia', 'itens.anexoTermoBaixa', 'itens.anexoAutorizacaoDesconto');
+
+        $validos = [];
+        foreach (MovimentacaoDesligamentoCatalog::areasNadaConsta() as $area => $itens) {
+            foreach ($itens as $def) {
+                $validos[$area.'|'.$def['slug']] = true;
+            }
+        }
+
+        foreach ($nada->itens as $item) {
+            if (isset($validos[$item->area.'|'.$item->item])) {
+                continue;
+            }
+
+            foreach (['anexoEvidencia', 'anexoTermoBaixa', 'anexoAutorizacaoDesconto'] as $rel) {
+                $anexo = $item->{$rel};
+                if ($anexo !== null) {
+                    Storage::disk('public')->delete($anexo->caminho);
+                    $anexo->delete();
+                }
+            }
+
+            $item->delete();
+        }
+
+        foreach (MovimentacaoDesligamentoCatalog::areasNadaConsta() as $area => $itens) {
+            foreach ($itens as $def) {
+                $existe = $nada->itens()
+                    ->where('area', $area)
+                    ->where('item', $def['slug'])
+                    ->exists();
+
+                if (! $existe) {
+                    RhMovimentacaoNadaConstaItem::query()->create([
+                        'nada_consta_id' => $nada->id,
+                        'area' => $area,
+                        'item' => $def['slug'],
+                        'status_tratativa' => MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA,
+                    ]);
+                }
+            }
+        }
+
+        $this->recalcularStatus($nada->fresh('itens'));
 
         return $nada->fresh('itens');
     }

@@ -285,6 +285,79 @@ class User extends Authenticatable
     }
 
     /** Nome da rota Laravel → chave de {@see rhSecoesDefinicao()} ou null. */
+    /**
+     * Ação CRUD exigida pela rota RH (visualizar, criar, editar, excluir).
+     * Rotas com regras próprias no controller (ex.: chamados-movimentacao) retornam null.
+     */
+    public static function acaoRhRequeridaParaRota(?string $routeName): ?string
+    {
+        if ($routeName === null || $routeName === '' || ! str_starts_with($routeName, 'rh.')) {
+            return null;
+        }
+
+        if (str_starts_with($routeName, 'rh.chamados-movimentacao')) {
+            return null;
+        }
+
+        if (preg_match('/\.(create|store)$/', $routeName) === 1) {
+            return 'criar';
+        }
+
+        if (str_contains($routeName, '.importar')
+            || str_contains($routeName, 'modelo-importacao')
+            || str_contains($routeName, 'atualizacao-massa')) {
+            return 'criar';
+        }
+
+        if (preg_match('/\.(edit|update)$/', $routeName) === 1) {
+            return 'editar';
+        }
+
+        if (str_contains($routeName, '.foto.update')
+            || str_contains($routeName, '.marcacao')
+            || str_contains($routeName, '.justificar')
+            || str_contains($routeName, '.limpar')
+            || str_contains($routeName, '.apuracao.')
+            || str_contains($routeName, '.salvar')
+            || str_contains($routeName, '.aplicar')
+            || str_contains($routeName, '.manage')
+            || str_contains($routeName, 'config.salvar')
+            || str_contains($routeName, 'regras.salvar')) {
+            return 'editar';
+        }
+
+        if (preg_match('/\.(destroy|excluir)/', $routeName) === 1) {
+            return 'excluir';
+        }
+
+        if (str_contains($routeName, '.finalizar')
+            || str_contains($routeName, '.cancelar')
+            || str_contains($routeName, 'concluir')) {
+            return 'editar';
+        }
+
+        return 'visualizar';
+    }
+
+    public function podeExecutarRotaRh(?string $routeName): bool
+    {
+        if (! $this->temQualquerPermissaoNoModulo('rh')) {
+            return false;
+        }
+
+        $secao = self::rhSecaoFromRouteName($routeName);
+        if ($secao !== null && ! $this->podeSecaoRh($secao)) {
+            return false;
+        }
+
+        $acao = self::acaoRhRequeridaParaRota($routeName);
+        if ($acao === null) {
+            return true;
+        }
+
+        return $this->podeAcaoNoModulo('rh', $acao);
+    }
+
     public static function rhSecaoFromRouteName(?string $routeName): ?string
     {
         if ($routeName === null || $routeName === '' || ! str_starts_with($routeName, 'rh.')) {
