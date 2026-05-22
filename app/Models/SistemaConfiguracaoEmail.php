@@ -18,12 +18,14 @@ class SistemaConfiguracaoEmail extends Model
         'mail_password',
         'mail_from_name',
         'mail_from_address',
+        'notificacao_registro_tst_destinatarios',
         'updated_by_id',
     ];
 
     protected $casts = [
         'mail_port' => 'integer',
         'mail_password' => 'encrypted',
+        'notificacao_registro_tst_destinatarios' => 'array',
     ];
 
     public function updatedBy(): BelongsTo

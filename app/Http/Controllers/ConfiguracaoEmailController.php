@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\SistemaConfiguracaoEmail;
 use App\Services\ConfiguracaoEmailService;
 use App\Services\AuthEmailService;
+use App\Services\SsmaTstRegistroNotificacaoService;
 use App\Support\EmailLayout;
+use App\Support\TstRegistroNotificacaoDestinatarios;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,11 +17,19 @@ class ConfiguracaoEmailController extends Controller
     public function edit(ConfiguracaoEmailService $service)
     {
         $dados = $service->dadosParaFormulario();
+        $registro = $dados['registro'];
+        $destinatarios = TstRegistroNotificacaoDestinatarios::normalizar(
+            $registro->notificacao_registro_tst_destinatarios ?? []
+        );
 
         return view('configuracoes.email', array_merge($dados, [
             'mailers' => ConfiguracaoEmailService::mailersDisponiveis(),
             'criptografias' => ConfiguracaoEmailService::criptografiasDisponiveis(),
             'authEmailPreviews' => AuthEmailService::tiposPreview(),
+            'tstEmailPreviews' => SsmaTstRegistroNotificacaoService::tiposPreview(),
+            'tstDestinatariosCapsulas' => TstRegistroNotificacaoDestinatarios::resolverParaExibicao($destinatarios),
+            'colaboradoresEmailOpcoes' => TstRegistroNotificacaoDestinatarios::opcoesColaboradores(),
+            'usuariosEmailOpcoes' => TstRegistroNotificacaoDestinatarios::opcoesUsuarios(),
         ]));
     }
 
@@ -57,9 +67,42 @@ class ConfiguracaoEmailController extends Controller
             ->with('success', 'Configuração de e-mail salva com sucesso.');
     }
 
+    public function updateTstDestinatarios(Request $request)
+    {
+        $data = $request->validate([
+            'destinatarios_json' => ['nullable', 'string', 'max:16000'],
+        ]);
+
+        $payload = json_decode($data['destinatarios_json'] ?? '[]', true);
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $registro = SistemaConfiguracaoEmail::registro();
+        $registro->update([
+            'notificacao_registro_tst_destinatarios' => TstRegistroNotificacaoDestinatarios::validarPayload($payload),
+            'updated_by_id' => $request->user()?->id,
+        ]);
+
+        return redirect()
+            ->route('configuracoes.email.edit')
+            ->with('success', 'Destinatários do registro TST salvos.');
+    }
+
     public function previewLayout()
     {
         $html = EmailLayout::render('emails.exemplo-aprovacao', ['preview' => true]);
+
+        return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    public function previewTst(string $tipo, SsmaTstRegistroNotificacaoService $service)
+    {
+        if (! array_key_exists($tipo, SsmaTstRegistroNotificacaoService::tiposPreview())) {
+            abort(404);
+        }
+
+        $html = $service->renderPreview($tipo);
 
         return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
     }

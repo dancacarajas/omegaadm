@@ -170,6 +170,36 @@
     <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-zinc-50/90 to-white px-6 py-5">
             <div>
+                <h2 class="text-lg font-bold text-zinc-900">E-mails automáticos — Registro TST</h2>
+                <p class="mt-1 max-w-2xl text-sm text-zinc-500">
+                    Destinatários e modelo da mensagem enviada quando um registro TST é concluído no painel ou no app do colaborador.
+                </p>
+            </div>
+            <span class="rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-800 ring-1 ring-sky-200">SSMA / TST</span>
+        </div>
+
+        @include('configuracoes._tst_destinatarios')
+
+        <ul class="divide-y divide-zinc-100 p-4 sm:p-6">
+            @foreach ($tstEmailPreviews ?? [] as $slug => $label)
+                <li class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div>
+                        <p class="text-sm font-bold text-zinc-900">{{ $label }}</p>
+                        <p class="mt-0.5 text-xs text-zinc-500">Pré-visualização com dados de exemplo</p>
+                    </div>
+                    <a href="{{ route('configuracoes.email.preview.tst', $slug) }}" target="_blank" rel="noopener"
+                       class="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-xs font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy">
+                        <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                        Visualizar
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </section>
+
+    <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-zinc-50/90 to-white px-6 py-5">
+            <div>
                 <h2 class="text-lg font-bold text-zinc-900">Layout do e-mail</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
                     Pré-visualize o modelo transacional (cabeçalho burgundy, tabela de detalhes, botão de ação e rodapé) antes de usar nas notificações automáticas.

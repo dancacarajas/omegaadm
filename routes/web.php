@@ -239,7 +239,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/email', [ConfiguracaoEmailController::class, 'edit'])->name('email.edit');
         Route::get('/email/layout-preview', [ConfiguracaoEmailController::class, 'previewLayout'])->name('email.layout-preview');
         Route::get('/email/preview/auth/{tipo}', [AuthEmailPreviewController::class, 'show'])->name('email.preview.auth');
+        Route::get('/email/preview/tst/{tipo}', [ConfiguracaoEmailController::class, 'previewTst'])->name('email.preview.tst');
         Route::put('/email', [ConfiguracaoEmailController::class, 'update'])->name('email.update');
+        Route::put('/email/tst-destinatarios', [ConfiguracaoEmailController::class, 'updateTstDestinatarios'])->name('email.tst-destinatarios.update');
         Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
     });
 

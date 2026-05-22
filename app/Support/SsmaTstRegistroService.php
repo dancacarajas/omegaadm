@@ -161,7 +161,11 @@ class SsmaTstRegistroService
             ]);
         }
 
-        return $registro->fresh(['fotos']);
+        $registro = $registro->fresh(['fotos', 'colaborador', 'atividade', 'usuario']);
+
+        app(\App\Services\SsmaTstRegistroNotificacaoService::class)->notificarRegistroConcluido($registro);
+
+        return $registro;
     }
 
     /**
