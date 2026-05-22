@@ -35,6 +35,7 @@ final class AfastamentoAcidenteTrabalho
         $fimMes = $mesPagamento->copy()->endOfMonth();
 
         return ColaboradorMovimentacao::query()
+            ->efetiva()
             ->where('colaborador_id', $colaborador->id)
             ->where('tipo', ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS)
             ->whereIn('especie_beneficio_inss', self::especiesElegiveisValeAlimentacao())

@@ -354,9 +354,8 @@
                                             {{ $mov->data_inicio->format('d/m/Y') }}
                                             @if ($mov->data_fim)
                                                 <span class="font-semibold text-zinc-400">→ {{ $mov->data_fim->format('d/m/Y') }}</span>
-                                            @else
-                                                <span class="rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200/80">Em aberto</span>
                                             @endif
+                                            @include('rh.colaboradores.movimentacoes._situacao', ['mov' => $mov])
                                         </time>
                                         <span class="rounded-full bg-brand-burgundy-soft px-2.5 py-0.5 text-xs font-bold text-brand-burgundy">{{ $mov->tipoLabel() }}</span>
                                     </div>
@@ -368,7 +367,13 @@
                                         </p>
                                     @endif
                                 </div>
-                                <div class="flex shrink-0 gap-2">
+                                <div class="flex shrink-0 flex-wrap gap-2">
+                                    @if ($mov->isPendente())
+                                        <a href="{{ route('rh.efetivo.movimentacoes.edit', $mov) }}#finalizar" class="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">
+                                            <i data-lucide="check-circle" class="h-3.5 w-3.5"></i>
+                                            Finalizar
+                                        </a>
+                                    @endif
                                     <a href="{{ route('rh.efetivo.movimentacoes.edit', $mov) }}" class="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-brand-burgundy shadow-sm hover:border-brand-burgundy/30 hover:bg-brand-burgundy-soft">
                                         <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
                                         Alterar

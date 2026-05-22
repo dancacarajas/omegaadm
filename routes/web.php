@@ -330,6 +330,12 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::match(['get', 'post'], 'movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
             ->whereNumber('movimentacao')
             ->name('efetivo.movimentacoes.edit');
+        Route::post('movimentacao/{movimentacao}/finalizar', [ColaboradorMovimentacaoController::class, 'finalizar'])
+            ->whereNumber('movimentacao')
+            ->name('efetivo.movimentacoes.finalizar');
+        Route::post('movimentacao/{movimentacao}/cancelar', [ColaboradorMovimentacaoController::class, 'cancelar'])
+            ->whereNumber('movimentacao')
+            ->name('efetivo.movimentacoes.cancelar');
         Route::get('efetivo/movimentacao/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
             ->whereNumber('movimentacao');
         Route::get('movimentacoes/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))

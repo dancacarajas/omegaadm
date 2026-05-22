@@ -16,6 +16,13 @@
 @endsection
 
 @section('content')
+    @if ($editando && $movimentacao->isPendente())
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+            <p class="font-bold">Processo pendente de finalização</p>
+            <p class="mt-1 text-amber-800">Enquanto pendente, as alterações na ficha do colaborador só entram em vigor após <strong>Finalizar processo</strong>. Você pode salvar rascunhos com &quot;Salvar alterações&quot;.</p>
+        </div>
+    @endif
+
     <div class="mb-5 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
         <p class="text-sm text-brand-gray">Colaborador</p>
         <p class="mt-1 text-lg font-bold text-brand-black">{{ $colaborador->nome }}</p>
@@ -236,14 +243,50 @@
             </div>
         </section>
 
+        @unless ($editando)
+            <div class="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="manter_pendente" value="1" class="mt-1 h-4 w-4 rounded border-zinc-300 text-brand-burgundy" @checked(old('manter_pendente'))>
+                    <span class="text-sm text-zinc-700">
+                        <span class="font-semibold text-brand-black">Registrar como pendente</span>
+                        <span class="mt-0.5 block text-xs text-zinc-500">Não aplica na ficha até finalizar em Movimentações. Afastamento INSS sempre inicia pendente.</span>
+                    </span>
+                </label>
+            </div>
+        @endunless
+
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <a href="{{ route('rh.efetivo.show', $colaborador) }}" class="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black">Cancelar</a>
+            <a href="{{ $editando ? route('rh.efetivo.movimentacoes.index', ['situacao' => 'pendente']) : route('rh.efetivo.show', $colaborador) }}" class="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black">Voltar</a>
             <button type="submit" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand-burgundy-dark">
                 <i data-lucide="save" class="h-4 w-4"></i>
                 {{ $editando ? 'Salvar alterações' : 'Registrar movimentação' }}
             </button>
         </div>
     </form>
+
+    @if ($editando && $movimentacao->isPendente())
+        <section class="mt-8 rounded-xl border border-emerald-200 bg-emerald-50/50 p-5">
+            <h3 class="text-base font-bold text-emerald-900">Finalizar processo</h3>
+            <p class="mt-1 text-sm text-emerald-800">Confirma o encerramento e aplica os efeitos no cadastro do colaborador.</p>
+            <form method="POST" action="{{ route('rh.efetivo.movimentacoes.finalizar', $movimentacao) }}" class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
+                @csrf
+                @if (in_array($tipo, ['ferias', 'afastamento_inss'], true))
+                    <div class="flex-1">
+                        <label for="data_fim_finalizar" class="block text-xs font-bold uppercase text-emerald-900">Data fim / alta</label>
+                        <input type="date" name="data_fim" id="data_fim_finalizar" value="{{ old('data_fim', $movimentacao->data_fim?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required class="mt-2 h-11 w-full max-w-xs rounded-lg border border-emerald-200 px-3 text-sm">
+                    </div>
+                @endif
+                <button type="submit" class="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700">
+                    <i data-lucide="check-circle" class="h-4 w-4"></i>
+                    Finalizar processo
+                </button>
+            </form>
+            <form method="POST" action="{{ route('rh.efetivo.movimentacoes.cancelar', $movimentacao) }}" class="mt-3" onsubmit="return confirm('Cancelar este processo?')">
+                @csrf
+                <button type="submit" class="text-xs font-semibold text-red-600 hover:underline">Cancelar processo</button>
+            </form>
+        </section>
+    @endif
 
     @if ($tipo === 'afastamento_inss')
         @push('scripts')

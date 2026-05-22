@@ -4,6 +4,7 @@ namespace App\Services\Rh;
 
 use App\Models\Colaborador;
 use App\Models\ColaboradorMovimentacao;
+use App\Support\Rh\ColaboradorMovimentacaoSituacao;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use Carbon\Carbon;
 
@@ -14,9 +15,13 @@ final class ColaboradorMovimentacaoService
         $tipo = (string) $data['tipo'];
         $payload = $this->montarPayload($colaborador, $data);
         $payload['registrado_por_user_id'] = $userId;
+        $payload = array_merge($payload, $this->metadadosSituacaoInicial($payload));
 
         $movimentacao = ColaboradorMovimentacao::create($payload);
-        $this->sincronizarCadastroColaborador($colaborador);
+
+        if ($movimentacao->isFinalizada()) {
+            $this->sincronizarCadastroColaborador($colaborador);
+        }
 
         return $movimentacao;
     }
@@ -30,7 +35,51 @@ final class ColaboradorMovimentacaoService
 
         $payload = $this->montarPayloadAtualizacao($movimentacao, $data);
         $movimentacao->update($payload);
-        $this->sincronizarCadastroColaborador($colaborador->fresh());
+
+        if ($movimentacao->isFinalizada()) {
+            $this->sincronizarCadastroColaborador($colaborador->fresh());
+        }
+
+        return $movimentacao->fresh();
+    }
+
+    public function finalizar(ColaboradorMovimentacao $movimentacao, array $data, ?int $userId = null): ColaboradorMovimentacao
+    {
+        abort_unless($movimentacao->isPendente(), 404, 'Esta movimentação já foi finalizada ou cancelada.');
+
+        $updates = [
+            'situacao' => ColaboradorMovimentacaoSituacao::FINALIZADA,
+            'finalizada_em' => now(),
+            'finalizada_por_user_id' => $userId,
+        ];
+
+        if (ColaboradorMovimentacaoSituacao::tipoPermitePendente((string) $movimentacao->tipo)) {
+            $updates['data_fim'] = $data['data_fim'] ?? today()->toDateString();
+        }
+
+        $movimentacao->update($updates);
+
+        $colaborador = $movimentacao->colaborador;
+        if ($colaborador !== null) {
+            $this->sincronizarCadastroColaborador($colaborador->fresh());
+        }
+
+        return $movimentacao->fresh();
+    }
+
+    public function cancelar(ColaboradorMovimentacao $movimentacao): ColaboradorMovimentacao
+    {
+        abort_unless($movimentacao->isPendente(), 404, 'Somente processos pendentes podem ser cancelados.');
+
+        $movimentacao->update([
+            'situacao' => ColaboradorMovimentacaoSituacao::CANCELADA,
+            'finalizada_em' => now(),
+        ]);
+
+        $colaborador = $movimentacao->colaborador;
+        if ($colaborador !== null) {
+            $this->sincronizarCadastroColaborador($colaborador->fresh());
+        }
 
         return $movimentacao->fresh();
     }
@@ -40,6 +89,7 @@ final class ColaboradorMovimentacaoService
         $hoje = today();
 
         $desligamento = ColaboradorMovimentacao::query()
+            ->efetiva()
             ->where('colaborador_id', $colaborador->id)
             ->where('tipo', ColaboradorMovimentacaoTipos::DESLIGAMENTO)
             ->where('data_inicio', '<=', $hoje->toDateString())
@@ -66,6 +116,7 @@ final class ColaboradorMovimentacaoService
             ColaboradorMovimentacaoTipos::MUDANCA_FUNCAO,
         ] as $tipoCadastral) {
             $movimentacoes = ColaboradorMovimentacao::query()
+                ->efetiva()
                 ->where('colaborador_id', $colaborador->id)
                 ->where('tipo', $tipoCadastral)
                 ->where('data_inicio', '<=', $hoje->toDateString())
@@ -81,6 +132,7 @@ final class ColaboradorMovimentacaoService
         $colaborador->refresh();
 
         $afastadoVigente = ColaboradorMovimentacao::query()
+            ->efetiva()
             ->where('colaborador_id', $colaborador->id)
             ->whereIn('tipo', [
                 ColaboradorMovimentacaoTipos::FERIAS,
@@ -262,5 +314,38 @@ final class ColaboradorMovimentacaoService
         $fim = Carbon::parse($data['data_fim']);
 
         return $ini->diffInDays($fim) + 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function metadadosSituacaoInicial(array $payload): array
+    {
+        if (! empty($payload['manter_pendente'])) {
+            return ['situacao' => ColaboradorMovimentacaoSituacao::PENDENTE];
+        }
+
+        $tipo = (string) ($payload['tipo'] ?? '');
+
+        if ($tipo === ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS) {
+            return ['situacao' => ColaboradorMovimentacaoSituacao::PENDENTE];
+        }
+
+        if (ColaboradorMovimentacaoSituacao::tipoFinalizaAoRegistrar($tipo)) {
+            return [
+                'situacao' => ColaboradorMovimentacaoSituacao::FINALIZADA,
+                'finalizada_em' => now(),
+            ];
+        }
+
+        if ($tipo === ColaboradorMovimentacaoTipos::FERIAS && filled($payload['data_fim'] ?? null)) {
+            return [
+                'situacao' => ColaboradorMovimentacaoSituacao::FINALIZADA,
+                'finalizada_em' => now(),
+            ];
+        }
+
+        return ['situacao' => ColaboradorMovimentacaoSituacao::PENDENTE];
     }
 }

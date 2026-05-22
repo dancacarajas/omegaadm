@@ -39,6 +39,7 @@ final class MovimentacoesPainelExecutivoPeriodo
         $colaboradorIds = self::idsColaboradoresContrato($identificadoresContrato);
 
         $movimentacoes = ColaboradorMovimentacao::query()
+            ->efetiva()
             ->when($colaboradorIds !== [], fn ($q) => $q->whereIn('colaborador_id', $colaboradorIds))
             ->whereDate('data_inicio', '>=', $ini)
             ->whereDate('data_inicio', '<=', $fim)

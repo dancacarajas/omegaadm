@@ -28,6 +28,7 @@ final class TransferenciasEfetivoPeriodo
         $fim = $periodoFim->toDateString();
 
         $base = ColaboradorMovimentacao::query()
+            ->efetiva()
             ->where('tipo', ColaboradorMovimentacaoTipos::TRANSFERENCIA_CONTRATO)
             ->whereDate('data_inicio', '>=', $ini)
             ->whereDate('data_inicio', '<=', $fim);

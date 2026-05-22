@@ -7,6 +7,7 @@ use App\Models\Colaborador;
 use App\Models\ColaboradorMovimentacao;
 use App\Models\Contrato;
 use App\Services\Rh\ColaboradorMovimentacaoService;
+use App\Support\Rh\ColaboradorMovimentacaoSituacao;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use App\Support\Rh\MovimentacaoDebugTrace;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class ColaboradorMovimentacaoController extends Controller
     public function index(Request $request)
     {
         $query = ColaboradorMovimentacao::query()
+            ->when($request->filled('situacao'), fn ($q) => $q->where('situacao', $request->input('situacao')))
             ->when($request->filled('tipo'), fn ($q) => $q->where('tipo', $request->input('tipo')))
             ->when($request->filled('busca'), function ($q) use ($request) {
                 $busca = '%'.trim((string) $request->input('busca')).'%';
@@ -34,17 +36,19 @@ class ColaboradorMovimentacaoController extends Controller
         $resumo = [
             'total_geral' => ColaboradorMovimentacao::count(),
             'total_filtrado' => $movimentacoes->total(),
-            'em_aberto' => ColaboradorMovimentacao::query()->whereNull('data_fim')->count(),
-            'afastamento_inss' => ColaboradorMovimentacao::query()
+            'pendentes' => ColaboradorMovimentacao::query()->pendente()->count(),
+            'afastamento_inss_pendentes' => ColaboradorMovimentacao::query()
+                ->pendente()
                 ->where('tipo', ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS)
-                ->whereNull('data_fim')
                 ->count(),
         ];
 
         return view('rh.colaboradores.movimentacoes.index', [
             'movimentacoes' => $movimentacoes,
             'tipos' => ColaboradorMovimentacaoTipos::labels(),
+            'situacoes' => ColaboradorMovimentacaoSituacao::labels(),
             'tipoFiltro' => $request->input('tipo'),
+            'situacaoFiltro' => $request->input('situacao'),
             'busca' => $request->input('busca'),
             'resumo' => $resumo,
         ]);
@@ -71,11 +75,15 @@ class ColaboradorMovimentacaoController extends Controller
     public function store(Request $request, Colaborador $colaborador, ColaboradorMovimentacaoService $service)
     {
         $data = $this->validateMovimentacao($request);
-        $service->registrar($colaborador, $data, $request->user()?->id);
+        $mov = $service->registrar($colaborador, $data, $request->user()?->id);
+
+        $msg = $mov->isPendente()
+            ? ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado como pendente. Finalize em Movimentações quando concluir o processo.'
+            : ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado e finalizado com sucesso.';
 
         return redirect()
-            ->route('rh.efetivo.show', $colaborador)
-            ->with('success', ColaboradorMovimentacaoTipos::label($data['tipo']).' registrado com sucesso.');
+            ->route($mov->isPendente() ? 'rh.efetivo.movimentacoes.index' : 'rh.efetivo.show', $mov->isPendente() ? [] : $colaborador)
+            ->with('success', $msg);
     }
 
     /**
@@ -127,10 +135,35 @@ class ColaboradorMovimentacaoController extends Controller
                 ]);
             }
 
+            if ($request->input('acao') === 'finalizar') {
+                return $this->finalizar($request, $movimentacao, $service);
+            }
+
             return $this->update($request, $colaborador, $movimentacao, $service);
         }
 
         return $this->edit($colaborador, $movimentacao);
+    }
+
+    public function finalizar(Request $request, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
+    {
+        $data = $request->validate([
+            'data_fim' => ['nullable', 'date', 'after_or_equal:'.$movimentacao->data_inicio?->format('Y-m-d')],
+        ]);
+        $service->finalizar($movimentacao, $data, $request->user()?->id);
+
+        return redirect()
+            ->route('rh.efetivo.movimentacoes.index', ['situacao' => ColaboradorMovimentacaoSituacao::FINALIZADA])
+            ->with('success', 'Processo finalizado. O cadastro do colaborador foi atualizado.');
+    }
+
+    public function cancelar(ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
+    {
+        $service->cancelar($movimentacao);
+
+        return redirect()
+            ->route('rh.efetivo.movimentacoes.index')
+            ->with('success', 'Processo cancelado. O cadastro do colaborador foi reajustado.');
     }
 
     public function edit(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao)
@@ -235,6 +268,7 @@ class ColaboradorMovimentacaoController extends Controller
 
         $validated = $request->validate($rules);
         $validated['tipo'] = $tipo;
+        $validated['manter_pendente'] = $request->boolean('manter_pendente');
 
         return $validated;
     }

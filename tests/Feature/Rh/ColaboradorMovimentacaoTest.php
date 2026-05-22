@@ -62,7 +62,7 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->assertSame('CC-OLD', ColaboradorMovimentacao::query()->first()->centro_custo_anterior);
     }
 
-    public function test_registra_afastamento_inss_muda_status(): void
+    public function test_afastamento_inss_inicia_pendente_e_finaliza_aplica_status(): void
     {
         $user = User::factory()->create();
         $colab = Colaborador::query()->create([
@@ -77,6 +77,16 @@ class ColaboradorMovimentacaoTest extends TestCase
             'cid' => 'M54.5',
         ]);
 
+        $mov = ColaboradorMovimentacao::query()->where('colaborador_id', $colab->id)->first();
+        $this->assertSame('pendente', $mov->situacao);
+        $this->assertSame('ativo', $colab->fresh()->status);
+
+        $this->actingAs($user)->post(route('rh.efetivo.movimentacoes.finalizar', $mov), [
+            'data_fim' => today()->addDays(30)->toDateString(),
+        ]);
+
+        $mov->refresh();
+        $this->assertSame('finalizada', $mov->situacao);
         $this->assertSame('afastado', $colab->fresh()->status);
     }
 

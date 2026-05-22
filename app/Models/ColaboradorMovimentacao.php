@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Support\Rh\AfastamentoAcidenteTrabalho;
+use App\Support\Rh\ColaboradorMovimentacaoSituacao;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +16,7 @@ class ColaboradorMovimentacao extends Model
     protected $fillable = [
         'colaborador_id',
         'tipo',
+        'situacao',
         'data_inicio',
         'data_fim',
         'status_anterior',
@@ -39,11 +42,15 @@ class ColaboradorMovimentacao extends Model
         'abono_pecuniario',
         'registrado_por_user_id',
         'observacoes',
+        'finalizada_em',
+        'finalizada_por_user_id',
     ];
 
     protected $casts = [
         'colaborador_id' => 'integer',
         'registrado_por_user_id' => 'integer',
+        'finalizada_por_user_id' => 'integer',
+        'finalizada_em' => 'datetime',
         'data_inicio' => 'date',
         'data_fim' => 'date',
         'salario_anterior' => 'decimal:2',
@@ -60,6 +67,41 @@ class ColaboradorMovimentacao extends Model
     public function registradoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registrado_por_user_id');
+    }
+
+    public function finalizadaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finalizada_por_user_id');
+    }
+
+    public function isPendente(): bool
+    {
+        return $this->situacao === ColaboradorMovimentacaoSituacao::PENDENTE;
+    }
+
+    public function isFinalizada(): bool
+    {
+        return $this->situacao === ColaboradorMovimentacaoSituacao::FINALIZADA;
+    }
+
+    public function situacaoLabel(): string
+    {
+        return ColaboradorMovimentacaoSituacao::label((string) $this->situacao);
+    }
+
+    public function scopePendente(Builder $query): Builder
+    {
+        return $query->where('situacao', ColaboradorMovimentacaoSituacao::PENDENTE);
+    }
+
+    public function scopeFinalizada(Builder $query): Builder
+    {
+        return $query->where('situacao', ColaboradorMovimentacaoSituacao::FINALIZADA);
+    }
+
+    public function scopeEfetiva(Builder $query): Builder
+    {
+        return $query->where('situacao', ColaboradorMovimentacaoSituacao::FINALIZADA);
     }
 
     public function tipoLabel(): string
@@ -101,7 +143,8 @@ class ColaboradorMovimentacao extends Model
     private function resumoPeriodo(): string
     {
         $ini = $this->data_inicio?->format('d/m/Y') ?? '—';
-        $fim = $this->data_fim?->format('d/m/Y') ?? 'em aberto';
+        $fim = $this->data_fim?->format('d/m/Y')
+            ?? ($this->isPendente() ? 'pendente finalização' : '—');
 
         return "{$ini} até {$fim}";
     }
