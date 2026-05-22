@@ -3,8 +3,9 @@
 > **Leia primeiro:** [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md) — **Benefícios em produção já funciona**; use como referência e compare este módulo (não tratar como “ambiente inteiro quebrado”).
 
 **Projeto:** omegaadm / omega286  
-**URL produção (falha):** `https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2`  
-**URL localhost (OK):** `http://127.0.0.1:2080/rh/efetivo/movimentacao/2`  
+**URL canônica (após fix):** `https://omegaadm.feston.net.br/public/rh/movimentacao/2`  
+**Legado (301):** `/public/rh/efetivo/movimentacao/2` → canônica  
+**URL localhost:** `http://127.0.0.1:2080/rh/movimentacao/2`  
 **Documento relacionado:** [DEV_BENEFICIOS_404_PRODUCAO.md](./DEV_BENEFICIOS_404_PRODUCAO.md) (mesmo ambiente Hostinger; benefícios já corrigido)  
 **Último commit relevante (main):** `05aa59b` (cadeia desde `6d877ad` edição de movimentação)  
 **Data:** maio/2026  
@@ -16,7 +17,7 @@
 | Item | Situação |
 |------|----------|
 | Listagem `/public/rh/efetivo/movimentacoes` | Reportado **OK** (layout voltou após `436330f`) |
-| Botão **Alterar** → `/public/rh/efetivo/movimentacao/{id}` | **404** em produção |
+| Botão **Alterar** → `/public/rh/movimentacao/{id}` | Corrigido no código (deploy pendente no servidor) |
 | Mesma URL em localhost | **200** + formulário "Alterar movimentação" |
 | Banco produção (exemplo) | `mov_id=2` existe (`afastamento_inss`, colab 34) |
 | Erros `pinComponent.js` / `chrome-extension` | Extensão do navegador — **ignorar** |
@@ -33,7 +34,7 @@
 | **Singular vs plural** | Gestão = `movimentacao`; listagem = `movimentacoes` |
 | Model binding | Registro `mov_id` inexistente (raro se `--mov` OK) |
 
-Mensagem pronta para o dev: seção 9 de [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md).
+Mensagem pronta para o dev (copiar/colar): **seção 9** de [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](./DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md). Cobrança: *não reabra como ambiente global; use Benefícios como espelho e feche Movimentações (abrir, alterar, salvar).*
 
 ---
 
@@ -49,7 +50,7 @@ Mensagem pronta para o dev: seção 9 de [DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md](
 | Ação | Método | Path interno (router) | URL pública Hostinger |
 |------|--------|------------------------|------------------------|
 | Listagem | GET | `rh/efetivo/movimentacoes` | `/public/rh/efetivo/movimentacoes` |
-| Alterar / Salvar | GET, POST | `rh/efetivo/movimentacao/{id}` | `/public/rh/efetivo/movimentacao/{id}` |
+| Alterar / Salvar | GET, POST | `rh/movimentacao/{id}` | `/public/rh/movimentacao/{id}` |
 | Criar | GET | `rh/efetivo/{colab}/movimentacoes/criar` | `/public/rh/efetivo/.../criar` |
 
 **Atenção:** gestão usa **`movimentacao` (singular)**; listagem usa **`movimentacoes` (plural)**.

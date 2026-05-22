@@ -79,7 +79,7 @@ class ColaboradorMovimentacaoController extends Controller
 
     /**
      * GET exibe o formulário; POST salva (mesmo padrão de rh/beneficios/{id} em produção).
-     * URL: /rh/efetivo/movimentacao/{id} — GET+POST, sem PUT.
+     * URL: /rh/movimentacao/{id} (mesma profundidade que rh/beneficios/{id}) — GET+POST, sem PUT.
      */
     public function editar(Request $request, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
     {
@@ -90,7 +90,7 @@ class ColaboradorMovimentacaoController extends Controller
                 'request_uri' => $request->getRequestUri(),
                 'base_url' => $request->getBaseUrl(),
                 'script_name' => $request->server->get('SCRIPT_NAME'),
-                'expected_route' => 'rh/efetivo/movimentacao/'.$movimentacao->getKey(),
+                'expected_route' => 'rh/movimentacao/'.$movimentacao->getKey(),
                 'movimentacao_id' => $movimentacao->id,
                 'colaborador_id' => $movimentacao->colaborador_id,
             ]);

@@ -27,8 +27,8 @@ class MovimentacoesDiagnosticoCommand extends Command
             $this->line('rh.efetivo.movimentacoes.edit: '.($edit ? 'SIM' : 'NÃO'));
             if ($edit) {
                 $this->line('URL gestão (route): '.route('rh.efetivo.movimentacoes.edit', 1));
-                $this->line('URL pública esperada: /public/rh/efetivo/movimentacao/1');
-                $this->line('Legado: /public/rh/movimentacoes/1 → redireciona 301');
+                $this->line('URL pública esperada: /public/rh/movimentacao/1');
+                $this->line('Legado: /public/rh/efetivo/movimentacao/1 → redireciona 301');
             } else {
                 $this->error('Rota ausente → git pull + php artisan route:clear');
             }
@@ -115,7 +115,7 @@ class MovimentacoesDiagnosticoCommand extends Command
 
         $colab = $mov->colaborador;
         $this->info("OK: movimentação {$movId} ({$mov->tipo}) — colaborador {$mov->colaborador_id}".($colab ? ": {$colab->nome}" : ''));
-        $this->line('URL gestão (GET+POST): /public/rh/efetivo/movimentacao/'.$movId);
+        $this->line('URL gestão (GET+POST): /public/rh/movimentacao/'.$movId);
         $this->line('Rota nomeada: '.route('rh.efetivo.movimentacoes.edit', $mov));
 
         if ($this->option('http')) {
@@ -127,7 +127,7 @@ class MovimentacoesDiagnosticoCommand extends Command
 
     private function simularHttpGet(int $movId): void
     {
-        $_SERVER['REQUEST_URI'] = '/public/rh/efetivo/movimentacao/'.$movId;
+        $_SERVER['REQUEST_URI'] = '/public/rh/movimentacao/'.$movId;
         $_SERVER['OMEGA_REQUEST_USES_PUBLIC_URL'] = '1';
         $_SERVER['SCRIPT_NAME'] = '/public/index.php';
         $_SERVER['SCRIPT_FILENAME'] = public_path('index.php');
@@ -145,7 +145,7 @@ class MovimentacoesDiagnosticoCommand extends Command
         $this->line("Simulação HTTP: status {$response->getStatusCode()}, path()={$path}");
 
         if ($response->getStatusCode() === 404) {
-            $this->error('404 na simulação → path deve ser rh/efetivo/movimentacao/'.$movId.' (sem prefixo public/)');
+            $this->error('404 na simulação → path deve ser rh/movimentacao/'.$movId.' (sem prefixo public/)');
             $this->line('Confira bootstrap/fix-public-request-uri.php e .htaccess na raiz do projeto.');
         } elseif ($response->isRedirection()) {
             $this->line('Redirect: '.$response->headers->get('Location'));

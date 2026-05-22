@@ -161,6 +161,31 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->actingAs($user)
             ->get('/rh/movimentacoes/'.$mov->id)
             ->assertRedirect(route('rh.efetivo.movimentacoes.edit', $mov));
+
+        $this->actingAs($user)
+            ->get('/rh/efetivo/movimentacao/'.$mov->id)
+            ->assertRedirect(route('rh.efetivo.movimentacoes.edit', $mov));
+    }
+
+    public function test_gestao_espelha_profundidade_de_beneficios(): void
+    {
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create(['nome' => 'F', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::DESLIGAMENTO,
+            'data_inicio' => '2026-05-01',
+            'tipo_rescisao' => 'pedido_demissao',
+        ]);
+
+        $urlMov = route('rh.efetivo.movimentacoes.edit', $mov);
+        $this->assertStringContainsString('/rh/movimentacao/'.$mov->id, $urlMov);
+        $this->assertStringNotContainsString('/efetivo/movimentacao/', $urlMov);
+
+        $this->actingAs($user)
+            ->get($urlMov)
+            ->assertOk()
+            ->assertSee('Alterar movimentação', false);
     }
 
     public function test_gestao_movimentacao_com_prefixo_public_na_requisicao(): void
@@ -174,12 +199,12 @@ class ColaboradorMovimentacaoTest extends TestCase
             'centro_custo_novo' => 'CC-X',
         ]);
 
-        $this->getComPrefixoPublic($user, '/rh/efetivo/movimentacao/'.$mov->id)
+        $this->getComPrefixoPublic($user, '/rh/movimentacao/'.$mov->id)
             ->assertOk()
             ->assertSee('Alterar movimentação', false);
     }
 
-    public function test_listagem_exibe_link_alterar_para_efetivo_movimentacao(): void
+    public function test_listagem_exibe_link_alterar_para_movimentacao_canonica(): void
     {
         $user = User::factory()->create();
         $colab = Colaborador::query()->create(['nome' => 'E', 'status' => 'ativo']);
@@ -195,7 +220,7 @@ class ColaboradorMovimentacaoTest extends TestCase
         $this->actingAs($user)
             ->get(route('rh.efetivo.movimentacoes.index'))
             ->assertOk()
-            ->assertSee('efetivo/movimentacao/'.$mov->id, false);
+            ->assertSee('rh/movimentacao/'.$mov->id, false);
     }
 
     public function test_listagem_movimentacoes_mantem_assets_com_base_public_hostinger(): void

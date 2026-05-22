@@ -325,87 +325,74 @@ flowchart TD
 
 ## 9. Mensagem pronta para o desenvolvedor (copiar/colar)
 
+**Cobrança em uma frase:** não reabra o problema como ambiente global; use Benefícios como referência e feche a diferença específica de Movimentações (abrir, alterar e salvar sem 404).
+
 ```text
-Entendi. Benefícios em produção já foi corrigido e está funcionando.
+Entendi. Como Benefícios já está funcionando em produção, então ele passa a ser nossa referência funcional.
 
-Então agora precisamos usar Benefícios como referência funcional e comparar com Movimentações.
+Ou seja: não quero que Movimentações seja tratado como se o ambiente inteiro estivesse quebrado novamente. Benefícios prova que o sistema consegue operar com /public em rota dinâmica GET/POST.
 
-Se Benefícios funciona em:
-https://omegaadm.feston.net.br/public/rh/beneficios/1
+Agora preciso que você compare Movimentações com Benefícios e encontre exatamente o que está diferente.
 
-então o rewrite/base /public já está funcionando pelo menos para uma rota dinâmica GET/POST.
+Validar obrigatoriamente:
 
-Logo, no caso de Movimentações, preciso que você investigue o que está diferente, principalmente:
+1. Commit atual em produção:
+git log -1 --oneline
 
-1. A rota de Movimentações existe em produção?
+Precisa estar em 05aa59b ou mais recente.
 
-Rodar:
+2. Limpar cache real:
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan optimize:clear
+rm -f bootstrap/cache/routes*.php
+
+3. Confirmar rota:
 php artisan route:list --path=efetivo/movimentacao
 
 Precisa aparecer:
 GET|POST|HEAD rh/efetivo/movimentacao/{movimentacao}
 
-2. O servidor está realmente no commit correto?
-
-Rodar:
-git log -1 --oneline
-
-Precisa estar no commit 05aa59b ou mais recente, conforme documentação.
-
-3. Limpar cache real de rota:
-
-php artisan route:clear
-php artisan optimize:clear
-php artisan config:clear
-php artisan view:clear
-rm -f bootstrap/cache/routes*.php
-
-4. Verificar se a rota de Movimentações está registrada antes das rotas genéricas de efetivo.
-
-A rota:
-rh/efetivo/movimentacao/{movimentacao}
-
-precisa ficar antes de qualquer rota genérica tipo:
+4. Confirmar se a rota está antes de rotas genéricas como:
 rh/efetivo/{colaborador}
 
-porque senão o Laravel pode interpretar "movimentacao" como parâmetro de colaborador e cair em 404.
+Se a rota genérica vier antes, o Laravel pode interpretar "movimentacao" como parâmetro e retornar 404.
 
-5. Verificar o HTML do botão Alterar.
-
-No navegador, inspecionar o botão Alterar e confirmar se o href está exatamente assim:
-
-/public/rh/efetivo/movimentacao/2
-
-e não alguma URL antiga como:
-
-/public/rh/movimentacoes/2/editar
-/public/rh/efetivo/movimentacoes/2/editar
-/public/rh/efetivo/34/movimentacoes/2/editar
-
-6. Rodar diagnóstico:
-
+5. Rodar diagnóstico:
 php artisan movimentacoes:diagnostico --rota
 php artisan movimentacoes:diagnostico --listar
 php artisan movimentacoes:diagnostico 2 --mov
 php artisan movimentacoes:diagnostico 2 --mov --http
 
-7. Testar com debug:
+O --http precisa retornar 200.
 
+6. Conferir no HTML da listagem se o botão Alterar está gerando o href correto:
+
+Correto:
+.../public/rh/efetivo/movimentacao/2
+
+Errado:
+.../public/rh/movimentacoes/2/editar
+.../public/rh/efetivo/movimentacoes/2/editar
+.../public/rh/efetivo/34/movimentacoes/2/editar
+
+7. Testar debug:
 https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2?debug_movimentacao=1
 
-Se o debug aparecer, a requisição chegou no controller e o erro está em binding/controller/view.
-Se o debug não aparecer, o erro está antes do controller: rota, cache, ordem de rota, deploy ou link errado.
+Se o debug não aparecer, o problema está antes do controller: rota, cache, deploy, ordem de rota ou link antigo.
+Se o debug aparecer, o problema está dentro do controller, binding ou view.
+
+Atenção ao singular/plural:
+- Listagem: rh/efetivo/movimentacoes
+- Alterar/Salvar: rh/efetivo/movimentacao/{id}
 
 Documentação:
-docs/DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md
+docs/DEV_PRODUCAO_CAUSA_RAIZ_HOSTINGER.md (esta seção)
 docs/DEV_MOVIMENTACOES_404_PRODUCAO.md
-docs/DEV_BENEFICIOS_404_PRODUCAO.md
+docs/DEV_BENEFICIOS_404_PRODUCAO.md (referência que funciona)
 
-Conclusão: Benefícios funcionando prova que o ambiente consegue operar com /public. Agora Movimentações precisa ser ajustado no mesmo padrão, mas a investigação deve focar na diferença entre as duas rotas, especialmente ordem das rotas, cache, link gerado e model binding.
-
-Atenção singular/plural:
-- listagem: rh/efetivo/movimentacoes (plural)
-- gestão Alterar: rh/efetivo/movimentacao/{id} (singular)
+Conclusão: Benefícios funcionando é o espelho. Movimentações precisa seguir o mesmo padrão e funcionar também em produção, com abrir, alterar e salvar sem 404.
 ```
 
 ---
