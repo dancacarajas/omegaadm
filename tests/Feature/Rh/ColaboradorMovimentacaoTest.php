@@ -186,7 +186,12 @@ class ColaboradorMovimentacaoTest extends TestCase
         $response = $this->getComPrefixoPublic($user, '/rh/efetivo/movimentacoes');
         $response->assertOk()->assertSee('Movimentações de efetivo', false);
 
-        $response->assertSee('/public/logo.png', false);
+        $html = $response->getContent();
+        $this->assertStringContainsString('/public/logo.png', $html);
+
+        if (! is_file(public_path('hot'))) {
+            $this->assertStringContainsString('/public/build/', $html, 'Vite em produção deve apontar para /public/build/');
+        }
     }
 
     private function getComPrefixoPublic(User $user, string $path)

@@ -48,4 +48,20 @@ Site acessado como `https://dominio/public/rh/...` com document root na **raiz d
 
 Manter URL com `/public` e garantir deploy do `.htaccess` mais recente (rewrite para `public/index.php`).
 
+Com `APP_ENV=production`, o sistema **já força** links e `@vite` para `https://seu-dominio/public/...` (CSS/JS). Só desative se mudar o document root para `omegaadm/public`:
+
+```env
+APP_FORCE_PUBLIC_URL=false
+```
+
+Após cada deploy com CSS quebrado:
+
+```bash
+git pull origin main
+php artisan config:clear
+php artisan view:clear
+php artisan optimize:clear
+# confira se existe public/build/manifest.json no servidor
+```
+
 Ver `docs/DEV_BENEFICIOS_404_PRODUCAO.md`.

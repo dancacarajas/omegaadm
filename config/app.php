@@ -55,10 +55,10 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
-    | Hostinger com document root na raiz do projeto: URLs públicas usam /public/.
-    | Ative no .env de produção se CSS/JS sumirem após deploy (APP_FORCE_PUBLIC_URL=true).
+    | Hostinger: document root na raiz e URLs com /public/. Em production o padrão é true
+    | (restaura CSS/JS). Se o document root for omegaadm/public, defina APP_FORCE_PUBLIC_URL=false.
     */
-    'force_public_url' => env('APP_FORCE_PUBLIC_URL', false),
+    'force_public_url' => env('APP_FORCE_PUBLIC_URL', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
