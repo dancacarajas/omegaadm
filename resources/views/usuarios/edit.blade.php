@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-    <form method="POST" action="{{ route('usuarios.update', $usuario) }}">
+    <form method="POST" action="{{ route('usuarios.update', $usuario) }}" enctype="multipart/form-data">
         @include('usuarios._form')
     </form>
 @endsection

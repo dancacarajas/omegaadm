@@ -78,9 +78,13 @@
                         <tr class="transition hover:bg-brand-gray-soft/50">
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">
-                                        <i data-lucide="user" class="h-5 w-5"></i>
-                                    </div>
+                                    @if ($usuario->temFotoPerfil())
+                                        <img src="{{ $usuario->urlFotoPerfil() }}" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-zinc-200">
+                                    @else
+                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-burgundy-soft text-xs font-bold text-brand-burgundy">
+                                            {{ $usuario->iniciais() }}
+                                        </div>
+                                    @endif
                                     <div>
                                         <p class="font-semibold text-brand-black">{{ $usuario->name }}</p>
                                         <p class="text-xs text-brand-gray">{{ $usuario->email }}{{ $usuario->telefone ? ' · '.$usuario->telefone : '' }}</p>

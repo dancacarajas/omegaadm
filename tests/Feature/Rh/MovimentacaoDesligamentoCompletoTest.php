@@ -199,8 +199,39 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
 
         $pendencias = app(MovimentacaoDesligamentoRules::class)->pendenciasNadaConsta($chamado->fresh(['anexos', 'nadaConsta.itens']));
 
-        $this->assertCount(1, $pendencias);
-        $this->assertStringContainsString('Valide o Nada Consta', $pendencias[0]);
+        $this->assertNotEmpty($pendencias);
+        $this->assertTrue(
+            collect($pendencias)->contains(fn (string $p) => str_contains($p, 'Valide o Nada Consta')),
+            'Deve orientar validação RH quando há pacote e ainda não validado.',
+        );
+        $this->assertFalse(
+            collect($pendencias)->contains(fn (string $p) => str_contains($p, 'conferir item')),
+            'Com pacote único não exige conferência item a item.',
+        );
+    }
+
+    public function test_validar_nada_consta_rh_com_pacote_documentos(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $path = 'rh/chamados-movimentacao/'.$chamado->id.'/pacote.pdf';
+        Storage::disk('public')->put($path, '%PDF-1.4');
+        $chamado->anexos()->create([
+            'nome_arquivo' => 'pacote.pdf',
+            'caminho' => $path,
+            'tipo_documento' => MovimentacaoDesligamentoCatalog::ANEXO_PACOTE_DOCUMENTOS,
+            'obrigatorio' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('rh.chamados-movimentacao.nada-consta.validar-rh', $chamado))
+            ->assertRedirect(route('rh.chamados-movimentacao.show', $chamado))
+            ->assertSessionHas('success');
+
+        $chamado->load('nadaConsta');
+        $this->assertTrue($chamado->nadaConsta->validado_rh);
     }
 
     public function test_anexo_item_nada_consta(): void
@@ -265,7 +296,6 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
             ]);
         }
         $nada->update([
-            'assinatura_colaborador' => 'Colaborador Teste',
             'validado_rh' => true,
             'validado_rh_em' => now(),
             'status' => MovimentacaoDesligamentoCatalog::NC_STATUS_VALIDADO_RH,

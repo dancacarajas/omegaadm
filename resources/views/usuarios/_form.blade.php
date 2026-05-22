@@ -13,14 +13,43 @@
     @php
         $colaboradores = $colaboradores ?? collect();
         $colaboradorId = old('colaborador_id', $usuario->colaborador_id ?? '');
+        if (! $usuario->exists && $colaboradorId) {
+            $usuario->colaborador_id = (int) $colaboradorId;
+            $usuario->setRelation('colaborador', $colaboradores->firstWhere('id', (int) $colaboradorId));
+        }
         $colaboradoresJson = $colaboradores->mapWithKeys(fn ($c) => [
             (string) $c->id => [
                 'nome' => $c->nome,
                 'telefone' => $c->telefone ?? '',
                 'cargo' => $c->cargo ?? '',
+                'foto_url' => filled($c->foto_path) ? route('rh.efetivo.foto.show', $c) : null,
             ],
         ]);
+        $fotoUrl = $usuario->urlFotoPerfil();
     @endphp
+
+    <div class="mb-6 rounded-xl border border-dashed border-brand-burgundy/25 bg-gradient-to-br from-brand-burgundy/[0.03] to-brand-gray-soft/40 p-5">
+        <div class="flex flex-wrap items-start gap-5">
+            <div id="usuario-foto-preview" class="shrink-0">
+                @if ($fotoUrl)
+                    <img src="{{ $fotoUrl }}" alt="Foto de perfil" class="h-24 w-24 rounded-full object-cover shadow-md ring-4 ring-white">
+                @else
+                    <div class="flex h-24 w-24 items-center justify-center rounded-full bg-brand-burgundy-soft text-xl font-bold text-brand-burgundy ring-4 ring-white">
+                        {{ $usuario->iniciais() }}
+                    </div>
+                @endif
+            </div>
+            <div class="min-w-0 flex-1">
+                <span class="text-xs font-bold uppercase text-brand-gray">Foto de perfil</span>
+                <p class="mt-1 text-sm text-brand-gray">Opcional. JPG, PNG, GIF ou WebP até 5&nbsp;MB. Se o usuário for vinculado a um colaborador do efetivo que já tenha foto, a mesma imagem será usada automaticamente.</p>
+                @if ($usuario->usaFotoDoColaborador())
+                    <p class="mt-2 text-xs font-semibold text-brand-burgundy">Usando a foto do cadastro no efetivo ({{ $usuario->colaborador?->nome }}).</p>
+                @endif
+                <input type="file" name="foto_perfil" accept="image/jpeg,image/png,image/webp,image/gif" class="mt-3 block w-full text-sm text-brand-black file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-burgundy file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-burgundy-dark">
+                @error('foto_perfil') <span class="mt-2 block text-xs font-semibold text-brand-burgundy">{{ $message }}</span> @enderror
+            </div>
+        </div>
+    </div>
 
     <div class="grid gap-4 lg:grid-cols-3">
         <label class="lg:col-span-3">
@@ -33,7 +62,7 @@
                     </option>
                 @endforeach
             </select>
-            <p class="mt-1 text-xs text-brand-gray">Opcional. Ao escolher um colaborador ativo do RH, o nome completo (e telefone/cargo, se houver) são preenchidos.</p>
+            <p class="mt-1 text-xs text-brand-gray">Opcional. Ao escolher um colaborador ativo do RH, o nome, telefone, cargo e a foto do efetivo (se existir) são aplicados automaticamente.</p>
             @error('colaborador_id') <span class="mt-1 block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
         </label>
         <label class="lg:col-span-2">
@@ -129,14 +158,28 @@
                 const nameInput = document.getElementById('usuario-name-input');
                 const telefoneInput = document.getElementById('usuario-telefone-input');
                 const cargoInput = document.getElementById('usuario-cargo-input');
+                const fotoPreview = document.getElementById('usuario-foto-preview');
+                const iniciais = @json($usuario->iniciais());
 
                 if (!select || !nameInput) {
                     return;
                 }
 
+                function atualizarFotoPreview(fotoUrl) {
+                    if (!fotoPreview) {
+                        return;
+                    }
+                    if (fotoUrl) {
+                        fotoPreview.innerHTML = '<img src="' + fotoUrl + '" alt="Foto de perfil" class="h-24 w-24 rounded-full object-cover shadow-md ring-4 ring-white">';
+                    } else {
+                        fotoPreview.innerHTML = '<div class="flex h-24 w-24 items-center justify-center rounded-full bg-brand-burgundy-soft text-xl font-bold text-brand-burgundy ring-4 ring-white">' + iniciais + '</div>';
+                    }
+                }
+
                 select.addEventListener('change', function () {
                     const dados = map[select.value];
                     if (!dados) {
+                        atualizarFotoPreview(null);
                         return;
                     }
                     nameInput.value = dados.nome || '';
@@ -146,6 +189,7 @@
                     if (cargoInput && dados.cargo) {
                         cargoInput.value = dados.cargo;
                     }
+                    atualizarFotoPreview(dados.foto_url || null);
                 });
             })();
         </script>

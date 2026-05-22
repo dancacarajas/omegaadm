@@ -464,8 +464,6 @@ class MovimentacaoChamadoController extends Controller
             'data_emissao' => ['nullable', 'date'],
             'gestor_contrato' => ['nullable', 'string', 'max:120'],
             'responsavel_rh' => ['nullable', 'string', 'max:120'],
-            'assinatura_colaborador' => ['nullable', 'string', 'max:500'],
-            'assinatura_gestor' => ['nullable', 'string', 'max:500'],
             'observacao' => ['nullable', 'string'],
             'itens' => ['nullable', 'array'],
             'itens.*.id' => ['required_with:itens', 'integer'],
@@ -482,8 +480,6 @@ class MovimentacaoChamadoController extends Controller
             'data_emissao' => $data['data_emissao'] ?? $nada->data_emissao,
             'gestor_contrato' => $data['gestor_contrato'] ?? null,
             'responsavel_rh' => $data['responsavel_rh'] ?? $this->nomeUsuarioLogado(),
-            'assinatura_colaborador' => $data['assinatura_colaborador'] ?? null,
-            'assinatura_gestor' => $data['assinatura_gestor'] ?? null,
             'observacao' => $data['observacao'] ?? null,
         ], fn ($v) => $v !== null));
 
@@ -496,15 +492,16 @@ class MovimentacaoChamadoController extends Controller
                     continue;
                 }
                 $tem = $row['tem_debito'] ?? null;
+                $temDebito = $tem === '' || $tem === null ? null : (bool) (int) $tem;
                 $payload[] = [
                     'id' => (int) $row['id'],
-                    'tem_debito' => $tem === '' || $tem === null ? null : (bool) (int) $tem,
-                    'descricao_pendencia' => $row['descricao_pendencia'] ?? null,
-                    'valor_pendencia' => $row['valor_pendencia'] ?? null,
-                    'status_tratativa' => $row['status_tratativa'] ?? null,
-                    'responsavel_nome' => filled($row['responsavel_nome'] ?? null)
-                        ? $row['responsavel_nome']
-                        : $this->nomeUsuarioLogado(),
+                    'tem_debito' => $temDebito,
+                    'descricao_pendencia' => $temDebito === true ? ($row['descricao_pendencia'] ?? null) : null,
+                    'valor_pendencia' => $temDebito === true ? ($row['valor_pendencia'] ?? null) : null,
+                    'status_tratativa' => $temDebito === true ? ($row['status_tratativa'] ?? null) : null,
+                    'responsavel_nome' => $temDebito === true
+                        ? (filled($row['responsavel_nome'] ?? null) ? $row['responsavel_nome'] : $this->nomeUsuarioLogado())
+                        : null,
                     'observacao' => $row['observacao'] ?? null,
                 ];
             }
@@ -523,8 +520,12 @@ class MovimentacaoChamadoController extends Controller
         abort_unless(app(MovimentacaoChamadoAcesso::class)->podeValidarNadaConstaRh(auth()->user()), 403);
 
         $chamado->loadMissing(['anexos', 'nadaConsta.itens']);
-        $pendencias = $rules->pendenciasNadaConsta($chamado);
-        abort_if($pendencias !== [], 422, implode(' ', $pendencias));
+        $pendencias = $rules->pendenciasNadaConsta($chamado, paraAcaoValidarRh: true);
+        if ($pendencias !== []) {
+            return redirect()
+                ->route('rh.chamados-movimentacao.show', $chamado)
+                ->with('error', implode(' ', $pendencias));
+        }
 
         $nada = $chamado->nadaConsta;
         abort_if($nada === null, 422);

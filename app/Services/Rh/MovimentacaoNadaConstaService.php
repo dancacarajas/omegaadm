@@ -124,20 +124,27 @@ final class MovimentacaoNadaConstaService
             $temDebito = isset($row['tem_debito']) ? (bool) $row['tem_debito'] : null;
             $status = (string) ($row['status_tratativa'] ?? $item->status_tratativa);
 
-            if ($temDebito === false) {
-                $status = MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA;
-            } elseif ($temDebito === true && $status === MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA) {
-                $status = MovimentacaoDesligamentoCatalog::TRATATIVA_PENDENTE;
-            }
-
+            $descricao = $row['descricao_pendencia'] ?? null;
+            $valor = $row['valor_pendencia'] ?? null;
             $responsavel = filled($row['responsavel_nome'] ?? null)
                 ? (string) $row['responsavel_nome']
                 : ($userId !== null ? \App\Models\User::query()->find($userId)?->name : null);
 
+            if ($temDebito === false) {
+                $status = MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA;
+                $descricao = null;
+                $valor = null;
+                $responsavel = null;
+            } elseif ($temDebito === true && $status === MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA) {
+                $status = MovimentacaoDesligamentoCatalog::TRATATIVA_PENDENTE;
+            } elseif ($temDebito !== true) {
+                $responsavel = null;
+            }
+
             $item->update([
                 'tem_debito' => $temDebito,
-                'descricao_pendencia' => $row['descricao_pendencia'] ?? null,
-                'valor_pendencia' => $row['valor_pendencia'] ?? null,
+                'descricao_pendencia' => $descricao,
+                'valor_pendencia' => $valor,
                 'status_tratativa' => $status,
                 'responsavel_nome' => $responsavel,
                 'observacao' => $row['observacao'] ?? null,

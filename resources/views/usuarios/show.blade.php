@@ -36,9 +36,13 @@
     <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div class="flex items-center gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-brand-burgundy">
-                    <i data-lucide="user" class="h-7 w-7"></i>
-                </div>
+                @if ($usuario->temFotoPerfil())
+                    <img src="{{ $usuario->urlFotoPerfil() }}" alt="Foto de {{ $usuario->name }}" class="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-sm ring-2 ring-white">
+                @else
+                    <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-burgundy-soft text-lg font-bold text-brand-burgundy">
+                        {{ $usuario->iniciais() }}
+                    </div>
+                @endif
                 <div>
                     <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">{{ $usuario->perfil?->nome ?: 'Sem perfil' }}</p>
                     <h2 class="text-2xl font-bold text-brand-black">{{ $usuario->name }}</h2>

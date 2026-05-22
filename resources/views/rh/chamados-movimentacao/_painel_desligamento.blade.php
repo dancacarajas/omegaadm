@@ -163,12 +163,6 @@
                             <label class="text-xs font-semibold text-zinc-600">Responsável RH
                                 <input type="text" name="responsavel_rh" value="{{ $nada->responsavel_rh ?? $usuarioLogado }}" readonly class="mt-1 h-10 w-full cursor-not-allowed rounded-xl border border-zinc-200 bg-zinc-100 px-3 text-sm text-zinc-700">
                             </label>
-                            <label class="text-xs font-semibold text-zinc-600">Assinatura colaborador
-                                <input type="text" name="assinatura_colaborador" value="{{ $nada->assinatura_colaborador ?? '' }}" class="mt-1 h-10 w-full rounded-xl border border-zinc-200 px-3 text-sm">
-                            </label>
-                            <label class="text-xs font-semibold text-zinc-600 sm:col-span-2">Assinatura gestor
-                                <input type="text" name="assinatura_gestor" value="{{ $nada->assinatura_gestor ?? '' }}" class="mt-1 h-10 w-full rounded-xl border border-zinc-200 px-3 text-sm">
-                            </label>
                             <label class="text-xs font-semibold text-zinc-600 sm:col-span-2">Justificativa / observação
                                 <textarea name="observacao" rows="2" class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm">{{ $nada->observacao ?? '' }}</textarea>
                             </label>
@@ -183,33 +177,35 @@
                                 <div class="space-y-4">
                                     @foreach ($nada->itens->where('area', $area) as $item)
                                         @php $nomeItem = collect($defItens)->firstWhere('slug', $item->item)['nome'] ?? $item->item; @endphp
-                                        <div class="rounded-xl border border-white bg-white p-3 shadow-sm">
+                                        <div class="rounded-xl border border-white bg-white p-3 shadow-sm" data-nc-item>
                                             <p class="mb-2 text-xs font-semibold text-zinc-800">{{ $nomeItem }}</p>
                                             @if ($podeArea)
                                                 <input type="hidden" name="itens[{{ $item->id }}][id]" value="{{ $item->id }}">
-                                                <div class="grid gap-2 sm:grid-cols-3">
-                                                    <label class="text-[10px] font-bold text-zinc-500">Tem débito?
-                                                        <select name="itens[{{ $item->id }}][tem_debito]" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 text-xs">
-                                                            <option value="">—</option>
-                                                            <option value="0" @selected($item->tem_debito === false)>Não</option>
-                                                            <option value="1" @selected($item->tem_debito === true)>Sim</option>
-                                                        </select>
-                                                    </label>
-                                                    <label class="text-[10px] font-bold text-zinc-500 sm:col-span-2">Tratativa
-                                                        <select name="itens[{{ $item->id }}][status_tratativa]" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 text-xs">
+                                                <label class="block max-w-xs text-[10px] font-bold text-zinc-500">Tem débito?
+                                                    <select name="itens[{{ $item->id }}][tem_debito]" data-nc-tem-debito class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 text-xs">
+                                                        <option value="">—</option>
+                                                        <option value="0" @selected($item->tem_debito === false)>Não</option>
+                                                        <option value="1" @selected($item->tem_debito === true)>Sim</option>
+                                                    </select>
+                                                </label>
+                                                <div data-nc-detalhes @class(['mt-3 grid gap-2 sm:grid-cols-3', 'hidden' => $item->tem_debito !== true])>
+                                                    <label class="text-[10px] font-bold text-zinc-500 sm:col-span-3">Tratativa
+                                                        <select name="itens[{{ $item->id }}][status_tratativa]" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 text-xs" @disabled($item->tem_debito !== true)>
                                                             @foreach ($statusTratativa ?? [] as $k => $l)
-                                                                <option value="{{ $k }}" @selected($item->status_tratativa === $k)>{{ $l }}</option>
+                                                                @if ($k !== \App\Support\Rh\MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA)
+                                                                    <option value="{{ $k }}" @selected($item->status_tratativa === $k)>{{ $l }}</option>
+                                                                @endif
                                                             @endforeach
                                                         </select>
                                                     </label>
                                                     <label class="text-[10px] font-bold text-zinc-500 sm:col-span-3">Descrição pendência
-                                                        <input type="text" name="itens[{{ $item->id }}][descricao_pendencia]" value="{{ $item->descricao_pendencia }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs">
+                                                        <input type="text" name="itens[{{ $item->id }}][descricao_pendencia]" value="{{ $item->descricao_pendencia }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs" @disabled($item->tem_debito !== true)>
                                                     </label>
                                                     <label class="text-[10px] font-bold text-zinc-500">Valor
-                                                        <input type="number" step="0.01" name="itens[{{ $item->id }}][valor_pendencia]" value="{{ $item->valor_pendencia }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs">
+                                                        <input type="number" step="0.01" name="itens[{{ $item->id }}][valor_pendencia]" value="{{ $item->valor_pendencia }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs" @disabled($item->tem_debito !== true)>
                                                     </label>
                                                     <label class="text-[10px] font-bold text-zinc-500 sm:col-span-2">Responsável pela validação
-                                                        <input type="text" name="itens[{{ $item->id }}][responsavel_nome]" value="{{ $item->responsavel_nome ?? $usuarioLogado }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs">
+                                                        <input type="text" name="itens[{{ $item->id }}][responsavel_nome]" value="{{ $item->responsavel_nome ?? $usuarioLogado }}" class="mt-0.5 h-9 w-full rounded-lg border border-zinc-200 px-2 text-xs" @disabled($item->tem_debito !== true)>
                                                     </label>
                                                 </div>
                                                 @if ($pacoteEnviado)
@@ -219,7 +215,15 @@
                                                     </p>
                                                 @endif
                                             @else
-                                                <p class="text-[10px] text-zinc-600">Débito: {{ $item->tem_debito === null ? '—' : ($item->tem_debito ? 'Sim' : 'Não') }} · {{ $item->statusTratativaLabel() }}</p>
+                                                <p class="text-[10px] text-zinc-600">
+                                                    Débito: {{ $item->tem_debito === null ? '—' : ($item->tem_debito ? 'Sim' : 'Não') }}
+                                                    @if ($item->tem_debito === true)
+                                                        · {{ $item->statusTratativaLabel() }}
+                                                        @if ($item->descricao_pendencia)
+                                                            · {{ $item->descricao_pendencia }}
+                                                        @endif
+                                                    @endif
+                                                </p>
                                             @endif
                                             @if (! $pacoteEnviado && ($item->anexoEvidencia || $item->anexoTermoBaixa || $item->anexoAutorizacaoDesconto))
                                                 <div class="mt-2 flex flex-wrap gap-2 text-[10px]">

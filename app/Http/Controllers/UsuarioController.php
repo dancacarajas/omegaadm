@@ -8,6 +8,7 @@ use App\Models\Perfil;
 use App\Models\User;
 use App\Services\AuthEmailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class UsuarioController extends Controller
@@ -15,7 +16,7 @@ class UsuarioController extends Controller
     public function index()
     {
         $query = User::query()
-            ->with(['perfil', 'contratos'])
+            ->with(['perfil', 'contratos', 'colaborador:id,foto_path,nome'])
             ->when(request('busca'), function ($query, string $busca) {
                 $query->where(function ($query) use ($busca) {
                     $query->where('name', 'like', "%{$busca}%")
@@ -53,7 +54,12 @@ class UsuarioController extends Controller
         $data = $this->validatedData($request);
         $contratos = $data['contratos'] ?? [];
         $senhaPlana = $data['password'];
-        unset($data['contratos']);
+        unset($data['contratos'], $data['foto_perfil']);
+
+        $foto = $this->storeFotoPerfil($request, null);
+        if ($foto !== null) {
+            $data['foto_path'] = $foto;
+        }
 
         $usuario = User::create($data);
         $usuario->contratos()->sync($usuario->todos_contratos ? [] : $contratos);
@@ -73,7 +79,7 @@ class UsuarioController extends Controller
 
     public function show(User $usuario)
     {
-        $usuario->load(['perfil', 'contratos']);
+        $usuario->load(['perfil', 'contratos', 'colaborador']);
 
         return view('usuarios.show', compact('usuario'));
     }
@@ -92,7 +98,12 @@ class UsuarioController extends Controller
     {
         $data = $this->validatedData($request, $usuario);
         $contratos = $data['contratos'] ?? [];
-        unset($data['contratos']);
+        unset($data['contratos'], $data['foto_perfil']);
+
+        $foto = $this->storeFotoPerfil($request, $usuario);
+        if ($foto !== null) {
+            $data['foto_path'] = $foto;
+        }
 
         $senhaAlterada = filled($data['password'] ?? null);
         if (! $senhaAlterada) {
@@ -121,10 +132,44 @@ class UsuarioController extends Controller
         }
 
         $nome = $usuario->name;
+        if ($this->fotoPropriaDoUsuario($usuario)) {
+            Storage::disk('public')->delete($usuario->foto_path);
+        }
         $usuario->contratos()->detach();
         $usuario->delete();
 
         return redirect()->route('usuarios.index')->with('success', "Usuário \"{$nome}\" removido do sistema.");
+    }
+
+    public function showFoto(User $usuario)
+    {
+        $usuario->loadMissing('colaborador');
+
+        if (filled($usuario->foto_path) && Storage::disk('public')->exists($usuario->foto_path)) {
+            $path = str_replace('\\', '/', (string) $usuario->foto_path);
+
+            return Storage::disk('public')->response(
+                $path,
+                basename($path),
+                ['Cache-Control' => 'private, max-age=3600'],
+            );
+        }
+
+        $colaborador = $usuario->colaborador;
+        abort_unless(
+            $colaborador
+            && filled($colaborador->foto_path)
+            && Storage::disk('public')->exists($colaborador->foto_path),
+            404,
+        );
+
+        $path = str_replace('\\', '/', (string) $colaborador->foto_path);
+
+        return Storage::disk('public')->response(
+            $path,
+            basename($path),
+            ['Cache-Control' => 'private, max-age=3600'],
+        );
     }
 
     private function validatedData(Request $request, ?User $usuario = null): array
@@ -146,6 +191,7 @@ class UsuarioController extends Controller
             'contratos' => ['nullable', 'array'],
             'contratos.*' => ['integer', 'exists:contratos,id'],
             'password' => [$usuario ? 'nullable' : 'required', 'string', 'min:6', 'confirmed'],
+            'foto_perfil' => ['nullable', 'file', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
         ]) + [
             'todos_contratos' => $request->boolean('todos_contratos'),
             'colaborador_id' => $request->filled('colaborador_id') ? (int) $request->input('colaborador_id') : null,
@@ -160,6 +206,26 @@ class UsuarioController extends Controller
         return Colaborador::query()
             ->where('status', 'ativo')
             ->orderBy('nome')
-            ->get(['id', 'nome', 'matricula', 'telefone', 'cargo']);
+            ->get(['id', 'nome', 'matricula', 'telefone', 'cargo', 'foto_path']);
+    }
+
+    private function fotoPropriaDoUsuario(User $usuario): bool
+    {
+        return filled($usuario->foto_path)
+            && str_starts_with(str_replace('\\', '/', (string) $usuario->foto_path), 'usuarios/fotos/');
+    }
+
+    private function storeFotoPerfil(Request $request, ?User $usuario = null): ?string
+    {
+        if (! $request->hasFile('foto_perfil')) {
+            return null;
+        }
+
+        $path = $request->file('foto_perfil')->store('usuarios/fotos', 'public');
+        if ($usuario !== null && $this->fotoPropriaDoUsuario($usuario)) {
+            Storage::disk('public')->delete($usuario->foto_path);
+        }
+
+        return $path;
     }
 }

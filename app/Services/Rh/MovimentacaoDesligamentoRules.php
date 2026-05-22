@@ -146,7 +146,7 @@ final class MovimentacaoDesligamentoRules
     /**
      * @return list<string>
      */
-    public function pendenciasNadaConsta(RhMovimentacaoChamado $chamado): array
+    public function pendenciasNadaConsta(RhMovimentacaoChamado $chamado, bool $paraAcaoValidarRh = false): array
     {
         $pendencias = [];
         $nada = $chamado->nadaConsta;
@@ -170,7 +170,7 @@ final class MovimentacaoDesligamentoRules
         }
 
         if (MovimentacaoDesligamentoCatalog::chamadoTemPacoteDocumentos($chamado)) {
-            if (! $nada->validado_rh) {
+            if (! $paraAcaoValidarRh && ! $nada->validado_rh) {
                 $pendencias[] = 'Valide o Nada Consta pelo RH (botão na seção Nada Consta).';
             }
 
@@ -197,12 +197,8 @@ final class MovimentacaoDesligamentoRules
             }
         }
 
-        if (! $nada->validado_rh) {
+        if (! $paraAcaoValidarRh && ! $nada->validado_rh) {
             $pendencias[] = 'Nada Consta aguarda validação final do RH.';
-        }
-
-        if (blank($nada->assinatura_colaborador) && blank($nada->assinatura_gestor) && blank($nada->observacao)) {
-            $pendencias[] = 'Registre assinatura do colaborador/gestor ou justificativa no Nada Consta.';
         }
 
         return $pendencias;

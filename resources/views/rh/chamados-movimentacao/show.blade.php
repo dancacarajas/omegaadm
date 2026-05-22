@@ -263,6 +263,29 @@
             el.addEventListener('toggle', sync);
             sync();
         });
+
+        function syncNadaConstaItem(itemEl) {
+            var select = itemEl.querySelector('[data-nc-tem-debito]');
+            var detalhes = itemEl.querySelector('[data-nc-detalhes]');
+            if (!select || !detalhes) {
+                return;
+            }
+            var comDebito = select.value === '1';
+            detalhes.classList.toggle('hidden', !comDebito);
+            detalhes.querySelectorAll('input, select, textarea').forEach(function (campo) {
+                campo.disabled = !comDebito;
+            });
+        }
+
+        document.querySelectorAll('[data-nc-item]').forEach(syncNadaConstaItem);
+        document.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.matches('[data-nc-tem-debito]')) {
+                var item = ev.target.closest('[data-nc-item]');
+                if (item) {
+                    syncNadaConstaItem(item);
+                }
+            }
+        });
     })();
 </script>
 @endpush

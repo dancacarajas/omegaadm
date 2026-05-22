@@ -232,6 +232,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/debug-pgu-powerpoint', [PguDashboardController::class, 'debugExportarPowerPoint'])->name('pgu.export.ppt.debug');
     Route::post('contratos/histograma', [ContratoHistogramaController::class, 'salvar'])->name('contratos.histograma.salvar');
     Route::resource('contratos', ContratoController::class);
+    Route::get('usuarios/{usuario}/foto', [UsuarioController::class, 'showFoto'])->name('usuarios.foto.show');
     Route::resource('usuarios', UsuarioController::class);
     Route::resource('perfis', PerfilController::class);
 

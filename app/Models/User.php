@@ -28,6 +28,7 @@ class User extends Authenticatable
         'email',
         'telefone',
         'cargo',
+        'foto_path',
         'password',
         'status',
         'ultimo_acesso_em',
@@ -66,6 +67,66 @@ class User extends Authenticatable
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    public function iniciais(): string
+    {
+        $partes = preg_split('/\s+/u', trim((string) $this->name), -1, PREG_SPLIT_NO_EMPTY);
+        if ($partes === false || $partes === []) {
+            return '?';
+        }
+
+        $iniciais = mb_strtoupper(mb_substr($partes[0], 0, 1));
+        if (count($partes) > 1) {
+            $iniciais .= mb_strtoupper(mb_substr($partes[count($partes) - 1], 0, 1));
+        }
+
+        return $iniciais;
+    }
+
+    public function temFotoPerfil(): bool
+    {
+        if (filled($this->foto_path)) {
+            return true;
+        }
+
+        $colaborador = $this->relationLoaded('colaborador')
+            ? $this->colaborador
+            : ($this->colaborador_id ? $this->colaborador()->first(['id', 'foto_path']) : null);
+
+        return filled($colaborador?->foto_path);
+    }
+
+    public function usaFotoDoColaborador(): bool
+    {
+        return blank($this->foto_path) && $this->temFotoPerfil();
+    }
+
+    public function urlFotoPerfil(): ?string
+    {
+        if (filled($this->foto_path)) {
+            if ($this->exists) {
+                return route('usuarios.foto.show', $this);
+            }
+
+            $path = str_replace('\\', '/', (string) $this->foto_path);
+
+            return asset('storage/'.ltrim($path, '/'));
+        }
+
+        $colaborador = $this->relationLoaded('colaborador')
+            ? $this->colaborador
+            : ($this->colaborador_id ? $this->colaborador()->first(['id', 'foto_path']) : null);
+
+        if (! filled($colaborador?->foto_path)) {
+            return null;
+        }
+
+        if ($this->exists) {
+            return route('usuarios.foto.show', $this);
+        }
+
+        return $colaborador->urlFotoPerfil();
     }
 
     /**
