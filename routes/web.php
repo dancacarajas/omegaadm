@@ -426,7 +426,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             \App\Models\Colaborador $colaborador,
             \App\Models\ColaboradorMovimentacao $movimentacao
         ) {
-            abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
+            abort_unless((int) $movimentacao->colaborador_id === (int) $colaborador->id, 404);
 
             return redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301);
         })->whereNumber(['colaborador', 'movimentacao'])->name('efetivo.movimentacoes.edit.legado');

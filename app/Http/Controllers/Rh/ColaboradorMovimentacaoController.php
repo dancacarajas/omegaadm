@@ -113,7 +113,8 @@ class ColaboradorMovimentacaoController extends Controller
             return response()->json($payload);
         }
 
-        $colaborador = $movimentacao->colaborador()->firstOrFail();
+        $colaborador = $movimentacao->colaborador;
+        abort_if($colaborador === null, 404, 'Colaborador da movimentação não encontrado.');
 
         if ($request->isMethod('POST')) {
             if (config('app.debug')) {
@@ -177,7 +178,8 @@ class ColaboradorMovimentacaoController extends Controller
 
     private function garantirMovimentacaoDoColaborador(Colaborador $colaborador, ColaboradorMovimentacao $movimentacao): void
     {
-        abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
+        // MySQL/PDO pode devolver colaborador_id como string; === gerava 404 falso em produção.
+        abort_unless((int) $movimentacao->colaborador_id === (int) $colaborador->id, 404);
     }
 
     /**

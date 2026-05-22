@@ -42,6 +42,8 @@ class ColaboradorMovimentacao extends Model
     ];
 
     protected $casts = [
+        'colaborador_id' => 'integer',
+        'registrado_por_user_id' => 'integer',
         'data_inicio' => 'date',
         'data_fim' => 'date',
         'salario_anterior' => 'decimal:2',

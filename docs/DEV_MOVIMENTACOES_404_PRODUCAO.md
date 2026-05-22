@@ -341,6 +341,18 @@ Se nada no log → requisição não passou pelo Laravel (cache estático).
 
 **3. Cache:** sair, limpar dados do site, aba anônima, OPcache/LiteSpeed no painel Hostinger.
 
+### Causa raiz confirmada (após `reached_controller: true`)
+
+O JSON de debug mostrou `colaborador_id: "34"` (string). No fluxo normal, `garantirMovimentacaoDoColaborador()` usava:
+
+```php
+abort_unless($movimentacao->colaborador_id === $colaborador->id, 404);
+```
+
+Com `"34" === 34` → **falso** → **404** mesmo com rota e binding corretos. O bloco `?debug_movimentacao=1` retornava **antes** dessa checagem.
+
+**Correção:** cast `(int)` na comparação + `colaborador_id` em `$casts` do model. Commit com mensagem `fix(rh): 404 movimentação por colaborador_id string vs int`.
+
 ---
 
 ## 11. Testes automatizados (local — todos passando)
