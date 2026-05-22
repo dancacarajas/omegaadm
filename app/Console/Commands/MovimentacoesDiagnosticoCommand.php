@@ -128,6 +128,7 @@ class MovimentacoesDiagnosticoCommand extends Command
     private function simularHttpGet(int $movId): void
     {
         $_SERVER['REQUEST_URI'] = '/public/rh/efetivo/movimentacao/'.$movId;
+        $_SERVER['OMEGA_REQUEST_USES_PUBLIC_URL'] = '1';
         $_SERVER['SCRIPT_NAME'] = '/public/index.php';
         $_SERVER['SCRIPT_FILENAME'] = public_path('index.php');
         $_SERVER['QUERY_STRING'] = '';

@@ -179,6 +179,25 @@ class ColaboradorMovimentacaoTest extends TestCase
             ->assertSee('Alterar movimentação', false);
     }
 
+    public function test_listagem_exibe_link_alterar_para_efetivo_movimentacao(): void
+    {
+        $user = User::factory()->create();
+        $colab = Colaborador::query()->create(['nome' => 'E', 'status' => 'ativo']);
+        $mov = ColaboradorMovimentacao::query()->create([
+            'colaborador_id' => $colab->id,
+            'tipo' => ColaboradorMovimentacaoTipos::AFASTAMENTO_INSS,
+            'data_inicio' => '2026-05-14',
+            'especie_beneficio_inss' => 'auxilio_doenca',
+        ]);
+
+        config(['app.force_public_url' => true]);
+
+        $this->actingAs($user)
+            ->get(route('rh.efetivo.movimentacoes.index'))
+            ->assertOk()
+            ->assertSee('efetivo/movimentacao/'.$mov->id, false);
+    }
+
     public function test_listagem_movimentacoes_mantem_assets_com_base_public_hostinger(): void
     {
         $user = User::factory()->create();

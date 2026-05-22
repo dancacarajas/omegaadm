@@ -324,6 +324,19 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
 
     Route::prefix('rh')->name('rh.')->group(function () {
         Route::get('/', RhDashboardController::class)->name('dashboard');
+
+        // Movimentações — rotas fixas ANTES de efetivo/{colaborador} (evita 404 em produção /public/)
+        Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
+        Route::match(['get', 'post'], 'efetivo/movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
+            ->whereNumber('movimentacao')
+            ->name('efetivo.movimentacoes.edit');
+        Route::get('movimentacoes/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
+            ->whereNumber('movimentacao');
+        Route::get('movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
+            ->whereNumber('movimentacao');
+        Route::get('efetivo/movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
+            ->whereNumber('movimentacao');
+
         Route::get('frequencia', [FrequenciaController::class, 'index'])->name('frequencia.index');
         Route::get('frequencia/extrato-faltas', [FrequenciaController::class, 'extratoFaltas'])->name('frequencia.extrato-faltas');
         Route::get('frequencia/apuracao', [ApuracaoPontoController::class, 'index'])->name('frequencia.apuracao.index');
@@ -401,15 +414,6 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('beneficios/{beneficio}/colaboradores/{vinculo}', function (Beneficio $beneficio) {
             return redirect()->route('rh.beneficios.show', $beneficio);
         })->whereNumber('beneficio');
-        Route::get('efetivo/movimentacoes', [ColaboradorMovimentacaoController::class, 'index'])->name('efetivo.movimentacoes.index');
-        // Gestão: GET+POST na mesma URL, sob efetivo/ (mesmo prefixo da listagem — evita 404 em /public/)
-        Route::match(['get', 'post'], 'efetivo/movimentacao/{movimentacao}', [ColaboradorMovimentacaoController::class, 'editar'])
-            ->whereNumber('movimentacao')
-            ->name('efetivo.movimentacoes.edit');
-        Route::get('movimentacoes/{movimentacao}', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
-        Route::get('movimentacoes/{movimentacao}/editar', fn (\App\Models\ColaboradorMovimentacao $movimentacao) => redirect()->route('rh.efetivo.movimentacoes.edit', $movimentacao, 301))
-            ->whereNumber('movimentacao');
         Route::get('efetivo/{colaborador}/movimentacoes/criar', [ColaboradorMovimentacaoController::class, 'create'])
             ->whereNumber('colaborador')
             ->name('efetivo.movimentacoes.create');
