@@ -118,6 +118,32 @@ final class ConfiguracaoEmailService
         return $registro;
     }
 
+    public function mensagemErroAmigavel(\Throwable $e): string
+    {
+        $raw = $e->getMessage();
+
+        if (str_contains($raw, '535') || str_contains($raw, 'BadCredentials') || str_contains($raw, 'Username and Password not accepted')) {
+            $gmail = str_contains(strtolower($raw), 'gsmtp') || str_contains(strtolower($raw), 'gmail');
+
+            if ($gmail) {
+                return 'O Gmail recusou usuário ou senha (erro 535). Não use a senha normal da conta: '
+                    .'crie uma senha de app de 16 caracteres em '
+                    .'https://myaccount.google.com/apppasswords (exige verificação em duas etapas ativa), '
+                    .'cole no campo Senha SMTP, salve a configuração e teste de novo. '
+                    .'Com Gmail, o e-mail remetente deve ser o mesmo do usuário SMTP (286omega@gmail.com) '
+                    .'ou um alias autorizado em "Enviar e-mail como" no Gmail.';
+            }
+
+            return 'O servidor SMTP recusou usuário ou senha. Confira usuário, senha e se o provedor exige senha de aplicativo.';
+        }
+
+        if (str_contains($raw, 'Connection could not be established') || str_contains($raw, 'Connection timed out')) {
+            return 'Não foi possível conectar ao servidor SMTP. Verifique host, porta, firewall e criptografia (TLS na porta 587).';
+        }
+
+        return 'Falha ao enviar: '.$raw;
+    }
+
     public function enviarTeste(string $destinatario): void
     {
         $this->aplicarConfiguracaoRuntime();

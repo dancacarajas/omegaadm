@@ -24,6 +24,23 @@
             <span>{{ session('error') }}</span>
         </div>
     @endif
+
+    @php
+        $usaGmail = str_contains(strtolower((string) ($mail_host ?? '')), 'gmail')
+            || str_contains(strtolower((string) ($mail_username ?? '')), '@gmail.com');
+    @endphp
+    @if ($usaGmail)
+        <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+            <p class="font-bold">Gmail (smtp.gmail.com)</p>
+            <ul class="mt-2 list-inside list-disc space-y-1 text-amber-900/90">
+                <li>Ative a <strong>verificação em duas etapas</strong> na conta Google.</li>
+                <li>Gere uma <strong>senha de app</strong> (16 letras, sem espaços) em <a class="font-semibold underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a> — não use a senha de login do Gmail.</li>
+                <li>Cole essa senha no campo <strong>Senha SMTP</strong>, salve e só então envie o teste.</li>
+                <li>Com Gmail, use <strong>286omega@gmail.com</strong> como remetente (ou alias já cadastrado em “Enviar e-mail como”). O endereço <code class="rounded bg-amber-100 px-1">noreply@omegaadm.feston.net.br</code> só funciona com SMTP do próprio domínio (ex.: Hostinger), não com conta @gmail.com.</li>
+            </ul>
+            <p class="mt-2 text-xs text-amber-800">Referência Google: <a class="underline" href="https://support.google.com/mail/?p=BadCredentials" target="_blank" rel="noopener">Username and Password not accepted (535)</a>.</p>
+        </div>
+    @endif
     @if ($errors->any())
         <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <ul class="list-inside list-disc space-y-1">

@@ -72,7 +72,7 @@ class ConfiguracaoEmailController extends Controller
             return redirect()
                 ->route('configuracoes.email.edit')
                 ->withInput()
-                ->with('error', 'Falha ao enviar: '.$e->getMessage());
+                ->with('error', $service->mensagemErroAmigavel($e));
         }
     }
 }
