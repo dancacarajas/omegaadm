@@ -412,8 +412,6 @@ Atenção singular/plural:
 
 ## 10. Referência rápida — arquivos de infra
 
----
-
 | Arquivo | Papel |
 |---------|--------|
 | `.htaccess` | Rewrite `/public/*` → `public/index.php` |
