@@ -11,6 +11,8 @@ class MoedaBrTest extends TestCase
     {
         $this->assertSame(3091.91, MoedaBr::parse('3.091,91'));
         $this->assertSame(3091.91, MoedaBr::parse('3091,91'));
+        $this->assertSame(2669.35, MoedaBr::parse('2.669,35'));
+        $this->assertSame(2669.35, MoedaBr::parse('R$ 2.669,35'));
     }
 
     public function test_parse_decimal_americano_do_excel(): void

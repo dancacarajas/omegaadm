@@ -337,8 +337,22 @@ class ColaboradorController extends Controller
 
     private function validatedData(Request $request, ?Colaborador $colaborador = null): array
     {
+        if ($request->has('salario_inicial')) {
+            $bruto = $request->input('salario_inicial');
+            $request->merge([
+                'salario_inicial' => ($bruto === null || $bruto === '')
+                    ? null
+                    : MoedaBr::parse($bruto),
+            ]);
+        }
+
         $data = $request->validate($this->validatedDataRules($colaborador));
-        $data['salario_inicial'] = MoedaBr::parse($data['salario_inicial'] ?? null);
+
+        if (array_key_exists('salario_inicial', $data)) {
+            $data['salario_inicial'] = filled($data['salario_inicial'] ?? null)
+                ? round((float) $data['salario_inicial'], 2)
+                : null;
+        }
 
         return $data;
     }
@@ -624,7 +638,7 @@ class ColaboradorController extends Controller
             'data_opcao_fgts' => ['nullable', 'date'],
             'data_demissao' => ['nullable', 'date'],
             'forma_pagamento' => ['nullable', 'string', 'max:80'],
-            'salario_inicial' => ['nullable', 'numeric', 'min:0'],
+            'salario_inicial' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'local_trabalho' => ['nullable', 'string', 'max:255'],
             'almoco' => ['nullable', 'string', 'max:80'],
             'status' => ['required', 'string', Rule::in(['ativo', 'afastado', 'desligado'])],

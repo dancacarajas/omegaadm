@@ -356,13 +356,15 @@
                 <span class="{{ $labelClass }}">Salário inicial</span>
                 <input
                     type="text"
-                    inputmode="decimal"
+                    inputmode="numeric"
+                    data-mask="moeda-br"
                     name="salario_inicial"
                     value="{{ old('salario_inicial', \App\Support\Rh\MoedaBr::paraInput($value('salario_inicial'))) }}"
-                    placeholder="3.091,91"
+                    placeholder="2.669,35"
                     autocomplete="off"
                     class="{{ $inputClass }}"
                 >
+                <p class="mt-1 text-[11px] text-brand-gray">Formato brasileiro: ponto para milhar e vírgula para centavos (ex.: 2.669,35).</p>
                 @error('salario_inicial') <span class="mt-1 block text-xs text-brand-burgundy">{{ $message }}</span> @enderror
             </label>
             <label class="md:col-span-2">

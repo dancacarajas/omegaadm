@@ -8,6 +8,7 @@ import Stepper from 'bs-stepper';
 import ApexCharts from 'apexcharts';
 import './pgu-dashboard';
 import { initDataBrMasks } from './masks/data-br.js';
+import { initMoedaBrMasks } from './masks/moeda-br.js';
 import 'bs-stepper/dist/css/bs-stepper.min.css';
 
 window.Alpine = Alpine;
@@ -19,6 +20,7 @@ Alpine.start();
 document.addEventListener('DOMContentLoaded', () => {
     initAppLucideIcons();
     initDataBrMasks();
+    initMoedaBrMasks();
 
     const initApexCharts = () => {
         document.querySelectorAll('[data-apex-chart]').forEach((element) => {
