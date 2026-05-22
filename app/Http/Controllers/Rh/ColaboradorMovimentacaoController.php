@@ -83,17 +83,27 @@ class ColaboradorMovimentacaoController extends Controller
      */
     public function editar(Request $request, ColaboradorMovimentacao $movimentacao, ColaboradorMovimentacaoService $service)
     {
-        if ($request->boolean('debug_movimentacao') && config('app.debug')) {
-            dd([
+        if ($request->boolean('debug_movimentacao')) {
+            $payload = [
+                'reached_controller' => true,
                 'method' => $request->method(),
                 'path' => $request->path(),
                 'request_uri' => $request->getRequestUri(),
                 'base_url' => $request->getBaseUrl(),
                 'script_name' => $request->server->get('SCRIPT_NAME'),
+                'route_name' => $request->route()?->getName(),
                 'expected_route' => 'rh/movimentacao/'.$movimentacao->getKey(),
                 'movimentacao_id' => $movimentacao->id,
                 'colaborador_id' => $movimentacao->colaborador_id,
-            ]);
+            ];
+
+            if (config('app.debug')) {
+                dd($payload);
+            }
+
+            abort_unless($request->user(), 401);
+
+            return response()->json($payload);
         }
 
         $colaborador = $movimentacao->colaborador()->firstOrFail();

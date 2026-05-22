@@ -7,6 +7,7 @@ use App\Models\ColaboradorMovimentacao;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 class MovimentacoesDiagnosticoCommand extends Command
@@ -16,7 +17,8 @@ class MovimentacoesDiagnosticoCommand extends Command
                             {--rota : Verifica se a rota de gestão está registrada}
                             {--mov : O argumento id é colaborador_movimentacoes.id, não colaborador_id}
                             {--listar : Lista todas as movimentações (id, colaborador, tipo)}
-                            {--http : Simula GET HTTP com /public/ no REQUEST_URI (como o navegador)}';
+                            {--http : Simula GET HTTP com /public/ no REQUEST_URI (como o navegador)}
+                            {--curl-externo : HEAD na URL pública real (compara movimentação vs benefícios)}';
 
     protected $description = 'Diagnóstico de 404 em /public/rh/movimentacoes/{id} (produção Hostinger)';
 
@@ -122,6 +124,10 @@ class MovimentacoesDiagnosticoCommand extends Command
             $this->simularHttpGet($movId);
         }
 
+        if ($this->option('curl-externo')) {
+            $this->testarHttpExterno($movId);
+        }
+
         return self::SUCCESS;
     }
 
@@ -148,7 +154,41 @@ class MovimentacoesDiagnosticoCommand extends Command
             $this->error('404 na simulação → path deve ser rh/movimentacao/'.$movId.' (sem prefixo public/)');
             $this->line('Confira bootstrap/fix-public-request-uri.php e .htaccess na raiz do projeto.');
         } elseif ($response->isRedirection()) {
+            $this->info('302/301 na simulação interna SEM login = esperado (middleware auth). A rota existe.');
             $this->line('Redirect: '.$response->headers->get('Location'));
+            $this->line('Compare com: php artisan movimentacoes:diagnostico '.$movId.' --mov --curl-externo');
         }
+    }
+
+    private function testarHttpExterno(int $movId): void
+    {
+        $host = rtrim((string) config('app.url', 'https://omegaadm.feston.net.br'), '/');
+        $urls = [
+            'movimentacao' => "{$host}/public/rh/movimentacao/{$movId}",
+            'beneficios_ref' => "{$host}/public/rh/beneficios/1",
+            'legado_mov' => "{$host}/public/rh/efetivo/movimentacao/{$movId}",
+        ];
+
+        $this->line('HTTP externo (sem cookie de sessão):');
+
+        foreach ($urls as $rotulo => $url) {
+            try {
+                $response = Http::withOptions(['allow_redirects' => false])->timeout(20)->head($url);
+                $status = $response->status();
+                $this->line("  [{$rotulo}] HTTP {$status} — {$url}");
+                if ($location = $response->header('Location')) {
+                    $this->line("    Location: {$location}");
+                }
+            } catch (\Throwable $e) {
+                $this->warn("  [{$rotulo}] falhou: {$e->getMessage()}");
+            }
+        }
+
+        $this->newLine();
+        $this->line('Interpretação:');
+        $this->line('  • 302 → /public/login = Laravel recebeu o pedido (igual Benefícios). Rota web OK.');
+        $this->line('  • 404 aqui e 302 em Benefícios = problema específico de Movimentações ou cache LiteSpeed.');
+        $this->line('  • Navegador logado com 404 mas curl 302 = cache do browser/LiteSpeed ou binding com sessão.');
+        $this->line('  • Logado: teste ?debug_movimentacao=1 — JSON = chegou no controller; 404 sem JSON = não chegou.');
     }
 }

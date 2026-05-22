@@ -260,32 +260,46 @@ php artisan optimize:clear
 rm -f bootstrap/cache/routes*.php 2>/dev/null
 
 # 4) Rota registrada?
-php artisan route:list --path=efetivo/movimentacao
+php artisan route:list --path=movimentacao
 
 # 5) Banco
 php artisan movimentacoes:diagnostico --listar
 php artisan movimentacoes:diagnostico 2 --mov --http
 
-# 6) Teste curl (sem login → 302 ou 419; com cookie de sessão → 200)
-curl -sI "https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2" | head -5
-curl -sI "https://omegaadm.feston.net.br/public/rh/beneficios/1" | head -5
+# 6) Teste HTTP externo real (sem login → 302 login = rota OK)
+curl.exe -sI "https://omegaadm.feston.net.br/public/rh/movimentacao/2"
+curl.exe -sI "https://omegaadm.feston.net.br/public/rh/beneficios/1"
+
+# Ou no SSH (Laravel HTTP client):
+php artisan movimentacoes:diagnostico 2 --mov --curl-externo
 ```
 
-### Debug no navegador (temporário)
+**Resultado validado (maio/2026):** ambas as URLs externas retornam **HTTP 302** para `/public/login` com `X-Powered-By: PHP`. Ou seja, **o servidor web entrega o pedido ao Laravel** — não é 404 no wire sem sessão.
 
-Com `APP_DEBUG=true` no `.env` de produção (reverter depois):
+| Situação | Significado |
+|----------|-------------|
+| `curl` externo **302** em movimentação e benefícios | Rota web OK; guest redireciona para login |
+| `movimentacoes:diagnostico --http` **302** interno | Mesmo comportamento (simulação sem cookie) |
+| Navegador **logado** com **404** mas curl **302** | Cache LiteSpeed/browser, view antiga, ou 404 do binding **com** sessão |
+| Navegador **404** e curl **404** | Deploy/cache/rewrite — limpar OPcache e `route:clear` |
+
+### Debug no navegador (logado, sem APP_DEBUG)
 
 ```text
-https://omegaadm.feston.net.br/public/rh/efetivo/movimentacao/2?debug_movimentacao=1
+https://omegaadm.feston.net.br/public/rh/movimentacao/2?debug_movimentacao=1
 ```
 
-| Campo no `dd()` | Valor esperado |
-|-----------------|----------------|
-| `path` | `rh/efetivo/movimentacao/2` |
-| `request_uri` | `/public/rh/efetivo/movimentacao/2` ou `/rh/...` após fix |
-| `expected_route` | `rh/efetivo/movimentacao/2` |
+| Resposta | Significado |
+|----------|-------------|
+| JSON com `"reached_controller": true` | Requisição chegou em `editar()` |
+| 404 sem JSON | Não chegou no controller (cache web, URL errada ou rota antiga) |
+| `dd()` (só com APP_DEBUG=true) | Mesmos campos em tela |
 
-Se o `dd()` **não aparecer** e continuar 404 minimal do Laravel → requisição **não chega** em `editar()` (problema de rota/rewrite/deploy).
+| Campo JSON | Valor esperado |
+|------------|----------------|
+| `path` | `rh/movimentacao/2` |
+| `route_name` | `rh.efetivo.movimentacoes.edit` |
+| `expected_route` | `rh/movimentacao/2` |
 
 ---
 
@@ -314,12 +328,13 @@ php artisan test --filter=ColaboradorMovimentacaoTest
 
 | URL antiga (pode estar no cache do browser) | Destino |
 |---------------------------------------------|---------|
-| `/public/rh/efetivo/35/movimentacoes/3/editar` | 301 → `/public/rh/efetivo/movimentacao/3` |
-| `/public/rh/movimentacoes/2/editar` | 301 → `/public/rh/efetivo/movimentacao/2` |
-| `/public/rh/movimentacoes/2` | 301 → `/public/rh/efetivo/movimentacao/2` |
-| `/public/rh/efetivo/movimentacoes/2/editar` | 301 → `/public/rh/efetivo/movimentacao/2` |
+| `/public/rh/efetivo/35/movimentacoes/3/editar` | 301 → `/public/rh/movimentacao/3` |
+| `/public/rh/movimentacoes/2/editar` | 301 → `/public/rh/movimentacao/2` |
+| `/public/rh/movimentacoes/2` | 301 → `/public/rh/movimentacao/2` |
+| `/public/rh/efetivo/movimentacoes/2/editar` | 301 → `/public/rh/movimentacao/2` |
+| `/public/rh/efetivo/movimentacao/2` | 301 → `/public/rh/movimentacao/2` |
 
-**Canônica:** `/public/rh/efetivo/movimentacao/{movimentacao_id}`
+**Canônica:** `/public/rh/movimentacao/{movimentacao_id}`
 
 ---
 
@@ -328,7 +343,7 @@ php artisan test --filter=ColaboradorMovimentacaoTest
 Responder no ticket:
 
 1. Saída de `git log -1 --oneline` após `git pull`?
-2. Saída completa de `php artisan route:list --path=efetivo/movimentacao`?
+2. Saída completa de `php artisan route:list --path=movimentacao`?
 3. `php artisan movimentacoes:diagnostico 2 --mov --http` → qual **status**?
 4. `GET /public/rh/beneficios/1` logado → 200 ou 404?
 5. Existe arquivo `bootstrap/cache/routes-v7.php` após `route:clear`?
