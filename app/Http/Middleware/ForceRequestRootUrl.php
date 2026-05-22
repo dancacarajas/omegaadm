@@ -21,8 +21,8 @@ class ForceRequestRootUrl
         if ($root !== null) {
             URL::forceRootUrl($root);
 
-            Vite::createAssetPathsUsing(static function (string $path, ?bool $secure = null) use ($root): string {
-                return rtrim($root, '/').'/'.ltrim($path, '/');
+            Vite::createAssetPathsUsing(static function (string $path, ?bool $secure = null): string {
+                return asset($path);
             });
         }
 

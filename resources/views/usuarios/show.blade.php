@@ -5,11 +5,26 @@
 @section('page-title', 'Usuário')
 
 @section('actions')
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
         <a href="{{ route('usuarios.edit', $usuario) }}" class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
             <i data-lucide="pencil" class="h-4 w-4"></i>
             Editar
         </a>
+        @if (auth()->id() !== $usuario->id)
+            <form
+                method="POST"
+                action="{{ route('usuarios.destroy', $usuario) }}"
+                class="inline"
+                onsubmit="return confirm('Excluir o usuário {{ $usuario->name }} permanentemente? Esta ação não pode ser desfeita.');"
+            >
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="inline-flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100">
+                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    Excluir usuário
+                </button>
+            </form>
+        @endif
         <a href="{{ route('usuarios.index') }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
             <i data-lucide="arrow-left" class="h-4 w-4"></i>
             Voltar

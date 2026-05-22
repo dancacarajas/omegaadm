@@ -114,11 +114,17 @@ class UsuarioController extends Controller
         return redirect()->route('usuarios.show', $usuario)->with($flash);
     }
 
-    public function destroy(User $usuario)
+    public function destroy(Request $request, User $usuario)
     {
+        if ($request->user()?->id === $usuario->id) {
+            return back()->with('error', 'Você não pode excluir o próprio usuário da sessão atual.');
+        }
+
+        $nome = $usuario->name;
+        $usuario->contratos()->detach();
         $usuario->delete();
 
-        return redirect()->route('usuarios.index')->with('success', 'Usuário removido com sucesso.');
+        return redirect()->route('usuarios.index')->with('success', "Usuário \"{$nome}\" removido do sistema.");
     }
 
     private function validatedData(Request $request, ?User $usuario = null): array

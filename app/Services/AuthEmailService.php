@@ -6,6 +6,7 @@ use App\Mail\LayoutHtmlMail;
 use App\Models\SistemaConfiguracaoEmail;
 use App\Models\User;
 use App\Support\EmailLayout;
+use App\Support\PublicWebBase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -164,9 +165,7 @@ final class AuthEmailService
 
     private function urlAbsoluta(string $path): string
     {
-        $root = rtrim((string) config('app.url'), '/');
-
-        return $root.'/'.ltrim($path, '/');
+        return PublicWebBase::assetUrl(ltrim($path, '/'));
     }
 
     /**
@@ -185,10 +184,7 @@ final class AuthEmailService
         }
 
         try {
-            $rootUrl = rtrim((string) config('app.url'), '/');
-            if ($rootUrl !== '') {
-                URL::forceRootUrl($rootUrl);
-            }
+            URL::forceRootUrl(rtrim(PublicWebBase::assetUrl(''), '/'));
 
             app(ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
 

@@ -20,8 +20,8 @@ final class EmailLayout
         return [
             'appName' => config('mail.from.name') ?: config('app.name', 'Omega286'),
             'emailBrandName' => config('mail.brand_name', 'Omega Adm CT 286'),
-            'appUrl' => $appUrl,
-            'logoUrl' => $logoArquivo ? $appUrl.'/'.$logoArquivo : null,
+            'appUrl' => PublicWebBase::assetUrl(''),
+            'logoUrl' => $logoArquivo ? PublicWebBase::assetUrl($logoArquivo) : null,
             'logoBranco' => is_file($logoBranco) || is_file($logoPadrao),
             'fromAddress' => config('mail.from.address'),
             'ano' => now()->format('Y'),

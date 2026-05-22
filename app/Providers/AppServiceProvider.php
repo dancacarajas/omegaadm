@@ -10,6 +10,8 @@ use App\Models\SsmaAmbientalRegistro;
 use App\Observers\ColaboradorObserver;
 use App\Support\Rh\MovimentacaoDebugTrace;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configurarBasePublicaHostinger();
+
         try {
             app(ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
         } catch (\Throwable) {
@@ -89,5 +93,25 @@ class AppServiceProvider extends ServiceProvider
 
             return $movimentacao;
         });
+    }
+
+    /**
+     * Hostinger: com document root na raiz, força /public em asset(), @vite e route() em produção
+     * (antes do middleware, para CLI, filas e qualquer render sem request HTTP).
+     */
+    private function configurarBasePublicaHostinger(): void
+    {
+        if (! filter_var(config('app.force_public_url'), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        $root = rtrim((string) config('app.url'), '/');
+        if (! str_ends_with($root, '/public')) {
+            $root .= '/public';
+        }
+
+        URL::forceRootUrl($root);
+
+        Vite::createAssetPathsUsing(static fn (string $path, ?bool $secure = null): string => asset($path));
     }
 }

@@ -56,14 +56,16 @@ Com `APP_ENV=production`, o sistema **já força** links e `@vite` para `https:/
 APP_FORCE_PUBLIC_URL=false
 ```
 
-Após cada deploy com CSS quebrado:
+Após cada deploy com **layout diferente do localhost** (sem sidebar, botões vazios, sem ícones):
 
 ```bash
 git pull origin main
+npm ci && npm run build    # obrigatório se public/build não veio atualizado no pull
+rm -f public/hot           # se existir, quebra o layout (aponta para Vite dev)
 php artisan config:clear
 php artisan view:clear
 php artisan optimize:clear
-# confira se existe public/build/manifest.json no servidor
+php artisan assets:diagnostico --curl   # CSS/JS devem retornar HTTP 200 com /public/build/
 ```
 
 Ver `docs/DEV_BENEFICIOS_404_PRODUCAO.md`.

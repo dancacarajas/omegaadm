@@ -21,21 +21,21 @@
     </div>
     <div class="space-y-8 p-6 sm:p-8">
         @if (($dados['havera_substituicao_vaga'] ?? '') === 'sim' && ($vagaSubstituicao ?? null))
-            <div class="flex flex-col gap-3 rounded-2xl border border-sky-200/80 bg-gradient-to-r from-sky-50/90 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-3 rounded-2xl border border-brand-burgundy/20 bg-gradient-to-r from-brand-burgundy-soft/80 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-start gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy text-white shadow-sm" aria-hidden="true">
                         <i data-lucide="briefcase" class="h-5 w-5"></i>
                     </span>
                     <div>
-                        <p class="text-sm font-bold text-sky-950">Vaga de substituição criada automaticamente</p>
-                        <p class="mt-0.5 text-xs text-sky-800/90">
-                            Contrato (centro de custo): <strong>{{ $vagaSubstituicao->contrato }}</strong>
+                        <p class="text-sm font-bold text-brand-burgundy-dark">Vaga de substituição criada automaticamente</p>
+                        <p class="mt-0.5 text-xs text-brand-gray">
+                            Contrato (centro de custo): <strong class="text-brand-black">{{ $vagaSubstituicao->contrato }}</strong>
                             · {{ $vagaSubstituicao->titulo }}
                         </p>
                     </div>
                 </div>
-                <a href="{{ route('rh.recrutamento.edit', $vagaSubstituicao) }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-sky-800">
-                    <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                <a href="{{ route('rh.recrutamento.edit', $vagaSubstituicao) }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-brand-burgundy bg-brand-burgundy px-4 text-xs font-bold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
+                    <i data-lucide="external-link" class="h-3.5 w-3.5" aria-hidden="true"></i>
                     Abrir no recrutamento
                 </a>
             </div>

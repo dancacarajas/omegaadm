@@ -51,7 +51,7 @@
                                 <tr>
                                     <td valign="middle">
                                         @if (!empty($logoUrl))
-                                            <img src="{{ $logoUrl }}" alt="{{ $appName }}" width="180" style="display:block;max-width:180px;height:auto;border:0;{{ empty($logoBranco) ? 'filter:brightness(0) invert(1);-webkit-filter:brightness(0) invert(1);' : '' }}">
+                                            <img src="{{ $logoUrl }}" alt="Omega Service" width="180" style="display:block;max-width:180px;height:auto;border:0;{{ empty($logoBranco) ? 'filter:brightness(0) invert(1);-webkit-filter:brightness(0) invert(1);' : '' }}">
                                         @else
                                             <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">Omega Service</p>
                                         @endif
