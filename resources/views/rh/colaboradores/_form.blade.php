@@ -68,6 +68,10 @@
                 <input name="telefone" value="{{ $value('telefone') }}" class="{{ $inputClass }}">
             </label>
             <label>
+                <span class="{{ $labelClass }}">E-mail</span>
+                <input type="email" name="email" value="{{ $value('email') }}" autocomplete="email" placeholder="nome@empresa.com" class="{{ $inputClass }}">
+            </label>
+            <label>
                 <span class="{{ $labelClass }}">CPF</span>
                 <input name="cpf" value="{{ $value('cpf') }}" class="{{ $inputClass }}">
             </label>

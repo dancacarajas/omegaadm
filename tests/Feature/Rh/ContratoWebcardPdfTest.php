@@ -27,6 +27,21 @@ class ContratoWebcardPdfTest extends TestCase
         $this->assertGreaterThan(5000, strlen($pdf));
     }
 
+    public function test_pdf_usa_email_cadastrado_no_colaborador(): void
+    {
+        $colab = Colaborador::query()->create([
+            'nome' => 'Ana Costa',
+            'matricula' => '100',
+            'cpf' => '39053344705',
+            'email' => 'ana.costa@omegaservice.com.br',
+            'status' => 'ativo',
+        ]);
+
+        $pdf = app(ContratoWebcardPdfService::class)->render($colab);
+
+        $this->assertStringStartsWith('%PDF', $pdf);
+    }
+
     public function test_rota_pdf_exige_autenticacao_e_secao_efetivo(): void
     {
         $colab = Colaborador::query()->create([

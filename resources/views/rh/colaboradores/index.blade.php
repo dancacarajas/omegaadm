@@ -216,7 +216,7 @@
                             <i data-lucide="search" class="h-3.5 w-3.5"></i>
                             Buscar
                         </span>
-                        <input name="busca" value="{{ request('busca') }}" placeholder="Nome, CPF ou matrícula…" class="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+                        <input name="busca" value="{{ request('busca') }}" placeholder="Nome, CPF, matrícula ou e-mail…" class="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
                     </label>
                     <label class="space-y-2 lg:col-span-3">
                         <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-gray">

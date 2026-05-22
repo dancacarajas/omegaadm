@@ -54,6 +54,7 @@ class ColaboradorController extends Controller
                 $query->where(function ($query) use ($busca) {
                     $query->where('nome', 'like', "%{$busca}%")
                         ->orWhere('telefone', 'like', "%{$busca}%")
+                        ->orWhere('email', 'like', "%{$busca}%")
                         ->orWhere('cpf', 'like', "%{$busca}%")
                         ->orWhere('matricula', 'like', "%{$busca}%")
                         ->orWhere('cargo', 'like', "%{$busca}%");
@@ -377,6 +378,7 @@ class ColaboradorController extends Controller
             'Matrícula' => 'matricula',
             'Nome' => 'nome',
             'Telefone' => 'telefone',
+            'E-mail' => 'email',
             'CPF' => 'cpf',
             'Cargo' => 'cargo',
             'Centro de custo' => 'centro_custo',
@@ -578,6 +580,7 @@ class ColaboradorController extends Controller
             'nome' => ['required', 'string', 'max:255'],
             'foto_perfil' => ['nullable', 'file', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
             'telefone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email', 'max:255'],
             'filiacao_pai' => ['nullable', 'string', 'max:255'],
             'filiacao_mae' => ['nullable', 'string', 'max:255'],
             'cpf' => ['nullable', 'string', 'max:20'],

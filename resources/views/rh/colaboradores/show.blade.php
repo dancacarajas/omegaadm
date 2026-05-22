@@ -26,7 +26,7 @@
         </a>
     @endif
     @if (auth()->user()?->podeSecaoRh('efetivo'))
-        <a href="{{ route('rh.efetivo.contrato-webcard.pdf', $colaborador) }}" target="_blank" rel="noopener" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy" title="Contrato de adesão WebCard no papel timbrado, com dados do colaborador">
+        <a href="{{ route('rh.efetivo.contrato-webcard.pdf', $colaborador) }}" target="_blank" rel="noopener" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy" title="Contrato de adesão WebCard no papel timbrado (nome, CPF, matrícula e e-mail da ficha)">
             <i data-lucide="file-text" class="h-4 w-4"></i>
             Contrato WebCard
         </a>
@@ -196,9 +196,10 @@
 
         {{-- Cards de resumo (sobrepostos à faixa burgundy) --}}
         <div class="relative z-10 -mt-10 px-4 pb-6 sm:-mt-12 sm:px-6">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-4">
             @foreach ([
                 ['phone', 'Telefone', $colaborador->telefone, false],
+                ['mail', 'E-mail', $colaborador->email, false],
                 ['wallet', 'Salário inicial', $money($colaborador->salario_inicial), true],
                 ['users', 'Departamento', $colaborador->departamento, false],
                 ['map-pin', 'Local de trabalho', $colaborador->local_trabalho, false],
@@ -254,6 +255,7 @@
                     $item('CPF', $colaborador->cpf),
                     $item('RG', $colaborador->rg),
                     $item('Telefone', $colaborador->telefone),
+                    $item('E-mail', $colaborador->email),
                     $item('Status no sistema', $statusLabel[$st] ?? $st),
                 ],
             ])

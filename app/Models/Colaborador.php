@@ -15,6 +15,7 @@ class Colaborador extends Model
         'matricula',
         'nome',
         'telefone',
+        'email',
         'recrutamento_vaga_id',
         'recrutamento_posicao',
         'foto_path',
