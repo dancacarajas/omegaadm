@@ -93,6 +93,16 @@ class Colaborador extends Model
         'salario_inicial' => 'decimal:2',
     ];
 
+    public function scopeElegivelVinculoBeneficio($query)
+    {
+        return $query->where('status', '!=', 'desligado');
+    }
+
+    public function podeVincularBeneficio(): bool
+    {
+        return $this->status !== 'desligado';
+    }
+
     public function beneficios()
     {
         return $this->hasMany(ColaboradorBeneficio::class);

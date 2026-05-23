@@ -219,6 +219,8 @@ Route::get('/debug-pgu-run-export', function (Request $request, PguPowerPointExp
 })->name('pgu.debug.run-export');
 
 Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
+    Route::get('/busca', [\App\Http\Controllers\BuscaSistemaController::class, 'index'])->name('busca.index');
+    Route::get('/busca/sugestoes', [\App\Http\Controllers\BuscaSistemaController::class, 'sugestoes'])->name('busca.sugestoes');
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('contratos/histograma', [ContratoHistogramaController::class, 'index'])->name('contratos.histograma.index');
     Route::get('contratos/acoes-recomendadas', [ContratoAcoesRecomendadasController::class, 'index'])->name('contratos.acoes-recomendadas.index');

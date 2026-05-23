@@ -466,19 +466,24 @@
                             Sair do sistema
                         </button>
                     </form>
-                    <div class="rounded-xl border border-zinc-200 bg-brand-gray p-4 text-white shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
-                                <i data-lucide="shield-check" class="h-5 w-5 text-white"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold">Sistema seguro</p>
-                                <p class="text-xs text-white/80">Ambiente online</p>
+                    <div class="relative overflow-hidden rounded-2xl border border-zinc-200/90 bg-gradient-to-br from-white via-brand-burgundy-soft/40 to-zinc-50/80 p-4 shadow-sm ring-1 ring-zinc-100/80">
+                        <div class="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand-burgundy/[0.06]"></div>
+                        <div class="pointer-events-none absolute -bottom-10 -left-6 h-20 w-20 rounded-full bg-brand-burgundy/[0.04]"></div>
+                        <div class="relative flex items-center gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-burgundy to-brand-burgundy-dark text-white shadow-md shadow-brand-burgundy/20">
+                                <i data-lucide="shield-check" class="h-5 w-5"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold tracking-tight text-brand-black">Sessão protegida</p>
+                                <p class="mt-1 flex items-center gap-1.5 text-xs font-medium text-brand-gray">
+                                    <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" aria-hidden="true"></span>
+                                    Ambiente online
+                                </p>
                             </div>
                         </div>
-                        <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/20">
-                            <div class="h-full w-full rounded-full bg-brand-burgundy"></div>
-                        </div>
+                        <p class="relative mt-3 border-t border-zinc-200/70 pt-3 text-[10px] font-medium leading-relaxed text-brand-gray">
+                            Conexão segura · {{ config('app.name', 'Omega286') }}
+                        </p>
                     </div>
                 </div>
             </aside>
@@ -495,10 +500,7 @@
                         </div>
                     </div>
                     <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
-                        <div class="hidden h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-brand-gray shadow-sm md:flex">
-                            <i data-lucide="search" class="h-4 w-4 text-brand-burgundy"></i>
-                            Buscar no sistema
-                        </div>
+                        @include('layouts.partials._busca_global')
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             @yield('actions')
                         </div>

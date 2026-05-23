@@ -54,6 +54,44 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_nao_lista_colaborador_desligado_para_vinculo(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+        $ativo = Colaborador::query()->create(['nome' => 'Ativo', 'status' => 'ativo']);
+        Colaborador::query()->create(['nome' => 'Desligado', 'status' => 'desligado']);
+
+        $response = $this->actingAs($user)->get(route('rh.beneficios.show', $beneficio));
+
+        $response->assertOk();
+        $ids = collect($response->viewData('colaboradoresDisponiveis'))->pluck('id')->all();
+        $this->assertContains($ativo->id, $ids);
+        $this->assertNotContains(
+            Colaborador::query()->where('nome', 'Desligado')->value('id'),
+            $ids,
+        );
+    }
+
+    public function test_nao_vincula_colaborador_desligado(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+        $desligado = Colaborador::query()->create(['nome' => 'Ex-colaborador', 'status' => 'desligado']);
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'colaborador_id' => $desligado->id,
+                'tem_direito' => '1',
+            ])
+            ->assertSessionHasErrors('colaborador_id');
+
+        $this->assertDatabaseMissing('colaborador_beneficios', [
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $desligado->id,
+        ]);
+    }
+
     public function test_vincula_colaborador_ao_beneficio(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);

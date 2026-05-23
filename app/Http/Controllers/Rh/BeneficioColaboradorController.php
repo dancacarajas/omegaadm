@@ -43,6 +43,12 @@ class BeneficioColaboradorController extends Controller
             ]);
         }
 
+        if (! $colaborador->podeVincularBeneficio()) {
+            throw ValidationException::withMessages([
+                'colaborador_id' => 'Colaboradores desligados não podem receber novos vínculos de benefício.',
+            ]);
+        }
+
         ColaboradorBeneficio::create([
             ...$data,
             'beneficio_id' => $beneficio->id,
@@ -281,7 +287,7 @@ class BeneficioColaboradorController extends Controller
             'colaborador_id' => [
                 $vinculo ? 'sometimes' : 'required',
                 'integer',
-                Rule::exists('colaboradores', 'id'),
+                Rule::exists('colaboradores', 'id')->where(fn ($query) => $query->where('status', '!=', 'desligado')),
                 Rule::unique('colaborador_beneficios', 'colaborador_id')
                     ->where('beneficio_id', $beneficio->id)
                     ->ignore($vinculo),

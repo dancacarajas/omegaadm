@@ -117,6 +117,7 @@ class BeneficioController extends Controller
         );
 
         $colaboradoresDisponiveis = Colaborador::query()
+            ->elegivelVinculoBeneficio()
             ->whereNotIn('id', $beneficio->colaboradores->pluck('colaborador_id'))
             ->when($busca !== '', function ($query) use ($busca) {
                 $query->where(function ($query) use ($busca) {

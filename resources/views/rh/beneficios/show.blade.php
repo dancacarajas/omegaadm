@@ -142,12 +142,15 @@
                     <i data-lucide="user" class="h-3.5 w-3.5"></i>
                     Colaborador
                 </span>
-                <select name="colaborador_id" required class="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
-                    <option value="">Selecione...</option>
+                <select name="colaborador_id" required @disabled($colaboradoresDisponiveis->isEmpty()) class="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-medium outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10 disabled:cursor-not-allowed disabled:opacity-60">
+                    <option value="">{{ $colaboradoresDisponiveis->isEmpty() ? 'Nenhum colaborador elegível' : 'Selecione...' }}</option>
                     @foreach ($colaboradoresDisponiveis as $colaborador)
                         <option value="{{ $colaborador->id }}">{{ $colaborador->nome }}{{ $colaborador->cargo ? ' — ' . $colaborador->cargo : '' }}</option>
                     @endforeach
                 </select>
+                @if ($colaboradoresDisponiveis->isEmpty())
+                    <p class="mt-1.5 text-[10px] leading-relaxed text-brand-gray">Colaboradores desligados não aparecem nesta lista. Quem já está vinculado também não é exibido.</p>
+                @endif
             </label>
             <label class="flex h-12 items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-semibold text-brand-black lg:col-span-2">
                 <input type="hidden" name="tem_direito" value="0">
@@ -160,7 +163,7 @@
                 Cartão entregue
             </label>
             <div class="lg:col-span-3">
-                <button type="submit" class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-burgundy px-5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                <button type="submit" @disabled($colaboradoresDisponiveis->isEmpty()) class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-burgundy px-5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark disabled:cursor-not-allowed disabled:opacity-50">
                     <i data-lucide="plus" class="h-4 w-4"></i>
                     Vincular
                 </button>
