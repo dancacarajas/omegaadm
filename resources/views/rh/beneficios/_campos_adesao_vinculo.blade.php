@@ -1,9 +1,12 @@
 @php
+    use App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService;
+
     $statusAtual = old('status_adesao', $vinculo->status_adesao ?? \App\Support\Rh\BeneficioAdesaoStatus::PENDENTE_FORMULARIO);
     $avisoColeta = old('data_aviso_coleta_matriz', $adesaoService->dataAvisoColeta($vinculo)?->format('Y-m-d'));
     $indicador = $adesaoService->indicadorPrazoMatriz($vinculo);
     $inputClass = 'mt-1.5 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10';
     $labelClass = 'text-[10px] font-bold uppercase tracking-wider text-brand-gray';
+    $emailMatrizDiag = $emailMatrizDiagnostico ?? app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio();
 @endphp
 
 <div class="rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-4">
@@ -74,16 +77,28 @@
             (seção Benefícios / Matriz), com o formulário assinado em anexo. A mensagem é dirigida a
             <strong class="text-brand-black">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}</strong>.
         </p>
-        @if ($vinculo->temFormularioAdesaoAssinado())
-            <form method="POST" action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}" class="mt-3" onsubmit="return confirm('Enviar e-mail de solicitação à Matriz com o formulário em anexo?');">
-                @csrf
-                <button type="submit" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
-                    <i data-lucide="send" class="h-4 w-4"></i>
-                    Enviar solicitação por e-mail
-                </button>
-            </form>
+        @if (! ($emailMatrizDiag['pode_enviar'] ?? false))
+            <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
+                <p class="font-bold">E-mail à Matriz indisponível no momento</p>
+                <ul class="mt-1.5 list-inside list-disc space-y-0.5">
+                    @foreach ($emailMatrizDiag['problemas'] ?? [] as $problema)
+                        <li>{{ $problema }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @elseif ($vinculo->temFormularioAdesaoAssinado())
+            <button
+                type="submit"
+                formaction="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
+                formmethod="post"
+                class="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark"
+                onclick="return confirm('Enviar e-mail de solicitação à Matriz com o formulário em anexo?');"
+            >
+                <i data-lucide="send" class="h-4 w-4"></i>
+                Enviar solicitação por e-mail
+            </button>
         @else
-            <p class="mt-3 text-xs font-semibold text-amber-800">Anexe o formulário de adesão assinado acima para habilitar o envio.</p>
+            <p class="mt-3 text-xs font-semibold text-amber-800">Anexe o formulário de adesão assinado acima e clique em <strong>Salvar alterações</strong> antes de enviar o e-mail.</p>
         @endif
     </div>
 </div>

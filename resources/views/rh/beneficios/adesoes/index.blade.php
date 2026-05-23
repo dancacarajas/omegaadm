@@ -33,6 +33,18 @@
 
     @include('rh.beneficios.partials._alerts')
 
+    @if (is_array($emailMatrizDiagnostico ?? null) && ! ($emailMatrizDiagnostico['pode_enviar'] ?? true))
+        <div class="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50 px-5 py-4 text-sm text-amber-950 shadow-sm">
+            <p class="font-bold">Envio de e-mail à Matriz indisponível</p>
+            <ul class="mt-2 list-inside list-disc space-y-1">
+                @foreach ($emailMatrizDiagnostico['problemas'] as $problema)
+                    <li>{{ $problema }}</li>
+                @endforeach
+            </ul>
+            <a href="{{ route('configuracoes.email.edit') }}" class="mt-2 inline-block text-xs font-bold text-brand-burgundy underline">Configurações → E-mail</a>
+        </div>
+    @endif
+
     @include('rh.beneficios.partials._hero', [
         'badgeIcon' => 'clipboard-list',
         'badgeText' => 'Adesão à Matriz',

@@ -240,6 +240,19 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         });
     }
 
+    public function test_diagnostico_detecta_smtp_log_e_sem_destinatarios(): void
+    {
+        config(['mail.default' => 'log']);
+        SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'notificacao_beneficio_adesao_matriz_destinatarios' => [],
+        ]);
+
+        $diag = app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio();
+
+        $this->assertFalse($diag['pode_enviar']);
+        $this->assertNotEmpty($diag['problemas']);
+    }
+
     public function test_assunto_do_email_enviado(): void
     {
         $assunto = BeneficioAdesaoMatrizEmailTexto::montarAssunto('Vale Alimentação', '012345', 'Maria da Silva');

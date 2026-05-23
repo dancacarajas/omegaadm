@@ -7,6 +7,7 @@ use App\Models\Beneficio;
 use App\Models\BeneficioExtratoRegra;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService;
 use App\Services\Rh\BeneficioAdesaoService;
 use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
@@ -136,6 +137,9 @@ class BeneficioController extends Controller
             'cartao' => $cartao,
             'adesaoService' => app(BeneficioAdesaoService::class),
             'statusAdesaoOpcoes' => \App\Support\Rh\BeneficioAdesaoStatus::rotulos(),
+            'emailMatrizDiagnostico' => $beneficio->requer_controle_adesao
+                ? app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio()
+                : null,
         ]);
     }
 

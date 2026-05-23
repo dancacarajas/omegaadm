@@ -44,6 +44,24 @@
 
     @include('rh.beneficios.partials._alerts')
 
+    @if ($requerAdesao && is_array($emailMatrizDiagnostico ?? null) && ! ($emailMatrizDiagnostico['pode_enviar'] ?? true))
+        <div class="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50 px-5 py-4 text-sm text-amber-950 shadow-sm">
+            <p class="flex items-center gap-2 font-bold">
+                <i data-lucide="mail-warning" class="h-5 w-5 shrink-0"></i>
+                Envio de e-mail à Matriz indisponível
+            </p>
+            <ul class="mt-2 list-inside list-disc space-y-1 text-amber-900">
+                @foreach ($emailMatrizDiagnostico['problemas'] as $problema)
+                    <li>{{ $problema }}</li>
+                @endforeach
+            </ul>
+            <p class="mt-3 text-xs">
+                <a href="{{ route('configuracoes.email.edit') }}" class="font-bold text-brand-burgundy underline">Abrir Configurações → E-mail</a>
+                e use <strong>Enviar teste</strong> para validar o SMTP antes de solicitar à Matriz.
+            </p>
+        </div>
+    @endif
+
     @include('rh.beneficios.partials._hero', [
         'badgeIcon' => 'hand-heart',
         'badgeText' => $beneficio->tipo ?: 'Benefício',
@@ -237,6 +255,7 @@
                         'requerAdesao' => $requerAdesao,
                         'adesaoService' => $adesaoService,
                         'statusAdesaoOpcoes' => $statusAdesaoOpcoes,
+                        'emailMatrizDiagnostico' => $emailMatrizDiagnostico,
                     ])
                 @endforeach
             </div>

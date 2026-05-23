@@ -87,9 +87,10 @@ final class BeneficioAdesaoMatrizNotificacaoService
             ]);
         }
 
-        if (! $this->podeEnviar()) {
+        $diagnostico = $this->diagnosticoEnvio();
+        if (! $diagnostico['pode_enviar']) {
             throw ValidationException::withMessages([
-                'email' => 'O envio por e-mail não está disponível. Verifique a configuração SMTP em Configurações → E-mail.',
+                'email' => implode(' ', $diagnostico['problemas']),
             ]);
         }
 
@@ -142,31 +143,52 @@ final class BeneficioAdesaoMatrizNotificacaoService
         ];
     }
 
-    public function podeEnviar(): bool
+    /**
+     * @return array{pode_enviar: bool, problemas: list<string>, destinatarios: list<string>, mailer: string|null}
+     */
+    public function diagnosticoEnvio(): array
     {
+        $problemas = [];
+        $destinatarios = $this->destinatariosConfigurados();
+
         if (! config('mail.auth_emails_enabled', true)) {
-            return false;
+            $problemas[] = 'Envio de e-mails está desativado (MAIL_AUTH_EMAILS_ENABLED=false no servidor).';
         }
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
-
-        $mailer = config('mail.default');
+        $mailer = (string) config('mail.default');
 
         if (in_array($mailer, ['log', 'array'], true)) {
-            return false;
+            $problemas[] = 'O servidor está com mailer "'.$mailer.'" (e-mails não saem). Configure SMTP em Configurações → E-mail e salve.';
+        } elseif ($mailer === 'smtp') {
+            $registro = SistemaConfiguracaoEmail::query()->find(1);
+            if (! filled(config('mail.mailers.smtp.password')) && ! ($registro?->senhaConfigurada() ?? false)) {
+                $problemas[] = 'SMTP sem senha configurada. Informe a senha em Configurações → E-mail.';
+            }
+            if (blank(config('mail.mailers.smtp.host')) || blank(config('mail.from.address'))) {
+                $problemas[] = 'Host SMTP ou e-mail remetente não configurado em Configurações → E-mail.';
+            }
         }
 
-        if ($mailer !== 'smtp') {
-            return true;
+        if ($destinatarios === []) {
+            $problemas[] = 'Nenhum destinatário em Configurações → E-mail → Benefícios / Matriz (adicione quem recebe o pedido, ex.: Celiamara).';
         }
 
-        if (filled(config('mail.mailers.smtp.password'))) {
-            return true;
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('sistema_configuracao_email', 'notificacao_beneficio_adesao_matriz_destinatarios')) {
+            $problemas[] = 'Banco desatualizado: execute php artisan migrate --force no servidor.';
         }
 
-        $registro = SistemaConfiguracaoEmail::query()->find(1);
+        return [
+            'pode_enviar' => $problemas === [],
+            'problemas' => $problemas,
+            'destinatarios' => $destinatarios,
+            'mailer' => $mailer !== '' ? $mailer : null,
+        ];
+    }
 
-        return $registro?->senhaConfigurada() ?? false;
+    public function podeEnviar(): bool
+    {
+        return $this->diagnosticoEnvio()['pode_enviar'];
     }
 
     private function marcarPedidoEnviadoMatriz(ColaboradorBeneficio $vinculo, ?User $enviadoPor): void

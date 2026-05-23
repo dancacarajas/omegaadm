@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Rh;
 use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
 use App\Models\ColaboradorBeneficio;
+use App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService;
 use App\Services\Rh\BeneficioAdesaoService;
 use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
@@ -63,6 +64,7 @@ class BeneficioAdesaoPainelController extends Controller
             'diasAlerta' => $diasAlerta,
             'statusOpcoes' => BeneficioAdesaoStatus::rotulos(),
             'adesao' => $adesao,
+            'emailMatrizDiagnostico' => app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio(),
         ]);
     }
 }
