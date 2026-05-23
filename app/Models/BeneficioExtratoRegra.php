@@ -164,7 +164,7 @@ class BeneficioExtratoRegra extends Model
         return match ($tipo) {
             self::TIPO_ASSIDUIDADE => 'Assiduidade + proporcional (vale alimentação)',
             self::TIPO_CAFE_MANHA => 'Café da manhã (dias trabalhados na apuração)',
-            self::TIPO_WEBCARD => 'WebCard (adiantamento — desconto na folha do mês)',
+            self::TIPO_WEBCARD => 'WebCard (direito — % do salário, teto mensal)',
             self::TIPO_VALOR_FIXO => 'Valor fixo do cadastro',
             default => $tipo,
         };

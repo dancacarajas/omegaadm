@@ -11,10 +11,10 @@
                     <p class="text-xs font-bold uppercase tracking-wide text-violet-900">WebCard — adiantamento salarial</p>
                     <h3 class="mt-1 text-xl font-bold text-brand-black">{{ $beneficio->nome }}</h3>
                     <p class="mt-2 text-sm text-violet-950/90">
-                        Até <strong>{{ number_format($percentual, 0, ',', '.') }}% do salário</strong> do colaborador por solicitação,
+                        Direito de <strong>{{ number_format($percentual, 0, ',', '.') }}% do salário</strong> do colaborador,
                         teto mensal <strong>R$ {{ number_format((float) ($cfg['limite_mensal'] ?? 1500), 2, ',', '.') }}</strong>.
                         Renovação do saldo todo dia <strong>{{ $cfg['dia_renovacao_saldo'] ?? 23 }}</strong>.
-                        Desconto na folha do mesmo mês da solicitação.
+                        O extrato mostra o direito mensal de cada colaborador (sem controle de pedidos no sistema).
                     </p>
                 </div>
                 <button type="button" data-fechar-modal-webcard class="rounded-lg bg-white/80 p-2 text-brand-gray hover:bg-white">
@@ -37,7 +37,7 @@
                         <p class="mt-1 text-[11px] text-brand-gray">Todo dia deste número de cada mês o saldo do cartão é renovado.</p>
                     </label>
                     <label>
-                        <span class="text-[11px] font-bold uppercase text-brand-gray">Limite por solicitação (% do salário)</span>
+                        <span class="text-[11px] font-bold uppercase text-brand-gray">Percentual do salário (direito)</span>
                         <input type="number" step="0.01" min="0.01" max="100" name="percentual_limite_por_solicitacao" value="{{ old('percentual_limite_por_solicitacao', $percentual) }}" required class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
                         <p class="mt-1 text-[11px] text-brand-gray">Usa o salário cadastrado na ficha do colaborador (efetivo).</p>
                     </label>

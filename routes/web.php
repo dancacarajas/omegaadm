@@ -445,12 +445,6 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             ->whereNumber('beneficio')
             ->name('beneficios.extrato.regras.salvar');
         Route::get('beneficios/extrato/gerar', [BeneficioExtratoController::class, 'gerar'])->name('beneficios.extrato.gerar');
-        Route::post('beneficios/{beneficio}/webcard-solicitacoes', [\App\Http\Controllers\Rh\WebcardSolicitacaoController::class, 'store'])
-            ->whereNumber('beneficio')
-            ->name('beneficios.webcard.solicitacoes.store');
-        Route::delete('beneficios/{beneficio}/webcard-solicitacoes/{solicitacao}', [\App\Http\Controllers\Rh\WebcardSolicitacaoController::class, 'destroy'])
-            ->whereNumber(['beneficio', 'solicitacao'])
-            ->name('beneficios.webcard.solicitacoes.destroy');
         Route::resource('beneficios', BeneficioController::class)->except(['show']);
         // Gestão: GET e POST na mesma URL (/rh/beneficios/{id}) — {beneficio} só numérico (não captura "create")
         Route::match(['get', 'post'], 'beneficios/{beneficio}', [BeneficioController::class, 'show'])

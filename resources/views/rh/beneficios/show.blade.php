@@ -111,14 +111,6 @@
         </form>
     </section>
 
-    @if ($ehWebcard ?? false)
-        @include('rh.beneficios._webcard_solicitacoes', [
-            'beneficio' => $beneficio,
-            'webcardConfig' => $webcardConfig,
-            'webcardSolicitacoes' => $webcardSolicitacoes,
-        ])
-    @endif
-
     <section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">
             <h3 class="text-lg font-bold text-brand-black">Acompanhamento por colaborador</h3>

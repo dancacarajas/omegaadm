@@ -65,7 +65,7 @@
                             @elseif ($sugereCafe)
                                 <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: café da manhã (dias com horas na apuração)</p>
                             @elseif ($sugereWebcard)
-                                <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: WebCard (adiantamento — desconto na folha)</p>
+                                <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: WebCard (direito — % do salário)</p>
                             @endif
                         </div>
                         <label class="block">

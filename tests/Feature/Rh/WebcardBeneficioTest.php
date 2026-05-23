@@ -6,8 +6,6 @@ use App\Models\Beneficio;
 use App\Models\BeneficioExtratoRegra;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
-use App\Models\ColaboradorBeneficioWebcardSolicitacao;
-use App\Models\User;
 use App\Services\Rh\BeneficioExtratoCalculoService;
 use App\Services\Rh\WebcardCalculoService;
 use Carbon\Carbon;
@@ -31,7 +29,7 @@ class WebcardBeneficioTest extends TestCase
         $this->assertSame(30.0, $config->percentualLimitePorSolicitacao());
     }
 
-    public function test_calculo_desconta_solicitacoes_do_mes_na_folha(): void
+    public function test_extrato_mostra_direito_trinta_porcento_do_salario(): void
     {
         Carbon::setTestNow('2026-05-15');
 
@@ -49,80 +47,24 @@ class WebcardBeneficioTest extends TestCase
             'beneficio_ativo' => true,
         ]);
 
-        ColaboradorBeneficioWebcardSolicitacao::query()->create([
-            'colaborador_beneficio_id' => $vinculo->id,
-            'data_solicitacao' => '2026-05-10',
-            'valor' => 300,
-        ]);
-        ColaboradorBeneficioWebcardSolicitacao::query()->create([
-            'colaborador_beneficio_id' => $vinculo->id,
-            'data_solicitacao' => '2026-05-12',
-            'valor' => 250.50,
-        ]);
-
         $calc = app(WebcardCalculoService::class)->calcularParaVinculo(
             $vinculo->load('colaborador'),
             $beneficio,
             Carbon::parse('2026-05-01')
         );
 
-        $this->assertSame(550.50, $calc['valor_descontado']);
-        $this->assertSame(900.0, $calc['limite_por_solicitacao']);
-        $this->assertSame(0.0, $calc['valor_final']);
-        $this->assertCount(2, $calc['solicitacoes']);
+        $this->assertSame(900.0, $calc['valor_final']);
+        $this->assertSame(900.0, $calc['valor_direito_mensal']);
+        $this->assertSame(0.0, $calc['valor_descontado']);
+        $this->assertSame(3000.0, $calc['salario_referencia']);
     }
 
-    public function test_registra_solicitacao_respeitando_limites(): void
+    public function test_extrato_aplica_teto_mensal_quando_percentual_ultrapassa(): void
     {
-        $user = User::factory()->create(['todos_contratos' => true]);
         $colab = Colaborador::query()->create([
-            'nome' => 'Maria',
+            'nome' => 'Carlos',
             'status' => 'ativo',
-            'salario_inicial' => 3000,
-        ]);
-        $beneficio = Beneficio::query()->create(['nome' => 'WebCard', 'codigo' => 'webcard', 'status' => 'ativo']);
-        BeneficioExtratoRegra::query()->create([
-            'beneficio_id' => $beneficio->id,
-            'tipo_regra' => BeneficioExtratoRegra::TIPO_WEBCARD,
-            'parametros' => \App\Support\Rh\WebcardRegraConfig::padroes(),
-            'configurado' => true,
-            'ativo' => true,
-        ]);
-        $vinculo = ColaboradorBeneficio::query()->create([
-            'colaborador_id' => $colab->id,
-            'beneficio_id' => $beneficio->id,
-            'tem_direito' => true,
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('rh.beneficios.webcard.solicitacoes.store', $beneficio), [
-                'colaborador_beneficio_id' => $vinculo->id,
-                'data_solicitacao' => '2026-05-20',
-                'valor' => 900,
-            ])
-            ->assertRedirect(route('rh.beneficios.show', $beneficio));
-
-        $this->assertDatabaseHas('colaborador_beneficio_webcard_solicitacoes', [
-            'colaborador_beneficio_id' => $vinculo->id,
-            'valor' => 900,
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('rh.beneficios.webcard.solicitacoes.store', $beneficio), [
-                'colaborador_beneficio_id' => $vinculo->id,
-                'data_solicitacao' => '2026-05-21',
-                'valor' => 900.01,
-            ])
-            ->assertSessionHasErrors('valor');
-    }
-
-    public function test_extrato_integrado_com_webcard(): void
-    {
-        Carbon::setTestNow('2026-05-20');
-        $colab = Colaborador::query()->create([
-            'nome' => 'Ana',
-            'status' => 'ativo',
-            'salario_inicial' => 5000,
+            'salario_inicial' => 6000,
         ]);
         $beneficio = Beneficio::query()->create(['nome' => 'WebCard', 'codigo' => 'webcard', 'status' => 'ativo']);
         $vinculo = ColaboradorBeneficio::query()->create([
@@ -132,10 +74,31 @@ class WebcardBeneficioTest extends TestCase
             'cartao_entregue' => true,
             'beneficio_ativo' => true,
         ]);
-        ColaboradorBeneficioWebcardSolicitacao::query()->create([
-            'colaborador_beneficio_id' => $vinculo->id,
-            'data_solicitacao' => '2026-05-05',
-            'valor' => 500,
+
+        $calc = app(WebcardCalculoService::class)->calcularParaVinculo(
+            $vinculo->load('colaborador'),
+            $beneficio,
+            Carbon::parse('2026-05-01')
+        );
+
+        $this->assertSame(1500.0, $calc['valor_final']);
+    }
+
+    public function test_extrato_integrado_com_webcard(): void
+    {
+        Carbon::setTestNow('2026-05-20');
+        $colab = Colaborador::query()->create([
+            'nome' => 'Ana',
+            'status' => 'ativo',
+            'salario_inicial' => 3000,
+        ]);
+        $beneficio = Beneficio::query()->create(['nome' => 'WebCard', 'codigo' => 'webcard', 'status' => 'ativo']);
+        ColaboradorBeneficio::query()->create([
+            'colaborador_id' => $colab->id,
+            'beneficio_id' => $beneficio->id,
+            'tem_direito' => true,
+            'cartao_entregue' => true,
+            'beneficio_ativo' => true,
         ]);
         $regra = BeneficioExtratoRegra::query()->create([
             'beneficio_id' => $beneficio->id,
@@ -152,7 +115,7 @@ class WebcardBeneficioTest extends TestCase
             collect([$regra->load('beneficio')])
         );
 
-        $this->assertSame(500.0, $extrato['total_descontos']);
-        $this->assertSame(0.0, $extrato['total']);
+        $this->assertSame(900.0, $extrato['total']);
+        $this->assertSame(0.0, $extrato['total_descontos']);
     }
 }

@@ -201,29 +201,6 @@
                                         @if (! empty($calc['detalhe']))
                                             <p class="mt-3 text-xs leading-relaxed text-brand-gray">{{ $calc['detalhe'] }}</p>
                                         @endif
-                                        @if (! empty($calc['solicitacoes']))
-                                            <details class="extrato-dias-detalhe mt-4 group">
-                                                <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-violet-200/60 bg-violet-50 px-3.5 py-2 text-xs font-semibold text-violet-900 transition hover:bg-violet-100 marker:content-none [&::-webkit-details-marker]:hidden">
-                                                    <i data-lucide="list" class="h-4 w-4"></i>
-                                                    Solicitações do mês
-                                                    <span class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold tabular-nums">{{ count($calc['solicitacoes']) }}</span>
-                                                    <i data-lucide="chevron-down" class="h-4 w-4 transition group-open:rotate-180"></i>
-                                                </summary>
-                                                <div class="mt-3 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4">
-                                                    <table class="w-full text-left text-xs">
-                                                        <thead><tr class="text-brand-gray"><th class="pb-2">Data</th><th class="pb-2">Valor</th><th class="pb-2">Obs.</th></tr></thead>
-                                                        <tbody>
-                                                            @foreach ($calc['solicitacoes'] as $sol)
-                                                                <tr class="border-t border-zinc-100"><td class="py-2">{{ $sol['data'] }}</td><td class="py-2 font-bold">R$ {{ number_format($sol['valor'], 2, ',', '.') }}</td><td class="py-2 text-brand-gray">{{ $sol['observacao'] ?: '—' }}</td></tr>
-                                                            @endforeach
-                                                        </tbody>
-                                                    </table>
-                                                    @if (! empty($calc['proxima_renovacao']))
-                                                        <p class="mt-3 text-[11px] text-brand-gray">Próxima renovação do saldo: {{ $calc['proxima_renovacao'] }} · Limite mensal R$ {{ number_format($calc['limite_mensal'] ?? 0, 2, ',', '.') }}</p>
-                                                    @endif
-                                                </div>
-                                            </details>
-                                        @endif
                                         @if (! empty($calc['dias_apuracao']))
                                             <details class="extrato-dias-detalhe mt-4 group">
                                                 <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-brand-burgundy/20 bg-brand-burgundy/5 px-3.5 py-2 text-xs font-semibold text-brand-burgundy transition hover:bg-brand-burgundy/10 marker:content-none [&::-webkit-details-marker]:hidden">
@@ -261,12 +238,14 @@
                                                     {{ ($calc['dias_com_justificativa_sem_trabalho'] ?? 0) + ($calc['dias_sem_trabalho'] ?? 0) }} s/ pagamento
                                                 </p>
                                             @endif
-                                        @elseif (array_key_exists('quantidade_solicitacoes', $calc))
+                                        @elseif (array_key_exists('salario_referencia', $calc))
                                             <span class="inline-flex items-center justify-center rounded-full bg-violet-100 px-3 py-1 text-sm font-bold text-violet-950">
-                                                {{ $calc['quantidade_solicitacoes'] }} solicitação(ões)
+                                                {{ number_format((float) ($calc['percentual_limite_por_solicitacao'] ?? 30), 0, ',', '.') }}%
                                             </span>
-                                            @if (($calc['valor_bruto_solicitado'] ?? 0) > ($calc['valor_descontado'] ?? 0))
-                                                <p class="mt-2 text-[10px] text-amber-800">Bruto R$ {{ number_format($calc['valor_bruto_solicitado'], 2, ',', '.') }} (teto aplicado)</p>
+                                            @if (($calc['salario_referencia'] ?? 0) > 0)
+                                                <p class="mt-2 text-[10px] leading-snug text-brand-gray">
+                                                    Salário R$ {{ number_format((float) $calc['salario_referencia'], 2, ',', '.') }}
+                                                </p>
                                             @endif
                                         @elseif (array_key_exists('faltas_injustificadas', $calc))
                                             <span class="inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold {{ ($calc['faltas_injustificadas'] ?? 0) > 0 ? 'bg-amber-100 text-amber-950' : 'bg-emerald-100 text-emerald-900' }}">

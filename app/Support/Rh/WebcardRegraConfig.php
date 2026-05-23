@@ -3,8 +3,8 @@
 namespace App\Support\Rh;
 
 /**
- * WebCard: adiantamento salarial no cartão — até X% do salário por solicitação, teto mensal R$ 1.500.
- * Solicitações do mês são descontadas na folha do mesmo mês. Renovação do saldo no dia 23.
+ * WebCard: adiantamento salarial no cartão — direito de X% do salário (teto mensal configurável).
+ * O extrato informa o valor de direito; renovação do saldo no dia 23.
  */
 final class WebcardRegraConfig
 {

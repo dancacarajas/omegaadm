@@ -54,7 +54,7 @@
                 <strong>WebCard:</strong> não use este campo para o limite por solicitação. O sistema calcula
                 <strong>30% do salário</strong> de cada colaborador (ficha do efetivo), com teto mensal de
                 <strong>R$ 1.500,00</strong>. Após salvar, configure em
-                <strong>RH → Benefícios → Extrato → Configuração/Regras</strong> e registre as solicitações na gestão do benefício.
+                <strong>RH → Benefícios → Extrato → Configuração/Regras</strong> e gere o extrato por colaborador.
             </p>
         </label>
         <label>
