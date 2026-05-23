@@ -1,4 +1,4 @@
-<div class="relative hidden min-w-0 md:block" data-busca-global>
+<div class="relative flex min-w-0" data-busca-global>
     <form method="GET" action="{{ route('busca.index') }}" class="relative" data-busca-form autocomplete="off">
         <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-burgundy"></i>
         <input
