@@ -5,8 +5,6 @@ namespace App\Support;
 final class AssinaturaEmailImagem
 {
     /**
-     * Remove borda cinza externa do JPG de fundo (ex.: 2px nas laterais).
-     *
      * @return array{x: int, y: int, width: int, height: int}|null
      */
     public static function detectarRecorteSemBorda(\GdImage $imagem): ?array
@@ -65,7 +63,6 @@ final class AssinaturaEmailImagem
         return public_path('images/email/assinatura-eletronica-bg.jpg');
     }
 
-    /** Garante arquivo de fundo sem borda cinza (regrava o JPG em public se necessário). */
     public static function garantirFundoSemBordaNoPublico(): void
     {
         $caminho = self::caminhoFundoPublico();

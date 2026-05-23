@@ -85,13 +85,13 @@ final class EmailAssinaturaService
 
     public function backgroundUrl(): string
     {
-        return PublicWebBase::assetUrl('images/email/assinatura-eletronica-bg.jpg');
+        return $this->assetUrlAbsoluto('images/email/assinatura-eletronica-bg.jpg');
     }
 
     public function cssFonteArial(): string
     {
-        $normal = PublicWebBase::assetUrl('fonts/Arial.ttf');
-        $bold = PublicWebBase::assetUrl('fonts/Arial-Bold.ttf');
+        $normal = $this->assetUrlAbsoluto('fonts/Arial.ttf');
+        $bold = $this->assetUrlAbsoluto('fonts/Arial-Bold.ttf');
 
         return <<<HTML
 <style type="text/css">
@@ -134,5 +134,20 @@ HTML;
         ])->render();
 
         return $this->cssFonteArial().$corpo;
+    }
+
+    /**
+     * Mesmo comportamento do localhost no browser (asset() + middleware) e /public em produção Hostinger.
+     */
+    private function assetUrlAbsoluto(string $path): string
+    {
+        $path = ltrim($path, '/');
+        $asset = asset($path);
+
+        if (str_starts_with($asset, 'http://') || str_starts_with($asset, 'https://')) {
+            return $asset;
+        }
+
+        return PublicWebBase::assetUrl($path);
     }
 }

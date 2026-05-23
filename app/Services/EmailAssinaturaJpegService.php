@@ -54,7 +54,7 @@ final class EmailAssinaturaJpegService
             $fonte = $bold ? $fonteNegrito : $fonteNormal;
             $tamanho = $bold ? $tamanhoNegrito : $tamanhoRegular;
             imagettftext($imagem, $tamanho, 0, $x, $y, $cor, $fonte, $linha['texto']);
-            $y = $this->proximaBaseline($y, $tamanhoRegular, $fonteNormal, $scale);
+            $y = $this->proximaBaseline($y, $scale);
         }
 
         ob_start();
@@ -77,15 +77,12 @@ final class EmailAssinaturaJpegService
         return $paddingTop - (int) $bbox[7];
     }
 
-    private function proximaBaseline(int $yAtual, int $tamanhoRegular, string $fonteNormal, int $scale): int
+    /**
+     * Mesmo avanço do HTML (line-height: 13px) — evita texto sobre a faixa de site/redes no fundo.
+     */
+    private function proximaBaseline(int $yAtual, int $scale): int
     {
-        $bbox = imagettfbbox($tamanhoRegular, 0, $fonteNormal, 'Ay');
-        $alturaGlyph = (int) ($bbox[1] - $bbox[7]);
-        $espacoExtra = (int) round(
-            (EmailAssinaturaService::TEXTO_LINE_HEIGHT_PX - EmailAssinaturaService::TEXTO_FONT_SIZE_PX) * $scale
-        );
-
-        return $yAtual + $alturaGlyph + max($espacoExtra, (int) round(1 * $scale));
+        return $yAtual + (int) round(EmailAssinaturaService::TEXTO_LINE_HEIGHT_PX * $scale);
     }
 
     private function criarCanvasComFundo(int $largura, int $altura): \GdImage

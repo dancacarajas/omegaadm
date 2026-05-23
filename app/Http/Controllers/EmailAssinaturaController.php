@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Colaborador;
-use App\Support\AssinaturaEmailImagem;
 use App\Services\EmailAssinaturaJpegService;
 use App\Services\EmailAssinaturaService;
 use Illuminate\Http\JsonResponse;
@@ -15,8 +14,6 @@ final class EmailAssinaturaController extends Controller
 {
     public function index(): View
     {
-        AssinaturaEmailImagem::garantirFundoSemBordaNoPublico();
-
         $colaboradores = Colaborador::query()
             ->orderBy('nome')
             ->get(['id', 'nome', 'matricula', 'cargo', 'centro_custo', 'telefone', 'email', 'status']);
