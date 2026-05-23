@@ -16,7 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
+use App\Support\PublicWebBase;
 use Tests\TestCase;
 
 class BeneficioAdesaoMatrizEmailTest extends TestCase
@@ -193,13 +193,27 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
             ->store('rh/beneficios/formularios-adesao', 'public');
         $vinculo->update(['formulario_adesao_assinado_path' => $path]);
 
-        $url = URL::temporarySignedRoute(
+        config(['app.url' => 'https://omegaadm.feston.net.br', 'app.force_public_url' => true]);
+
+        $url = PublicWebBase::temporarySignedRouteWithPublicPrefix(
             'rh.beneficios.vinculos.formulario-adesao.visualizar',
             now()->addHour(),
             ['beneficio' => $beneficio->id, 'vinculo' => $vinculo->id],
         );
 
-        $this->get($url)->assertOk();
+        $this->assertStringContainsString('/public/', $url);
+
+        $parts = parse_url($url);
+        $pathInterno = substr($parts['path'], strlen('/public'));
+        $query = $parts['query'] ?? '';
+
+        $this->call('GET', $pathInterno.($query !== '' ? '?'.$query : ''), [], [], [], [
+            'HTTP_HOST' => $parts['host'],
+            'HTTPS' => 'on',
+            'SCRIPT_NAME' => '/public/index.php',
+            'REQUEST_URI' => $pathInterno.($query !== '' ? '?'.$query : ''),
+            'OMEGA_REQUEST_USES_PUBLIC_URL' => '1',
+        ])->assertOk();
     }
 
     public function test_email_enviado_inclui_botao_visualizar_pdf(): void

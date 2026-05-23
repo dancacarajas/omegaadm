@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Hostinger: document root na raiz do projeto e URL pública com /public/.
@@ -58,5 +60,48 @@ final class PublicWebBase
         }
 
         return $base.'/'.ltrim($path, '/');
+    }
+
+    /**
+     * URL assinada acessível em produção (Hostinger: link com /public/, assinatura sem /public/).
+     *
+     * O bootstrap fix-public-request-uri.php remove /public do path visto pelo Laravel;
+     * a assinatura deve ser calculada nesse path interno, e o link no e-mail mantém /public/.
+     */
+    public static function temporarySignedRouteWithPublicPrefix(
+        string $routeName,
+        CarbonInterface $expiration,
+        array $parameters = [],
+    ): string {
+        $root = rtrim((string) config('app.url'), '/');
+        if (str_ends_with(strtolower($root), '/public')) {
+            $root = substr($root, 0, -7);
+        }
+
+        URL::forceRootUrl($root);
+
+        $signed = URL::temporarySignedRoute($routeName, $expiration, $parameters);
+
+        return self::inserirPublicNoPath($signed);
+    }
+
+    public static function inserirPublicNoPath(string $url): string
+    {
+        $parts = parse_url($url);
+        if ($parts === false || ! isset($parts['host'])) {
+            return $url;
+        }
+
+        $path = $parts['path'] ?? '/';
+        if (! str_starts_with($path, '/public')) {
+            $path = '/public'.($path === '/' ? '' : $path);
+        }
+
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'];
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?'.$parts['query'] : '';
+
+        return $scheme.'://'.$host.$port.$path.$query;
     }
 }

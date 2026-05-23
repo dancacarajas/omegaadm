@@ -14,7 +14,6 @@ use App\Support\Rh\BeneficioAdesaoStatus;
 use App\Support\TstRegistroNotificacaoDestinatarios;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -261,9 +260,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
             return null;
         }
 
-        URL::forceRootUrl(rtrim(PublicWebBase::assetUrl(''), '/'));
-
-        return URL::temporarySignedRoute(
+        return PublicWebBase::temporarySignedRouteWithPublicPrefix(
             'rh.beneficios.vinculos.formulario-adesao.visualizar',
             now()->addDays(120),
             [
