@@ -438,6 +438,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
+        Route::get('beneficios/adesoes', [\App\Http\Controllers\Rh\BeneficioAdesaoPainelController::class, 'index'])->name('beneficios.adesoes.index');
         Route::get('beneficios/extrato/config', [BeneficioExtratoController::class, 'config'])->name('beneficios.extrato.config');
         Route::post('beneficios/extrato/config', [BeneficioExtratoController::class, 'salvarConfig'])->name('beneficios.extrato.config.salvar');
         Route::get('beneficios/extrato/regras', [BeneficioExtratoController::class, 'regras'])->name('beneficios.extrato.regras');

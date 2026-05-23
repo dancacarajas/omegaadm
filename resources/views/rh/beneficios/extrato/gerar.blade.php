@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('title', 'Gerar extrato de benefícios - Omega286')
-@section('eyebrow', 'RH / Benefícios')
-@section('page-title', 'Extrato de benefícios')
+@section('eyebrow', 'RH / Benefícios / Extrato')
+@section('page-title', 'Gerar extrato')
 
 @section('actions')
     <a href="{{ route('rh.beneficios.extrato.regras') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
@@ -16,45 +16,25 @@
 @endsection
 
 @section('content')
-    @if (session('success'))
-        <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-white px-5 py-4 text-sm text-emerald-900 shadow-sm">
-            <i data-lucide="check-circle-2" class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"></i>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
+    @include('rh.beneficios.partials._alerts')
 
-    {{-- Hero --}}
-    <section class="relative mb-6 overflow-hidden rounded-3xl border border-zinc-800/10 bg-gradient-to-br from-brand-gray via-[#3d3d45] to-brand-burgundy shadow-xl shadow-brand-burgundy/10">
-        <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/5 blur-3xl"></div>
-        <div class="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-brand-burgundy/30 blur-3xl"></div>
-        <div class="relative p-6 sm:p-8">
-            <div class="flex flex-wrap items-center gap-3">
-                <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-bold tracking-wide text-white backdrop-blur-sm">
-                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-burgundy text-[10px]">3</span>
-                    Passo 3 de 3
-                </span>
-                <span class="hidden h-4 w-px bg-white/20 sm:block"></span>
-                <span class="text-xs font-medium text-white/70">{{ $regras->count() }} benefício(s) no extrato</span>
-            </div>
-            <h2 class="mt-5 text-2xl font-bold tracking-tight text-white sm:text-3xl">Gerar extrato do colaborador</h2>
-            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
-                {{ $regras->map(fn ($r) => $r->beneficio?->nome)->filter()->join(' · ') ?: 'Configure os benefícios no passo anterior.' }}
-            </p>
-        </div>
-    </section>
+    @include('rh.beneficios.partials._hero', [
+        'badgeIcon' => 'calculator',
+        'badgeText' => 'Extrato · Passo 3 de 3',
+        'title' => 'Gerar extrato do colaborador',
+        'description' => $regras->map(fn ($r) => $r->beneficio?->nome)->filter()->join(' · ') ?: 'Configure os benefícios nos passos anteriores.',
+        'stats' => [
+            ['label' => 'No extrato', 'value' => $regras->count()],
+        ],
+    ])
 
-    {{-- Filtros --}}
     <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
-        <div class="border-b border-zinc-100 bg-gradient-to-r from-zinc-50/80 to-white px-6 py-4">
-            <div class="flex items-center gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-burgundy/10 text-brand-burgundy">
-                    <i data-lucide="sliders-horizontal" class="h-5 w-5"></i>
-                </span>
-                <div>
-                    <p class="text-sm font-bold text-brand-black">Parâmetros da apuração</p>
-                    <p class="text-xs text-brand-gray">Selecione colaborador e período, depois calcule</p>
-                </div>
-            </div>
+        <div class="border-b border-zinc-100 bg-gradient-to-r from-zinc-50/80 to-white px-6 py-5">
+            @include('rh.beneficios.partials._section_head', [
+                'icon' => 'sliders-horizontal',
+                'title' => 'Parâmetros da apuração',
+                'subtitle' => 'Selecione colaborador e período, depois calcule',
+            ])
         </div>
         <form method="GET" action="{{ route('rh.beneficios.extrato.gerar') }}" class="p-6">
             <div class="grid gap-5 lg:grid-cols-12 lg:items-end">
@@ -103,7 +83,7 @@
                     >
                 </label>
                 <div class="lg:col-span-1">
-                    <button type="submit" class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-burgundy to-[#8b2942] px-4 text-sm font-bold text-white shadow-lg shadow-brand-burgundy/25 transition hover:shadow-xl hover:brightness-105 lg:w-auto lg:min-w-[3.25rem]" title="Calcular extrato">
+                    <button type="submit" class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark lg:w-auto lg:min-w-[3.25rem]" title="Calcular extrato">
                         <i data-lucide="calculator" class="h-5 w-5"></i>
                         <span class="lg:hidden">Calcular</span>
                     </button>

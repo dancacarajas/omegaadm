@@ -69,6 +69,27 @@
                 @endforeach
             </select>
         </label>
+        <div class="md:col-span-4 rounded-xl border border-sky-200/80 bg-sky-50/50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-sky-900">Adesão à Matriz (RH)</p>
+            <p class="mt-1 text-[11px] leading-snug text-sky-950/90">Para benefícios em que o colaborador entrega formulário e você encaminha e-mail à Matriz para solicitar cartão.</p>
+            <div class="mt-4 flex flex-wrap gap-4">
+                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                    <input type="hidden" name="requer_controle_adesao" value="0">
+                    <input type="checkbox" name="requer_controle_adesao" value="1" @checked(old('requer_controle_adesao', $beneficio->requer_controle_adesao ?? true)) class="h-4 w-4 accent-brand-burgundy">
+                    Controlar solicitação à Matriz
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                    <input type="hidden" name="adesao_automatica_admissao" value="0">
+                    <input type="checkbox" name="adesao_automatica_admissao" value="1" @checked(old('adesao_automatica_admissao', $beneficio->adesao_automatica_admissao ?? false)) class="h-4 w-4 accent-brand-burgundy">
+                    Adesão automática na admissão
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm font-semibold text-brand-black">
+                    <input type="hidden" name="exige_formulario_colaborador" value="0">
+                    <input type="checkbox" name="exige_formulario_colaborador" value="1" @checked(old('exige_formulario_colaborador', $beneficio->exige_formulario_colaborador ?? true)) class="h-4 w-4 accent-brand-burgundy">
+                    Exige formulário do colaborador
+                </label>
+            </div>
+        </div>
         <label class="md:col-span-3">
             <span class="{{ $labelClass }}">Elegibilidade</span>
             <textarea name="elegibilidade" placeholder="Regras para quem pode receber este benefício" class="{{ $textareaClass }}">{{ $value('elegibilidade') }}</textarea>

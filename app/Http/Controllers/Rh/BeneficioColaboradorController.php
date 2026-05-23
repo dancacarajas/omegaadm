@@ -6,12 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Services\Rh\BeneficioAdesaoService;
+use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BeneficioColaboradorController extends Controller
 {
+    public function __construct(
+        private readonly BeneficioAdesaoService $adesaoService
+    ) {}
+
     public function store(Request $request, Beneficio $beneficio)
     {
         if (config('app.debug')) {
@@ -42,6 +48,8 @@ class BeneficioColaboradorController extends Controller
             'tem_direito' => $request->boolean('tem_direito'),
             'cartao_entregue' => $request->boolean('cartao_entregue'),
             'beneficio_ativo' => $request->boolean('beneficio_ativo'),
+            'status_adesao' => $this->adesaoService->statusInicialParaBeneficio($beneficio),
+            'adesao_atualizado_por_id' => $request->user()?->id,
         ]);
 
         return $this->redirectAposAcao($beneficio)
@@ -68,6 +76,7 @@ class BeneficioColaboradorController extends Controller
         }
 
         $payload = $this->validatedData($request, $beneficio, $vinculo);
+        $payload = $this->adesaoService->normalizarDadosAdesao($vinculo, $payload, $request);
         $vinculo->update([
             ...$payload,
             'tem_direito' => $request->boolean('tem_direito'),
@@ -75,11 +84,11 @@ class BeneficioColaboradorController extends Controller
             'beneficio_ativo' => $request->boolean('beneficio_ativo'),
         ]);
 
-        return $this->redirectAposAcao($beneficio)
+        return $this->redirectAposAcao($beneficio, $vinculo)
             ->with('success', 'Situacao do beneficio atualizada.');
     }
 
-    private function redirectAposAcao(Beneficio $beneficio): \Illuminate\Http\RedirectResponse
+    private function redirectAposAcao(Beneficio $beneficio, ?ColaboradorBeneficio $vinculo = null): \Illuminate\Http\RedirectResponse
     {
         $anterior = url()->previous();
         $destino = route('rh.beneficios.show', $beneficio);
@@ -91,10 +100,24 @@ class BeneficioColaboradorController extends Controller
             && ! str_contains($anterior, '/colaboradores/')
             && ! str_contains($anterior, '/vinculos')
         ) {
-            return redirect()->to($anterior);
+            return redirect()->to($this->urlComVinculoDestaque($anterior, $vinculo));
         }
 
-        return redirect()->to($destino);
+        return redirect()->to($this->urlComVinculoDestaque($destino, $vinculo));
+    }
+
+    private function urlComVinculoDestaque(string $url, ?ColaboradorBeneficio $vinculo): string
+    {
+        if ($vinculo === null) {
+            return $url;
+        }
+
+        $base = str_contains($url, '#') ? strstr($url, '#', true) : $url;
+        $base = preg_replace('/([?&])vinculo=\d+(&)?/', '$1', (string) $base) ?? $base;
+        $base = rtrim((string) $base, '?&');
+        $sep = str_contains($base, '?') ? '&' : '?';
+
+        return $base.$sep.'vinculo='.$vinculo->id.'#vinculo-'.$vinculo->id;
     }
 
     private function findVinculoDoBeneficio(Request $request, Beneficio $beneficio): ColaboradorBeneficio
@@ -138,6 +161,13 @@ class BeneficioColaboradorController extends Controller
             'data_entrega_cartao' => ['nullable', 'date'],
             'numero_cartao' => ['nullable', 'string', 'max:255'],
             'observacoes' => ['nullable', 'string'],
+            'status_adesao' => ['nullable', 'string', Rule::in(BeneficioAdesaoStatus::valores())],
+            'data_formulario_recebido' => ['nullable', 'date'],
+            'data_envio_matriz' => ['nullable', 'date'],
+            'protocolo_matriz' => ['nullable', 'string', 'max:120'],
+            'data_aviso_coleta_matriz' => ['nullable', 'date'],
+            'data_retorno_matriz' => ['nullable', 'date'],
+            'data_previsao_cartao' => ['nullable', 'date'],
         ]);
     }
 }

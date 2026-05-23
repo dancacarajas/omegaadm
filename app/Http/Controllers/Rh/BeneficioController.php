@@ -6,11 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
 use App\Models\BeneficioExtratoRegra;
 use App\Models\Colaborador;
+use App\Models\ColaboradorBeneficio;
+use App\Services\Rh\BeneficioAdesaoService;
+use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 
 class BeneficioController extends Controller
 {
+    private const VINCULOS_POR_PAGINA = 25;
+
     public function index()
     {
         $beneficios = Beneficio::query()
@@ -26,19 +32,34 @@ class BeneficioController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('rh.beneficios.index', compact('beneficios'));
+        $resumoBeneficios = [
+            'total' => Beneficio::query()->count(),
+            'ativos' => Beneficio::query()->where('status', 'ativo')->count(),
+            'no_extrato' => BeneficioExtratoRegra::query()->where('ativo', true)->distinct('beneficio_id')->count('beneficio_id'),
+            'adesao_andamento' => ColaboradorBeneficio::query()
+                ->whereHas('beneficio', fn ($q) => $q->where('requer_controle_adesao', true))
+                ->whereIn('status_adesao', BeneficioAdesaoStatus::emAndamento())
+                ->count(),
+        ];
+
+        return view('rh.beneficios.index', compact('beneficios', 'resumoBeneficios'));
     }
 
     public function create()
     {
         return view('rh.beneficios.create', [
-            'beneficio' => new Beneficio(['status' => 'ativo']),
+            'beneficio' => new Beneficio([
+                'status' => 'ativo',
+                'requer_controle_adesao' => true,
+                'adesao_automatica_admissao' => false,
+                'exige_formulario_colaborador' => true,
+            ]),
         ]);
     }
 
     public function store(Request $request)
     {
-        Beneficio::create($this->validatedData($request));
+        Beneficio::create($this->validatedData($request, null, $request));
 
         return redirect()
             ->route('rh.beneficios.index')
@@ -81,7 +102,18 @@ class BeneficioController extends Controller
             $cartao = 'todos';
         }
 
-        $colaboradoresVinculados = $this->filtrarOrdenarVinculos($beneficio->colaboradores, $busca, $ordenacao, $cartao);
+        $vinculosFiltrados = $this->filtrarOrdenarVinculos($beneficio->colaboradores, $busca, $ordenacao, $cartao);
+        $pagina = max(1, (int) $request->input('page', 1));
+        $colaboradoresVinculados = new LengthAwarePaginator(
+            $vinculosFiltrados->forPage($pagina, self::VINCULOS_POR_PAGINA)->values(),
+            $vinculosFiltrados->count(),
+            self::VINCULOS_POR_PAGINA,
+            $pagina,
+            [
+                'path' => route('rh.beneficios.show', $beneficio),
+                'query' => $request->except('page'),
+            ]
+        );
 
         $colaboradoresDisponiveis = Colaborador::query()
             ->whereNotIn('id', $beneficio->colaboradores->pluck('colaborador_id'))
@@ -95,14 +127,16 @@ class BeneficioController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome', 'cargo', 'matricula']);
 
-        return view('rh.beneficios.show', compact(
-            'beneficio',
-            'colaboradoresDisponiveis',
-            'colaboradoresVinculados',
-            'ordenacao',
-            'busca',
-            'cartao',
-        ));
+        return view('rh.beneficios.show', [
+            'beneficio' => $beneficio,
+            'colaboradoresDisponiveis' => $colaboradoresDisponiveis,
+            'colaboradoresVinculados' => $colaboradoresVinculados,
+            'ordenacao' => $ordenacao,
+            'busca' => $busca,
+            'cartao' => $cartao,
+            'adesaoService' => app(BeneficioAdesaoService::class),
+            'statusAdesaoOpcoes' => \App\Support\Rh\BeneficioAdesaoStatus::rotulos(),
+        ]);
     }
 
     private function filtrarOrdenarVinculos($vinculos, string $busca, string $ordenacao, string $cartao = 'todos')
@@ -148,7 +182,7 @@ class BeneficioController extends Controller
 
     public function update(Request $request, Beneficio $beneficio)
     {
-        $beneficio->update($this->validatedData($request, $beneficio));
+        $beneficio->update($this->validatedData($request, $beneficio, $request));
 
         return redirect()
             ->route('rh.beneficios.show', $beneficio)
@@ -165,9 +199,10 @@ class BeneficioController extends Controller
             ->with('success', "Benefício «{$nome}» excluído com sucesso.");
     }
 
-    private function validatedData(Request $request, ?Beneficio $beneficio = null): array
+    private function validatedData(Request $request, ?Beneficio $beneficio = null, ?Request $flags = null): array
     {
-        return $request->validate([
+        $flags ??= $request;
+        $data = $request->validate([
             'nome' => ['required', 'string', 'max:255'],
             'tipo' => ['nullable', 'string', 'max:80'],
             'fornecedor' => ['nullable', 'string', 'max:255'],
@@ -176,8 +211,17 @@ class BeneficioController extends Controller
             'periodicidade' => ['nullable', 'string', 'max:80'],
             'elegibilidade' => ['nullable', 'string'],
             'status' => ['required', 'string', Rule::in(['ativo', 'inativo', 'suspenso'])],
+            'requer_controle_adesao' => ['sometimes', 'boolean'],
+            'adesao_automatica_admissao' => ['sometimes', 'boolean'],
+            'exige_formulario_colaborador' => ['sometimes', 'boolean'],
             'descricao' => ['nullable', 'string'],
             'observacoes' => ['nullable', 'string'],
         ]);
+
+        $data['requer_controle_adesao'] = $flags->boolean('requer_controle_adesao');
+        $data['adesao_automatica_admissao'] = $flags->boolean('adesao_automatica_admissao');
+        $data['exige_formulario_colaborador'] = $flags->boolean('exige_formulario_colaborador');
+
+        return $data;
     }
 }

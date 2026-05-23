@@ -101,7 +101,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
                 'tem_direito' => '1',
             ]);
 
-        $response->assertRedirect(route('rh.beneficios.show', $beneficio));
+        $response->assertRedirect(route('rh.beneficios.show', $beneficio).'?vinculo='.$vinculo->id.'#vinculo-'.$vinculo->id);
         $vinculo->refresh();
         $this->assertTrue($vinculo->cartao_entregue);
         $this->assertTrue($vinculo->beneficio_ativo);
@@ -214,7 +214,7 @@ class BeneficioColaboradorVinculoTest extends TestCase
                     'REQUEST_URI' => '/public/rh/beneficios/'.$beneficio->id,
                 ]
             )
-            ->assertRedirect(route('rh.beneficios.show', $beneficio));
+            ->assertRedirect(route('rh.beneficios.show', $beneficio).'?vinculo='.$vinculo->id.'#vinculo-'.$vinculo->id);
     }
 
     public function test_nao_atualiza_vinculo_de_outro_beneficio(): void
@@ -264,11 +264,42 @@ class BeneficioColaboradorVinculoTest extends TestCase
                 'cartao_entregue' => '1',
                 'beneficio_ativo' => '1',
             ])
-            ->assertRedirect(route('rh.beneficios.show', $beneficio))
+            ->assertRedirect(route('rh.beneficios.show', $beneficio).'?vinculo='.$vinculo->id.'#vinculo-'.$vinculo->id)
             ->assertSessionHasNoErrors();
 
         $vinculo->refresh();
         $this->assertTrue($vinculo->cartao_entregue);
+    }
+
+    public function test_show_pagina_vinculos_em_lotes_de_25(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create(['nome' => 'Vale', 'status' => 'ativo']);
+
+        for ($i = 1; $i <= 30; $i++) {
+            $colaborador = Colaborador::query()->create([
+                'nome' => sprintf('Colaborador %02d', $i),
+                'status' => 'ativo',
+            ]);
+            ColaboradorBeneficio::query()->create([
+                'beneficio_id' => $beneficio->id,
+                'colaborador_id' => $colaborador->id,
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('rh.beneficios.show', $beneficio))
+            ->assertOk()
+            ->assertSee('Exibindo 1–25 de 30', false)
+            ->assertSee('Colaborador 01', false)
+            ->assertDontSee('Colaborador 30', false);
+
+        $this->actingAs($user)
+            ->get(route('rh.beneficios.show', ['beneficio' => $beneficio, 'page' => 2]))
+            ->assertOk()
+            ->assertSee('Exibindo 26–30 de 30', false)
+            ->assertSee('Colaborador 30', false)
+            ->assertDontSee('Colaborador 01', false);
     }
 
     public function test_excluir_vinculo_elinaldo_cenario(): void

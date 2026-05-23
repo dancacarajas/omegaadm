@@ -482,6 +482,23 @@ php artisan movimentacoes:diagnostico 3   # ID real em produção
 
 Debug (só `APP_DEBUG=true`): `?debug_movimentacao=1` na URL de gestão.
 
+### Deploy — layout premium + adesão Matriz (maio/2026)
+
+Telas de benefícios usam **Blade + Tailwind** (mesmo bundle Vite do app). Para produção ficar **igual ao localhost**:
+
+```bash
+git pull origin main
+composer install --no-dev --optimize-autoloader   # se houve deploy novo
+php artisan migrate --force                        # colunas adesão + data_aviso_coleta_matriz
+php artisan view:clear
+php artisan route:clear
+php artisan optimize:clear
+```
+
+Não é necessário `npm run build` só por estas telas, **a menos** que `resources/css` ou `resources/js` tenham mudado no mesmo deploy. Se o layout global estiver “cruo”, siga a seção **CSS/JS sem estilo** acima (`APP_FORCE_PUBLIC_URL`, `/public/build`).
+
+Rotas novas: `GET /rh/beneficios/adesoes` (painel Solicitações à Matriz).
+
 ---
 
 *Documento gerado para handoff ao desenvolvedor. Atualizar este arquivo se a causa raiz for confirmada no servidor.*

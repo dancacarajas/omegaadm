@@ -15,12 +15,18 @@ class Beneficio extends Model
         'periodicidade',
         'elegibilidade',
         'status',
+        'requer_controle_adesao',
+        'adesao_automatica_admissao',
+        'exige_formulario_colaborador',
         'descricao',
         'observacoes',
     ];
 
     protected $casts = [
         'valor' => 'decimal:2',
+        'requer_controle_adesao' => 'boolean',
+        'adesao_automatica_admissao' => 'boolean',
+        'exige_formulario_colaborador' => 'boolean',
     ];
 
     public function colaboradores()

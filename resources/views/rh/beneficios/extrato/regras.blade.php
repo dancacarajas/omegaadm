@@ -7,54 +7,62 @@
 @section('actions')
     @php $todosOk = $regras->every(fn ($r) => $r->configurado); @endphp
     @if ($todosOk)
-        <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-brand-burgundy px-4 py-2 text-sm font-semibold text-white shadow-sm">
-            <i data-lucide="file-text" class="h-4 w-4"></i>
+        <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-brand-burgundy px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+            <i data-lucide="calculator" class="h-4 w-4"></i>
             <span class="whitespace-nowrap">Gerar extrato</span>
         </a>
     @endif
-    <a href="{{ route('rh.beneficios.extrato.config') }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm">
+    <a href="{{ route('rh.beneficios.extrato.config') }}" class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300 hover:shadow-md">
         <i data-lucide="arrow-left" class="h-4 w-4"></i>
         <span class="whitespace-nowrap">Seleção</span>
     </a>
 @endsection
 
 @section('content')
-    @if (session('success'))
-        <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">{{ session('success') }}</div>
-    @endif
-    @if ($errors->any())
-        <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
-            <ul class="list-inside list-disc">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
+    @include('rh.beneficios.partials._alerts')
 
-    <section class="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-brand-gray text-white shadow-sm">
-        <div class="p-6">
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold">Passo 2 de 3</div>
-            <h2 class="mt-4 text-2xl font-bold">Regras por benefício</h2>
-            <p class="mt-2 text-sm text-white/85">Abra a configuração de cada benefício. As regras ficam salvas por vigência (ano) e alimentam o cálculo do extrato.</p>
-        </div>
-    </section>
+    @php
+        $pendentes = $regras->filter(fn ($r) => ! $r->configurado)->count();
+        $todosOk = $regras->every(fn ($r) => $r->configurado);
+    @endphp
+
+    @include('rh.beneficios.partials._hero', [
+        'badgeIcon' => 'settings-2',
+        'badgeText' => 'Extrato · Passo 2 de 3',
+        'title' => 'Regras por benefício',
+        'description' => 'Configure parâmetros de cada benefício (vigência, valores, percentuais). Tudo alimenta o cálculo do extrato no passo seguinte.',
+        'stats' => [
+            ['label' => 'Benefícios', 'value' => $regras->count()],
+            ['label' => 'Pendentes', 'value' => $pendentes],
+        ],
+    ])
 
     <section class="grid gap-4 md:grid-cols-2">
         @foreach ($regras as $regra)
             @php $b = $regra->beneficio; @endphp
-            <article class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <h3 class="text-lg font-bold text-brand-black">{{ $b?->nome }}</h3>
-                        <p class="mt-1 text-xs text-brand-gray">
-                            {{ \App\Models\BeneficioExtratoRegra::rotuloTipo($regra->tipo_regra) }}
-                            @if ($regra->ano_vigencia) · Vigência {{ $regra->ano_vigencia }} @endif
-                        </p>
+            <article class="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm ring-1 ring-zinc-100 transition hover:shadow-md">
+                <div class="border-b border-zinc-100 bg-gradient-to-r from-zinc-50/60 to-white px-5 py-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-burgundy-soft text-brand-burgundy">
+                                <i data-lucide="hand-heart" class="h-5 w-5"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <h3 class="truncate text-lg font-bold text-brand-black">{{ $b?->nome }}</h3>
+                                <p class="mt-1 text-xs text-brand-gray">
+                                    {{ \App\Models\BeneficioExtratoRegra::rotuloTipo($regra->tipo_regra) }}
+                                    @if ($regra->ano_vigencia) · {{ $regra->ano_vigencia }} @endif
+                                </p>
+                            </div>
+                        </div>
+                        @if ($regra->configurado)
+                            <span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">OK</span>
+                        @else
+                            <span class="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">Pendente</span>
+                        @endif
                     </div>
-                    @if ($regra->configurado)
-                        <span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800">OK</span>
-                    @else
-                        <span class="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800">Pendente</span>
-                    @endif
                 </div>
-                <div class="mt-4">
+                <div class="p-5">
                     @if ($regra->tipo_regra === \App\Models\BeneficioExtratoRegra::TIPO_ASSIDUIDADE)
                         <button
                             type="button"
@@ -90,16 +98,22 @@
         @endforeach
     </section>
 
-    <div class="mt-6 flex flex-wrap justify-end gap-3">
-        @if ($todosOk)
-            <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-burgundy px-5 text-sm font-semibold text-white">
-                <span class="whitespace-nowrap">Ir para geração do extrato</span>
-                <i data-lucide="arrow-right" class="h-4 w-4"></i>
-            </a>
-        @else
-            <p class="flex-1 text-sm text-brand-gray">Configure todos os benefícios marcados como pendentes para liberar a geração.</p>
-        @endif
-    </div>
+    <section class="mt-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-sm ring-1 ring-zinc-100">
+        <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+            @if ($todosOk)
+                <p class="text-sm text-brand-gray">Todas as regras configuradas — você pode gerar o extrato.</p>
+                <a href="{{ route('rh.beneficios.extrato.gerar') }}" class="inline-flex h-12 items-center gap-2 rounded-2xl bg-brand-burgundy px-6 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                    Ir para geração do extrato
+                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                </a>
+            @else
+                <p class="flex items-center gap-2 text-sm text-amber-900">
+                    <i data-lucide="alert-circle" class="h-4 w-4"></i>
+                    Configure {{ $pendentes }} benefício(s) pendente(s) para liberar a geração.
+                </p>
+            @endif
+        </div>
+    </section>
 @endsection
 
 @push('modals')
