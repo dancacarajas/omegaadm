@@ -14,15 +14,15 @@ class AssinaturaPublicaTest extends TestCase
     {
         $this->get(route('publico.assinatura.index'))
             ->assertOk()
-            ->assertSee('Baixe sua Assinatura', false)
-            ->assertSee('Informe seu CPF', false);
+            ->assertSee('Baixe sua assinatura de e-mail', false)
+            ->assertSee('Informe seu CPF para localizar seus dados e gerar sua assinatura.', false);
     }
 
     public function test_rota_publico_nao_e_corrompida_pelo_prefixo_public(): void
     {
         $this->get('/publico/assinatura')
             ->assertOk()
-            ->assertSee('Baixe sua Assinatura', false);
+            ->assertSee('Baixe sua assinatura de e-mail', false);
     }
 
     public function test_consulta_cpf_encontrado_retorna_dados(): void
