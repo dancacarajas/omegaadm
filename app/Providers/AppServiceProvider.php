@@ -110,6 +110,10 @@ class AppServiceProvider extends ServiceProvider
             $root .= '/public';
         }
 
+        if (str_starts_with($root, 'https://')) {
+            URL::forceScheme('https');
+        }
+
         URL::forceRootUrl($root);
 
         Vite::createAssetPathsUsing(static fn (string $path, ?bool $secure = null): string => asset($path));

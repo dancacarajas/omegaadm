@@ -75,17 +75,8 @@ class AssetsDiagnosticoCommand extends Command
         $this->line('APP_URL: '.$appUrl);
         $this->line('force_public_url: '.(config('app.force_public_url') ? 'true' : 'false'));
 
-        $root = PublicWebBase::rootUrl(Request::create('/public/', 'GET'));
-        if ($root === null && filter_var(config('app.force_public_url'), FILTER_VALIDATE_BOOLEAN)) {
-            $root = $appUrl;
-            if (! str_ends_with($root, '/public')) {
-                $root .= '/public';
-            }
-        }
-        if ($root !== null) {
-            \Illuminate\Support\Facades\URL::forceRootUrl($root);
-            Vite::createAssetPathsUsing(static fn (string $path, ?bool $secure = null): string => asset($path));
-        }
+        $root = $this->rootUrlProducao($appUrl);
+        $this->aplicarBaseUrl($root, $appUrl);
 
         $cssUrl = Vite::asset('resources/css/app.css');
         $jsUrl = Vite::asset('resources/js/app.js');
@@ -99,7 +90,19 @@ class AssetsDiagnosticoCommand extends Command
             return self::FAILURE;
         }
 
-        $request = Request::create('/public/rh/chamados-movimentacao/1', 'GET');
+        $appHost = parse_url($appUrl, PHP_URL_HOST);
+        if (is_string($appHost) && $appHost !== '' && $appHost !== 'localhost') {
+            foreach ([$cssUrl, $jsUrl] as $viteUrl) {
+                if (! str_contains($viteUrl, $appHost)) {
+                    $this->error("URL do Vite sem host de APP_URL ({$appHost}): {$viteUrl}");
+                    $this->line('Em CLI, Request::create() sem host usa localhost — use APP_URL como no AppServiceProvider.');
+
+                    return self::FAILURE;
+                }
+            }
+        }
+
+        $request = $this->requestComAppUrl('/public/rh/chamados-movimentacao/1');
         $this->line('PublicWebBase (simulação /public/...): '.(PublicWebBase::shouldUse($request) ? 'SIM' : 'NÃO'));
         $this->line('rootUrl: '.(PublicWebBase::rootUrl($request) ?? '(null)'));
 
@@ -117,6 +120,42 @@ class AssetsDiagnosticoCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Mesma base que AppServiceProvider::configurarBasePublicaHostinger (CLI sem request HTTP).
+     */
+    private function rootUrlProducao(string $appUrl): string
+    {
+        $root = $appUrl;
+        if (filter_var(config('app.force_public_url'), FILTER_VALIDATE_BOOLEAN)
+            && ! str_ends_with(strtolower($root), '/public')) {
+            $root .= '/public';
+        }
+
+        return $root;
+    }
+
+    private function aplicarBaseUrl(string $root, string $appUrl): void
+    {
+        if (str_starts_with($appUrl, 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        \Illuminate\Support\Facades\URL::forceRootUrl($root);
+        Vite::createAssetPathsUsing(static fn (string $path, ?bool $secure = null): string => asset($path));
+    }
+
+    /** Request sintético com host/scheme de APP_URL (evita localhost em diagnóstico CLI). */
+    private function requestComAppUrl(string $path): Request
+    {
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $parsed = parse_url($appUrl);
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = $parsed['host'] ?? 'localhost';
+        $port = isset($parsed['port']) ? ':'.$parsed['port'] : '';
+
+        return Request::create($scheme.'://'.$host.$port.$path, 'GET');
     }
 
     /**
