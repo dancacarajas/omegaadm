@@ -450,6 +450,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('beneficios/{beneficio}/vinculos/{vinculo}/formulario-adesao', [BeneficioColaboradorController::class, 'downloadFormularioAdesao'])
             ->whereNumber(['beneficio', 'vinculo'])
             ->name('beneficios.vinculos.formulario-adesao');
+        Route::post('beneficios/{beneficio}/vinculos/{vinculo}/formulario-adesao', [BeneficioColaboradorController::class, 'uploadFormularioAdesaoAssinado'])
+            ->whereNumber(['beneficio', 'vinculo'])
+            ->name('beneficios.vinculos.formulario-adesao.upload');
         Route::post('beneficios/{beneficio}/vinculos/{vinculo}/enviar-solicitacao-matriz', [BeneficioColaboradorController::class, 'enviarSolicitacaoMatriz'])
             ->whereNumber(['beneficio', 'vinculo'])
             ->name('beneficios.vinculos.enviar-solicitacao-matriz');

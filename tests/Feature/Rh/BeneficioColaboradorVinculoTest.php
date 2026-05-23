@@ -413,4 +413,36 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ]))
             ->assertOk();
     }
+
+    public function test_upload_ajax_formulario_adesao_assinado(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'Vale',
+            'status' => 'ativo',
+            'requer_controle_adesao' => true,
+        ]);
+        $colaborador = Colaborador::query()->create(['nome' => 'Maria', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'tem_direito' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('rh.beneficios.vinculos.formulario-adesao.upload', [
+                'beneficio' => $beneficio,
+                'vinculo' => $vinculo,
+            ]), [
+                'formulario_adesao_assinado' => UploadedFile::fake()->create('adesao.pdf', 50, 'application/pdf'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonStructure(['nome_arquivo', 'url_visualizar', 'pode_enviar_email', 'problemas_email']);
+
+        $vinculo->refresh();
+        $this->assertNotNull($vinculo->formulario_adesao_assinado_path);
+        Storage::disk('public')->assertExists($vinculo->formulario_adesao_assinado_path);
+    }
 }

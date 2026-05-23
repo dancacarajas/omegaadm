@@ -179,6 +179,44 @@ class BeneficioColaboradorController extends Controller
             ->with('success', "Solicitação enviada à Matriz ({$qtd} destinatário(s): {$lista}). O formulário assinado foi anexado ao e-mail.");
     }
 
+    public function uploadFormularioAdesaoAssinado(
+        Request $request,
+        Beneficio $beneficio,
+        ColaboradorBeneficio $vinculo,
+        BeneficioAdesaoMatrizNotificacaoService $notificacao,
+    ) {
+        if ((int) $vinculo->beneficio_id !== (int) $beneficio->id) {
+            throw ValidationException::withMessages([
+                'vinculo_id' => 'Este vínculo não pertence a este benefício.',
+            ]);
+        }
+
+        $request->validate([
+            'formulario_adesao_assinado' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $payload = $this->processarFormularioAdesaoAssinado($request, $vinculo);
+
+        if ($payload === []) {
+            throw ValidationException::withMessages([
+                'formulario_adesao_assinado' => 'Selecione um arquivo PDF ou imagem (JPG/PNG) de até 10 MB.',
+            ]);
+        }
+
+        $vinculo->update($payload);
+        $vinculo->refresh();
+
+        $diagnostico = $notificacao->diagnosticoEnvio();
+
+        return response()->json([
+            'ok' => true,
+            'nome_arquivo' => basename((string) $vinculo->formulario_adesao_assinado_path),
+            'url_visualizar' => $vinculo->urlFormularioAdesaoAssinado(),
+            'pode_enviar_email' => $diagnostico['pode_enviar'],
+            'problemas_email' => $diagnostico['problemas'],
+        ]);
+    }
+
     public function downloadFormularioAdesao(Beneficio $beneficio, ColaboradorBeneficio $vinculo)
     {
         return $this->respostaFormularioAdesaoAssinado($beneficio, $vinculo, inline: false);

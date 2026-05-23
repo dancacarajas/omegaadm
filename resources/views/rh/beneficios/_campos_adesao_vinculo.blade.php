@@ -9,7 +9,13 @@
     $emailMatrizDiag = $emailMatrizDiagnostico ?? app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio();
 @endphp
 
-<div class="rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-4">
+<div
+    class="rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-4"
+    data-adesao-vinculo-bloco
+    data-email-matriz-action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
+    data-email-matriz-colaborador="{{ $vinculo->colaborador?->nome }}"
+    data-email-matriz-beneficio="{{ $vinculo->beneficio?->nome }}"
+>
     <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <p class="text-xs font-bold uppercase tracking-wider text-brand-gray">Adesão à Matriz</p>
@@ -33,10 +39,10 @@
             <span class="{{ $labelClass }}">Formulário recebido</span>
             <input type="date" name="data_formulario_recebido" value="{{ old('data_formulario_recebido', $vinculo->data_formulario_recebido?->format('Y-m-d')) }}" class="{{ $inputClass }}">
         </label>
-        <div class="sm:col-span-2 lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-3" data-formulario-adesao-upload>
             <span class="{{ $labelClass }}">Formulário de adesão assinado</span>
             @if ($vinculo->temFormularioAdesaoAssinado())
-                <div class="mt-1.5 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
+                <div data-formulario-adesao-preview class="mt-1.5 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
                     <a href="{{ $vinculo->urlFormularioAdesaoAssinado() }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:underline">
                         <i data-lucide="file-text" class="h-4 w-4"></i>
                         Ver anexo atual
@@ -51,9 +57,15 @@
                 type="file"
                 name="formulario_adesao_assinado"
                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                data-auto-upload-formulario-adesao
+                data-upload-url="{{ route('rh.beneficios.vinculos.formulario-adesao.upload', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
                 class="mt-1.5 block w-full text-sm text-brand-gray file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy-soft file:px-3 file:py-2 file:text-xs file:font-bold file:text-brand-burgundy hover:file:bg-brand-burgundy/10"
             >
-            <p class="mt-1.5 text-[10px] leading-relaxed text-brand-gray">PDF ou imagem (JPG/PNG), até 10 MB. {{ $vinculo->temFormularioAdesaoAssinado() ? 'Envie outro arquivo para substituir.' : 'Anexe o formulário assinado pelo colaborador.' }}</p>
+            <p data-formulario-adesao-status class="mt-1.5 hidden text-xs font-semibold text-brand-burgundy"></p>
+            <p class="mt-1.5 text-[10px] leading-relaxed text-brand-gray">
+                PDF ou imagem (JPG/PNG), até 10 MB. O anexo é salvo automaticamente ao selecionar o arquivo.
+                {{ $vinculo->temFormularioAdesaoAssinado() ? ' Envie outro arquivo para substituir.' : '' }}
+            </p>
         </div>
         <label>
             <span class="{{ $labelClass }}">Pedido enviado à Matriz</span>
@@ -78,29 +90,34 @@
             <strong class="text-brand-black">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}</strong>.
         </p>
         @include('rh.beneficios.partials._status_email_matriz', ['vinculo' => $vinculo])
-        @if (! ($emailMatrizDiag['pode_enviar'] ?? false))
-            <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
-                <p class="font-bold">E-mail à Matriz indisponível no momento</p>
-                <ul class="mt-1.5 list-inside list-disc space-y-0.5">
-                    @foreach ($emailMatrizDiag['problemas'] ?? [] as $problema)
-                        <li>{{ $problema }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @elseif ($vinculo->temFormularioAdesaoAssinado())
-            <button
-                type="button"
-                data-abrir-modal-email-matriz
-                data-action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
-                data-colaborador="{{ $vinculo->colaborador?->nome }}"
-                data-beneficio="{{ $vinculo->beneficio?->nome }}"
-                class="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark"
-            >
-                <i data-lucide="send" class="h-4 w-4"></i>
-                Enviar solicitação por e-mail
-            </button>
-        @else
-            <p class="mt-3 text-xs font-semibold text-amber-800">Anexe o formulário de adesão assinado acima e clique em <strong>Salvar alterações</strong> antes de enviar o e-mail.</p>
-        @endif
+        <div
+            data-email-matriz-diagnostico
+            class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 {{ ($emailMatrizDiag['pode_enviar'] ?? false) ? 'hidden' : '' }}"
+        >
+            <p class="font-bold">E-mail à Matriz indisponível no momento</p>
+            <ul data-email-matriz-problemas class="mt-1.5 list-inside list-disc space-y-0.5">
+                @foreach ($emailMatrizDiag['problemas'] ?? [] as $problema)
+                    <li>{{ $problema }}</li>
+                @endforeach
+            </ul>
+        </div>
+        <button
+            type="button"
+            data-abrir-modal-email-matriz
+            data-email-matriz-botao
+            data-action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
+            data-colaborador="{{ $vinculo->colaborador?->nome }}"
+            data-beneficio="{{ $vinculo->beneficio?->nome }}"
+            class="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark {{ ($emailMatrizDiag['pode_enviar'] ?? false) && $vinculo->temFormularioAdesaoAssinado() ? '' : 'hidden' }}"
+        >
+            <i data-lucide="send" class="h-4 w-4"></i>
+            Enviar solicitação por e-mail
+        </button>
+        <p
+            data-email-matriz-aviso-anexo
+            class="mt-3 text-xs font-semibold text-amber-800 {{ $vinculo->temFormularioAdesaoAssinado() ? 'hidden' : '' }}"
+        >
+            Selecione o formulário de adesão assinado acima — o sistema salva o anexo automaticamente e libera o envio por e-mail.
+        </p>
     </div>
 </div>

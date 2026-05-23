@@ -4,7 +4,6 @@
         ->take(2)
         ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))
         ->join('');
-    $aberto = (int) request('vinculo') === (int) $vinculo->id;
     $dataDireito = $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: '—');
     $inputClass = 'mt-1.5 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10';
     $labelClass = 'text-[10px] font-bold uppercase tracking-wider text-brand-gray';
@@ -21,7 +20,6 @@
 <details
     id="vinculo-{{ $vinculo->id }}"
     class="group border-b border-zinc-100 bg-white transition open:bg-zinc-50/50"
-    @if ($aberto) open @endif
 >
     <summary class="beneficio-vinculo-list-grid cursor-pointer list-none px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
         <div class="flex min-w-0 items-center gap-3">

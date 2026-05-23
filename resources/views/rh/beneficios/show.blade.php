@@ -285,11 +285,21 @@
     </section>
 
     @include('rh.beneficios.partials._modal_confirmar_email_matriz')
+    @include('rh.beneficios.partials._upload_formulario_adesao_script')
 @endsection
 
 @push('scripts')
 <script>
 (function () {
+    document.querySelectorAll('details[id^="vinculo-"]').forEach((item) => {
+        item.removeAttribute('open');
+    });
+
+    const alvoHash = window.location.hash?.match(/^#vinculo-\d+$/);
+    if (alvoHash) {
+        document.querySelector(alvoHash[0])?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     function sincronizarCartaoEntregue(input) {
         if (!input.value) {
             return;
