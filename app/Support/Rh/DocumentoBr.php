@@ -4,9 +4,19 @@ namespace App\Support\Rh;
 
 final class DocumentoBr
 {
+    public static function cpfDigitos(?string $cpf): string
+    {
+        return preg_replace('/\D/', '', (string) $cpf) ?? '';
+    }
+
+    public static function cpfTemOnzeDigitos(string $digitos): bool
+    {
+        return strlen($digitos) === 11 && $digitos !== str_repeat('0', 11);
+    }
+
     public static function cpf(?string $cpf): string
     {
-        $digits = preg_replace('/\D/', '', (string) $cpf) ?? '';
+        $digits = self::cpfDigitos($cpf);
 
         if (strlen($digits) !== 11) {
             return filled($cpf) ? trim((string) $cpf) : '—';

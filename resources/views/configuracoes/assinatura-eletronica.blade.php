@@ -5,6 +5,11 @@
 @section('page-title', 'Gerador de Assinatura Eletrônica')
 
 @section('actions')
+    <a href="{{ route('publico.assinatura.index') }}" target="_blank" rel="noopener"
+        class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300">
+        <i data-lucide="external-link" class="h-4 w-4"></i>
+        Página pública
+    </a>
     <a href="{{ route('configuracoes.email.edit') }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-zinc-300">
         <i data-lucide="mail" class="h-4 w-4"></i>
         Configuração de E-mail

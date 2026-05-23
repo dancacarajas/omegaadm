@@ -21,7 +21,8 @@ final class PublicWebBase
             return true;
         }
 
-        if (str_starts_with($request->getRequestUri(), '/public')) {
+        $path = parse_url($request->getRequestUri(), PHP_URL_PATH) ?? $request->getRequestUri();
+        if (preg_match('#^/public(?:/|$)#', $path)) {
             return true;
         }
 

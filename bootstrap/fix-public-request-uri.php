@@ -6,7 +6,10 @@
  */
 return function (): void {
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
-    if (! str_starts_with($uri, '/public')) {
+    $pathOnly = parse_url($uri, PHP_URL_PATH) ?? $uri;
+
+    // /public/... ou /public — não confundir com /publico/... (ex.: assinatura pública).
+    if (! preg_match('#^/public(?:/|$)#', $pathOnly)) {
         return;
     }
 
@@ -15,7 +18,7 @@ return function (): void {
     $_SERVER['PHP_SELF'] = '/public/index.php';
 
     // Sempre normaliza: router precisa de rh/... e não public/rh/... (Hostinger → public/index.php).
-    $path = substr(parse_url($uri, PHP_URL_PATH) ?? $uri, strlen('/public')) ?: '/';
+    $path = substr($pathOnly, strlen('/public')) ?: '/';
     $query = parse_url($uri, PHP_URL_QUERY);
     $_SERVER['REQUEST_URI'] = $path.($query !== null && $query !== '' ? '?'.$query : '');
 };

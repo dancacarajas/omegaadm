@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Beneficio;
+use App\Http\Controllers\AssinaturaPublicaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthEmailPreviewController;
 use App\Http\Controllers\ConfiguracaoEmailController;
@@ -106,6 +107,9 @@ Route::middleware(['installed'])->prefix('registro-tst')->name('tst-campo.')->gr
 
 Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(function () {
     Route::redirect('/', '/publico/contratos/histograma');
+    Route::get('assinatura', [AssinaturaPublicaController::class, 'index'])->name('assinatura.index');
+    Route::post('assinatura/cpf', [AssinaturaPublicaController::class, 'consultarCpf'])->name('assinatura.cpf');
+    Route::post('assinatura/jpeg', [AssinaturaPublicaController::class, 'jpeg'])->name('assinatura.jpeg');
     Route::get('contratos/histograma', [ContratoHistogramaController::class, 'index'])->name('contratos.histograma.index');
     Route::get('contratos/pgu-visao-completa', [PguDashboardController::class, 'index'])->name('dashboard.pgu');
     Route::get('contratos/apresentacao', [PguDashboardController::class, 'apresentacao'])->name('contratos.apresentacao');

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Colaborador;
 use App\Support\PublicWebBase;
+use App\Support\Rh\DocumentoBr;
 use App\Support\TextoApresentacaoAssinatura;
 
 final class EmailAssinaturaService
@@ -27,6 +28,21 @@ final class EmailAssinaturaService
 
     /** No GD, Arial Bold na mesma pt parece maior — reduz levemente para igualar ao regular. */
     public const TEXTO_FONT_SIZE_BOLD_RATIO = 0.96;
+
+    public function buscarColaboradorPorCpf(string $cpf): ?Colaborador
+    {
+        $digitos = DocumentoBr::cpfDigitos($cpf);
+        if (! DocumentoBr::cpfTemOnzeDigitos($digitos)) {
+            return null;
+        }
+
+        return Colaborador::query()
+            ->whereRaw(
+                "REPLACE(REPLACE(REPLACE(TRIM(COALESCE(cpf, '')), '.', ''), '-', ''), ' ', '') = ?",
+                [$digitos]
+            )
+            ->first();
+    }
 
     /**
      * Dados brutos do colaborador (como no cadastro) — para o formulário.
