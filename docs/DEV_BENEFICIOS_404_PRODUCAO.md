@@ -495,7 +495,9 @@ php artisan route:clear
 php artisan optimize:clear
 ```
 
-Não é necessário `npm run build` só por estas telas, **a menos** que `resources/css` ou `resources/js` tenham mudado no mesmo deploy. Se o layout global estiver “cruo”, siga a seção **CSS/JS sem estilo** acima (`APP_FORCE_PUBLIC_URL`, `/public/build`).
+**Obrigatório** após mudanças em `resources/css/app.css` ou classes novas de benefícios: fazer deploy de `public/build/` (rodar `npm run build` no CI ou no servidor e garantir que `/public/build` está atualizado). Sem isso, o grid da listagem e o indicador de prazo Matriz ficam desalinhados em produção (só Blade, sem CSS compilado).
+
+Se o layout global estiver “cruo”, siga a seção **CSS/JS sem estilo** acima (`APP_FORCE_PUBLIC_URL`, `/public/build`).
 
 Rotas novas: `GET /rh/beneficios/adesoes` (painel Solicitações à Matriz).
 

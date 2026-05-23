@@ -8,8 +8,6 @@
     $dataDireito = $vinculo->data_direito?->format('d/m/Y') ?: ($vinculo->colaborador->data_admissao?->format('d/m/Y') ?: '—');
     $inputClass = 'mt-1.5 h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10';
     $labelClass = 'text-[10px] font-bold uppercase tracking-wider text-brand-gray';
-    $gridSummary = 'sm:grid-cols-[minmax(0,1fr)_6.75rem_10.5rem_4.5rem_2rem]';
-
     if (! $requerAdesao) {
         $resumoGeral = match (true) {
             ! $vinculo->tem_direito => ['Sem direito', 'bg-zinc-100 text-zinc-600 ring-zinc-200', 'bg-zinc-400'],
@@ -25,7 +23,7 @@
     class="group border-b border-zinc-100 bg-white transition open:bg-zinc-50/50"
     @if ($aberto) open @endif
 >
-    <summary class="grid cursor-pointer list-none items-center gap-3 px-4 py-3.5 sm:px-5 {{ $gridSummary }} [&::-webkit-details-marker]:hidden">
+    <summary class="beneficio-vinculo-list-grid cursor-pointer list-none px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
         <div class="flex min-w-0 items-center gap-3">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-xs font-bold text-brand-burgundy ring-1 ring-brand-burgundy/10">
                 {{ $iniciais ?: '?' }}
@@ -49,9 +47,7 @@
                     <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $vinculo->indicadorStatusAdesao() }}"></span>
                     <span class="truncate">{{ $vinculo->rotuloStatusAdesaoCurto() }}</span>
                 </span>
-                @if ($vinculo->data_envio_matriz)
-                    @include('rh.beneficios.partials._indicador_prazo_matriz', ['vinculo' => $vinculo, 'adesaoService' => $adesaoService])
-                @endif
+                @include('rh.beneficios.partials._indicador_prazo_matriz', ['vinculo' => $vinculo, 'adesaoService' => $adesaoService])
             </div>
         @else
             <div class="min-w-0 sm:text-right">

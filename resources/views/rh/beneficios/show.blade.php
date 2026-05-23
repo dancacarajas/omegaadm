@@ -218,7 +218,7 @@
         </div>
 
         @if ($colaboradoresVinculados->isNotEmpty())
-            <div class="hidden border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-gray sm:grid sm:grid-cols-[minmax(0,1fr)_6.75rem_10.5rem_4.5rem_2rem] sm:items-center sm:gap-3">
+            <div class="beneficio-vinculo-list-grid hidden border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-gray sm:grid">
                 <span>Colaborador</span>
                 <span class="text-center">Vínculo</span>
                 <span class="text-right">{{ $requerAdesao ? 'Adesão / prazo' : 'Resumo' }}</span>
