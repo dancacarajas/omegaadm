@@ -380,6 +380,16 @@ class MovimentacaoChamadoController extends Controller
         $this->abortSeChamadoSomenteLeitura($chamado);
 
         $service->alternarChecklist($item, auth()->id());
+        $item->refresh();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'item_id' => $item->id,
+                'status' => $item->status,
+                'nome' => $item->nome,
+            ]);
+        }
 
         return redirect()
             ->route('rh.chamados-movimentacao.show', $chamado)

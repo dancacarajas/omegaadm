@@ -66,6 +66,24 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
         $this->assertSame(MovimentacaoChamadoStatus::CONCLUIDO, $chamado->fresh()->status);
     }
 
+    public function test_toggle_checklist_via_json_sem_recarregar_pagina(): void
+    {
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+        $etapa = $chamado->etapas->firstWhere('slug', 'triagem_rh');
+        $item = $etapa?->checklistItens->first(fn ($i) => $i->status !== 'concluido');
+        $this->assertNotNull($item);
+
+        $this->actingAs($user)
+            ->postJson(route('rh.chamados-movimentacao.checklist.toggle', $item))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('status', 'concluido')
+            ->assertJsonPath('item_id', $item->id);
+
+        $this->assertSame('concluido', $item->fresh()->status);
+    }
+
     public function test_checklist_solicitacao_marca_automatico_com_dados_do_chamado(): void
     {
         $user = User::factory()->create();

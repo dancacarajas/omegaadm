@@ -179,24 +179,38 @@
                         @if ($etapa->checklistItens->isNotEmpty())
                             <ul class="mt-4 space-y-2">
                                 @foreach ($etapa->checklistItens as $item)
-                                    <li class="flex flex-wrap items-center gap-2 text-xs {{ $item->status === 'concluido' ? 'text-emerald-800' : 'text-zinc-600' }}">
-                                        @if ($item->status === 'concluido')
-                                            <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
-                                                <i data-lucide="check-square" class="h-3.5 w-3.5"></i>
-                                                OK
-                                            </span>
-                                        @elseif (($podeEditar ?? true) && $chamado->isAberto())
-                                            <form method="POST" action="{{ route('rh.chamados-movimentacao.checklist.toggle', $item) }}" class="inline">
-                                                @csrf
-                                                <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-1 font-semibold hover:bg-zinc-50">
-                                                    <i data-lucide="square" class="h-3.5 w-3.5"></i>
-                                                    Concluir
-                                                </button>
-                                            </form>
-                                        @else
-                                            <i data-lucide="square" class="h-3.5 w-3.5 text-zinc-400"></i>
-                                        @endif
-                                        <span>{{ $item->nome }}</span>
+                                    <li
+                                        data-checklist-item-row
+                                        data-checklist-item-id="{{ $item->id }}"
+                                        class="flex flex-wrap items-center gap-2 text-xs {{ $item->status === 'concluido' ? 'text-emerald-800' : 'text-zinc-600' }}"
+                                    >
+                                        <span data-checklist-item-acao>
+                                            @if ($item->status === 'concluido')
+                                                <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
+                                                    <i data-lucide="check-square" class="h-3.5 w-3.5"></i>
+                                                    OK
+                                                </span>
+                                            @elseif (($podeEditar ?? true) && $chamado->isAberto())
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('rh.chamados-movimentacao.checklist.toggle', $item) }}"
+                                                    class="inline"
+                                                    data-checklist-toggle-form
+                                                >
+                                                    @csrf
+                                                    <button
+                                                        type="submit"
+                                                        class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-1 font-semibold transition hover:bg-zinc-50 disabled:cursor-wait disabled:opacity-60"
+                                                    >
+                                                        <i data-lucide="square" class="h-3.5 w-3.5"></i>
+                                                        Concluir
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <i data-lucide="square" class="h-3.5 w-3.5 text-zinc-400"></i>
+                                            @endif
+                                        </span>
+                                        <span data-checklist-item-nome>{{ $item->nome }}</span>
                                     </li>
                                 @endforeach
                             </ul>
@@ -285,6 +299,69 @@
                     syncNadaConstaItem(item);
                 }
             }
+        });
+
+        function marcarChecklistConcluidoNaTela(row) {
+            row.classList.remove('text-zinc-600');
+            row.classList.add('text-emerald-800');
+            var acao = row.querySelector('[data-checklist-item-acao]');
+            if (!acao) {
+                return;
+            }
+            acao.innerHTML = '<span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-200/80">' +
+                '<i data-lucide="check-square" class="h-3.5 w-3.5"></i>OK</span>';
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide', attrs: {}, root: acao });
+            }
+        }
+
+        document.addEventListener('submit', function (ev) {
+            var form = ev.target.closest('[data-checklist-toggle-form]');
+            if (!form) {
+                return;
+            }
+            ev.preventDefault();
+
+            var row = form.closest('[data-checklist-item-row]');
+            var botao = form.querySelector('button[type="submit"]');
+            if (!row || !botao) {
+                return;
+            }
+
+            botao.disabled = true;
+            var rotulo = botao.innerHTML;
+            botao.innerHTML = '<span class="tabular-nums">…</span>';
+
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then(function (res) {
+                    return res.json().then(function (corpo) {
+                        if (!res.ok) {
+                            throw new Error(corpo.message || 'Não foi possível atualizar o item.');
+                        }
+                        return corpo;
+                    });
+                })
+                .then(function (corpo) {
+                    if (corpo.status === 'concluido') {
+                        marcarChecklistConcluidoNaTela(row);
+                    }
+                })
+                .catch(function (erro) {
+                    botao.disabled = false;
+                    botao.innerHTML = rotulo;
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide', attrs: {}, root: botao });
+                    }
+                    window.alert(erro.message || 'Não foi possível atualizar o checklist.');
+                });
         });
     })();
 </script>
