@@ -364,6 +364,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             Route::get('/anexos/{anexo}/download', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'downloadAnexo'])->name('anexos.download')->whereNumber('anexo');
             Route::get('/{chamado}/pdf', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'pdf'])->name('pdf')->whereNumber('chamado');
             Route::get('/{chamado}', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'show'])->name('show')->whereNumber('chamado');
+            Route::post('/etapas/{etapa}/checklist/concluir-todos', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirChecklistEtapa'])->name('etapas.checklist.concluir-todos')->whereNumber('etapa');
             Route::post('/etapas/{etapa}/concluir', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirEtapa'])->name('etapas.concluir')->whereNumber('etapa');
             Route::post('/{chamado}/finalizar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'finalizar'])->name('finalizar')->whereNumber('chamado');
             Route::post('/{chamado}/cancelar', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'cancelar'])->name('cancelar')->whereNumber('chamado');

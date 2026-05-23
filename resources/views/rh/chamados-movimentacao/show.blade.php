@@ -129,10 +129,11 @@
                 @php
                     $etapaAtual = $chamado->etapa_atual_id === $etapa->id;
                     $concluida = $etapa->isConcluida();
+                    $checklistPendentes = $etapa->checklistItens->where('status', '!=', 'concluido')->count();
                 @endphp
-                <li class="flex gap-4 py-5 first:pt-0 last:pb-0">
+                <li class="flex gap-4 py-5 first:pt-0 last:pb-0" data-etapa-linha data-etapa-id="{{ $etapa->id }}">
                     <div class="flex flex-col items-center">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-bold shadow-sm {{ $concluida ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' : ($etapaAtual ? 'bg-brand-burgundy text-white shadow-brand-burgundy/25' : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200') }}">
+                        <span data-etapa-indicador class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-bold shadow-sm {{ $concluida ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' : ($etapaAtual ? 'bg-brand-burgundy text-white shadow-brand-burgundy/25' : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200') }}">
                             @if ($concluida)
                                 <i data-lucide="check" class="h-5 w-5"></i>
                             @else
@@ -143,12 +144,16 @@
                             <span class="mt-2 w-0.5 flex-1 min-h-[2rem] rounded-full bg-zinc-200"></span>
                         @endif
                     </div>
-                    <div class="min-w-0 flex-1 rounded-2xl border p-5 transition {{ $etapaAtual ? 'border-brand-burgundy/30 bg-brand-burgundy-soft/20 ring-1 ring-brand-burgundy/10' : 'border-zinc-200/80 bg-zinc-50/30' }}">
+                    <div
+                        data-etapa-card
+                        data-etapa-id="{{ $etapa->id }}"
+                        class="min-w-0 flex-1 rounded-2xl border p-5 transition {{ $etapaAtual ? 'border-brand-burgundy/30 bg-brand-burgundy-soft/20 ring-1 ring-brand-burgundy/10' : 'border-zinc-200/80 bg-zinc-50/30' }}"
+                    >
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h4 class="font-bold text-zinc-900">{{ $etapa->nome }}</h4>
                                 <div class="mt-2 flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-600">{{ $etapa->status }}</span>
+                                    <span data-etapa-status-badge class="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-600">{{ $etapa->status }}</span>
                                     @if ($etapa->isAtrasada())
                                         <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
                                             <i data-lucide="alarm-clock" class="h-3 w-3"></i>
@@ -166,18 +171,40 @@
                                     'titulo' => 'Pendências desta etapa',
                                 ])
                             @endif
-                            @if (($podeEditar ?? true) && $chamado->isAberto() && ! $etapa->isConcluida() && empty($bloqueiosEtapa))
-                                <form method="POST" action="{{ route('rh.chamados-movimentacao.etapas.concluir', $etapa) }}">
-                                    @csrf
-                                    <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700">
-                                        <i data-lucide="check-circle" class="h-3.5 w-3.5"></i>
+                            <div data-etapa-acoes class="flex flex-wrap items-center gap-2">
+                                @if (($podeEditar ?? true) && $chamado->isAberto() && $checklistPendentes > 0)
+                                    <button
+                                        type="button"
+                                        data-concluir-checklist-etapa
+                                        data-url="{{ route('rh.chamados-movimentacao.etapas.checklist.concluir-todos', $etapa) }}"
+                                        data-csrf="{{ csrf_token() }}"
+                                        class="inline-flex h-9 items-center gap-1 rounded-xl border border-brand-burgundy/30 bg-brand-burgundy-soft px-4 text-xs font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10 disabled:cursor-wait disabled:opacity-60"
+                                    >
+                                        <i data-lucide="list-checks" class="h-3.5 w-3.5"></i>
                                         Concluir etapa
                                     </button>
-                                </form>
-                            @endif
+                                @endif
+                                @if (($podeEditar ?? true) && $chamado->isAberto() && ! $etapa->isConcluida() && empty($bloqueiosEtapa))
+                                    <form
+                                        method="POST"
+                                        action="{{ route('rh.chamados-movimentacao.etapas.concluir', $etapa) }}"
+                                        class="inline"
+                                        data-concluir-etapa-form
+                                    >
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            class="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60"
+                                        >
+                                            <i data-lucide="check-circle" class="h-3.5 w-3.5"></i>
+                                            Avançar etapa
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
                         @if ($etapa->checklistItens->isNotEmpty())
-                            <ul class="mt-4 space-y-2">
+                            <ul class="mt-4 space-y-2" data-etapa-checklist-list>
                                 @foreach ($etapa->checklistItens as $item)
                                     <li
                                         data-checklist-item-row
@@ -361,6 +388,141 @@
                         lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide', attrs: {}, root: botao });
                     }
                     window.alert(erro.message || 'Não foi possível atualizar o checklist.');
+                });
+        });
+
+        function tokenDoFormulario(form) {
+            return form?.querySelector('input[name="_token"]')?.value
+                || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                || '';
+        }
+
+        function atualizarIconesLucide(raiz) {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide', attrs: {}, root: raiz || document });
+            }
+        }
+
+        function marcarEtapaConcluidaNaTela(linha) {
+            var card = linha.querySelector('[data-etapa-card]');
+            var badge = linha.querySelector('[data-etapa-status-badge]');
+            var indicador = linha.querySelector('[data-etapa-indicador]');
+            var acoes = linha.querySelector('[data-etapa-acoes]');
+
+            if (badge) {
+                badge.textContent = 'concluida';
+            }
+            if (indicador) {
+                indicador.className = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-sm font-bold text-emerald-700 shadow-sm ring-1 ring-emerald-200';
+                indicador.innerHTML = '<i data-lucide="check" class="h-5 w-5"></i>';
+                atualizarIconesLucide(indicador);
+            }
+            if (card) {
+                card.classList.remove('border-brand-burgundy/30', 'bg-brand-burgundy-soft/20', 'ring-1', 'ring-brand-burgundy/10');
+                card.classList.add('border-zinc-200/80', 'bg-zinc-50/30');
+            }
+            if (acoes) {
+                acoes.querySelector('[data-concluir-checklist-etapa]')?.remove();
+                acoes.querySelector('[data-concluir-etapa-form]')?.remove();
+            }
+        }
+
+        document.addEventListener('click', function (ev) {
+            var botao = ev.target.closest('[data-concluir-checklist-etapa]');
+            if (!botao) {
+                return;
+            }
+
+            var linha = botao.closest('[data-etapa-linha]');
+            var card = linha?.querySelector('[data-etapa-card]');
+            if (!linha || !card) {
+                return;
+            }
+
+            botao.disabled = true;
+            var rotulo = botao.innerHTML;
+            botao.innerHTML = '<span class="tabular-nums">…</span>';
+
+            var dados = new FormData();
+            dados.append('_token', botao.getAttribute('data-csrf') || tokenDoFormulario(card.querySelector('form')));
+
+            fetch(botao.getAttribute('data-url'), {
+                method: 'POST',
+                body: dados,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then(function (res) {
+                    return res.json().then(function (corpo) {
+                        if (!res.ok) {
+                            throw new Error(corpo.message || 'Não foi possível concluir os itens da etapa.');
+                        }
+                        return corpo;
+                    });
+                })
+                .then(function (corpo) {
+                    (corpo.itens || []).forEach(function (item) {
+                        var row = card.querySelector('[data-checklist-item-id="' + item.item_id + '"]');
+                        if (row) {
+                            marcarChecklistConcluidoNaTela(row);
+                        }
+                    });
+                    botao.remove();
+                })
+                .catch(function (erro) {
+                    botao.disabled = false;
+                    botao.innerHTML = rotulo;
+                    atualizarIconesLucide(botao);
+                    window.alert(erro.message || 'Não foi possível concluir os itens da etapa.');
+                });
+        });
+
+        document.addEventListener('submit', function (ev) {
+            var form = ev.target.closest('[data-concluir-etapa-form]');
+            if (!form) {
+                return;
+            }
+            ev.preventDefault();
+
+            var linha = form.closest('[data-etapa-linha]');
+            var botao = form.querySelector('button[type="submit"]');
+            if (!linha || !botao) {
+                return;
+            }
+
+            botao.disabled = true;
+            var rotulo = botao.innerHTML;
+            botao.innerHTML = '<span class="tabular-nums">…</span>';
+
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then(function (res) {
+                    return res.json().then(function (corpo) {
+                        if (!res.ok) {
+                            var msg = corpo.message || (corpo.problemas && corpo.problemas[0]) || 'Não foi possível avançar a etapa.';
+                            throw new Error(msg);
+                        }
+                        return corpo;
+                    });
+                })
+                .then(function () {
+                    marcarEtapaConcluidaNaTela(linha);
+                })
+                .catch(function (erro) {
+                    botao.disabled = false;
+                    botao.innerHTML = rotulo;
+                    atualizarIconesLucide(botao);
+                    window.alert(erro.message || 'Não foi possível avançar a etapa.');
                 });
         });
     })();

@@ -548,14 +548,72 @@ class MovimentacaoChamadoController extends Controller
         return redirect()->route('rh.chamados-movimentacao.show', $chamado)->with('success', 'Nada Consta validado pelo RH.');
     }
 
+    public function concluirChecklistEtapa(
+        RhMovimentacaoEtapa $etapa,
+        MovimentacaoChamadoService $service,
+    ) {
+        $etapa->load('chamado');
+        $chamado = $etapa->chamado;
+        abort_if($chamado === null, 404);
+        $this->abortSeChamadoSomenteLeitura($chamado);
+
+        $itens = $service->concluirTodosChecklistDaEtapa($etapa, auth()->id());
+
+        return response()->json([
+            'ok' => true,
+            'etapa_id' => $etapa->id,
+            'itens' => collect($itens)->map(fn ($item) => [
+                'item_id' => $item->id,
+                'status' => $item->status,
+                'nome' => $item->nome,
+            ])->values()->all(),
+        ]);
+    }
+
     public function concluirEtapa(Request $request, RhMovimentacaoEtapa $etapa, MovimentacaoChamadoService $service)
     {
         $data = $request->validate([
             'observacao' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $etapa->load('chamado');
         $this->abortSeChamadoSomenteLeitura($etapa->chamado);
-        $service->concluirEtapa($etapa, $data['observacao'] ?? null, $request->user()?->id);
+
+        if ($request->expectsJson()) {
+            $chamado = $etapa->chamado;
+            if ($chamado->tipo === \App\Support\Rh\MovimentacaoChamadoTipo::DESLIGAMENTO) {
+                $bloqueios = app(\App\Services\Rh\MovimentacaoDesligamentoRules::class)
+                    ->pendenciasConcluirEtapa($etapa, $chamado);
+                if ($bloqueios !== []) {
+                    return response()->json([
+                        'message' => implode(' ', $bloqueios),
+                        'problemas' => $bloqueios,
+                    ], 422);
+                }
+            }
+        }
+
+        try {
+            $service->concluirEtapa($etapa, $data['observacao'] ?? null, $request->user()?->id);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], $e->getStatusCode());
+            }
+
+            throw $e;
+        }
+
+        $etapa->refresh();
+        $chamado = $etapa->chamado?->fresh();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'etapa_id' => $etapa->id,
+                'etapa_status' => $etapa->status,
+                'chamado_status' => $chamado?->status,
+            ]);
+        }
 
         return redirect()
             ->route('rh.chamados-movimentacao.show', $etapa->chamado_id)

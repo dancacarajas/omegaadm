@@ -78,6 +78,30 @@ final class MovimentacaoChamadoService
         ]);
     }
 
+    /**
+     * @return list<RhMovimentacaoChecklistItem>
+     */
+    public function concluirTodosChecklistDaEtapa(RhMovimentacaoEtapa $etapa, ?int $usuarioId = null): array
+    {
+        $etapa->loadMissing('checklistItens');
+        $atualizados = [];
+
+        foreach ($etapa->checklistItens as $item) {
+            if ($item->status === 'concluido') {
+                continue;
+            }
+
+            $item->update([
+                'status' => 'concluido',
+                'concluido_em' => now(),
+                'concluido_por_id' => $usuarioId,
+            ]);
+            $atualizados[] = $item->fresh();
+        }
+
+        return $atualizados;
+    }
+
     public function concluirEtapa(RhMovimentacaoEtapa $etapa, ?string $observacao, ?int $usuarioId = null): void
     {
         $chamado = $etapa->chamado()->with(['anexos', 'nadaConsta.itens', 'etapas.checklistItens'])->firstOrFail();
