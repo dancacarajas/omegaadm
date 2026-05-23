@@ -47,6 +47,7 @@
                         $tipoSugerido = old("beneficios.{$beneficio->id}.tipo_regra", $regra?->tipo_regra ?? \App\Models\BeneficioExtratoRegra::inferirTipoRegra($beneficio));
                         $sugereVa = \App\Models\BeneficioExtratoRegra::pareceValeAlimentacao($beneficio);
                         $sugereCafe = \App\Models\BeneficioExtratoRegra::pareceCafeDaManha($beneficio);
+                        $sugereWebcard = \App\Models\BeneficioExtratoRegra::pareceWebcard($beneficio);
                     @endphp
                     <div class="grid gap-4 p-5 lg:grid-cols-[auto_1fr_1.3fr] lg:items-center" data-linha-beneficio>
                         <label class="flex items-center">
@@ -63,6 +64,8 @@
                                 <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: vale/alimentação</p>
                             @elseif ($sugereCafe)
                                 <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: café da manhã (dias com horas na apuração)</p>
+                            @elseif ($sugereWebcard)
+                                <p class="mt-1 text-[11px] text-brand-burgundy">Sugestão: WebCard (adiantamento — desconto na folha)</p>
                             @endif
                         </div>
                         <label class="block">
@@ -70,6 +73,7 @@
                             <select name="beneficios[{{ $beneficio->id }}][tipo_regra]" class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" data-beneficio-tipo @disabled(! $marcado)>
                                 <option value="{{ \App\Models\BeneficioExtratoRegra::TIPO_ASSIDUIDADE }}" @selected($tipoSugerido === \App\Models\BeneficioExtratoRegra::TIPO_ASSIDUIDADE)>Vale / auxílio alimentação (assiduidade)</option>
                                 <option value="{{ \App\Models\BeneficioExtratoRegra::TIPO_CAFE_MANHA }}" @selected($tipoSugerido === \App\Models\BeneficioExtratoRegra::TIPO_CAFE_MANHA)>Café da manhã (dias trabalhados)</option>
+                                <option value="{{ \App\Models\BeneficioExtratoRegra::TIPO_WEBCARD }}" @selected($tipoSugerido === \App\Models\BeneficioExtratoRegra::TIPO_WEBCARD)>WebCard (adiantamento salarial)</option>
                                 <option value="{{ \App\Models\BeneficioExtratoRegra::TIPO_VALOR_FIXO }}" @selected($tipoSugerido === \App\Models\BeneficioExtratoRegra::TIPO_VALOR_FIXO)>Valor fixo do cadastro</option>
                             </select>
                         </label>

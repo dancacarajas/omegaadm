@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Rh\CafeDaManhaRegraConfig;
 use App\Support\Rh\ValeAlimentacaoRegraConfig;
+use App\Support\Rh\WebcardRegraConfig;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,9 +16,12 @@ class BeneficioExtratoRegra extends Model
 
     public const TIPO_CAFE_MANHA = 'cafe_manha';
 
+    public const TIPO_WEBCARD = 'webcard';
+
     public const TIPOS = [
         self::TIPO_ASSIDUIDADE,
         self::TIPO_CAFE_MANHA,
+        self::TIPO_WEBCARD,
         self::TIPO_VALOR_FIXO,
     ];
 
@@ -54,11 +58,23 @@ class BeneficioExtratoRegra extends Model
         );
     }
 
+    public function configWebcard(): WebcardRegraConfig
+    {
+        return WebcardRegraConfig::resolver(
+            $this->parametros,
+            $this->ano_vigencia
+        );
+    }
+
     /**
      * Sugestão automática ao incluir o benefício no extrato (não é definitivo — o tipo salvo na regra manda).
      */
     public static function inferirTipoRegra(Beneficio $beneficio): string
     {
+        if (self::pareceWebcard($beneficio)) {
+            return self::TIPO_WEBCARD;
+        }
+
         if (self::pareceValeAlimentacao($beneficio)) {
             return self::TIPO_ASSIDUIDADE;
         }
@@ -70,9 +86,26 @@ class BeneficioExtratoRegra extends Model
         return self::TIPO_VALOR_FIXO;
     }
 
+    public static function pareceWebcard(Beneficio $beneficio): bool
+    {
+        $nome = mb_strtolower((string) $beneficio->nome);
+        $tipo = mb_strtolower((string) ($beneficio->tipo ?? ''));
+        $codigo = mb_strtolower((string) ($beneficio->codigo ?? ''));
+
+        if (in_array($codigo, ['webcard', 'web-card', 'wc'], true)) {
+            return true;
+        }
+
+        if (str_contains($tipo, 'webcard') || str_contains($tipo, 'adiantamento')) {
+            return true;
+        }
+
+        return str_contains($nome, 'webcard') || str_contains($nome, 'web card');
+    }
+
     public static function pareceCafeDaManha(Beneficio $beneficio): bool
     {
-        if (self::pareceValeAlimentacao($beneficio)) {
+        if (self::pareceValeAlimentacao($beneficio) || self::pareceWebcard($beneficio)) {
             return false;
         }
 
@@ -131,6 +164,7 @@ class BeneficioExtratoRegra extends Model
         return match ($tipo) {
             self::TIPO_ASSIDUIDADE => 'Assiduidade + proporcional (vale alimentação)',
             self::TIPO_CAFE_MANHA => 'Café da manhã (dias trabalhados na apuração)',
+            self::TIPO_WEBCARD => 'WebCard (adiantamento — desconto na folha do mês)',
             self::TIPO_VALOR_FIXO => 'Valor fixo do cadastro',
             default => $tipo,
         };

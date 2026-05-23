@@ -13,7 +13,8 @@ class BeneficioExtratoCalculoService
 {
     public function __construct(
         private readonly ValeAlimentacaoCalculoService $valeAlimentacao,
-        private readonly CafeDaManhaCalculoService $cafeDaManha
+        private readonly CafeDaManhaCalculoService $cafeDaManha,
+        private readonly WebcardCalculoService $webcard
     ) {}
 
     /**
@@ -124,6 +125,12 @@ class BeneficioExtratoCalculoService
                 $periodoInicio,
                 $periodoFim
             ),
+            BeneficioExtratoRegra::TIPO_WEBCARD => $this->calcularWebcard(
+                $vinculo,
+                $beneficio,
+                $regra,
+                $mesPagamento
+            ),
             default => $this->calcularValorFixo($vinculo, $beneficio),
         };
     }
@@ -176,6 +183,23 @@ class BeneficioExtratoCalculoService
             $periodoInicio,
             $periodoFim,
             $regra->configCafeDaManha()
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function calcularWebcard(
+        ColaboradorBeneficio $vinculo,
+        Beneficio $beneficio,
+        BeneficioExtratoRegra $regra,
+        Carbon $mesPagamento
+    ): array {
+        return $this->webcard->calcularParaVinculo(
+            $vinculo,
+            $beneficio,
+            $mesPagamento,
+            $regra->configWebcard()
         );
     }
 

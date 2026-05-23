@@ -16,6 +16,9 @@
 @endsection
 
 @section('content')
+    @if (session('success'))
+        <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">{{ session('success') }}</div>
+    @endif
     @if ($errors->any())
         <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
             <p class="font-semibold">Não foi possível concluir a ação:</p>
@@ -107,6 +110,14 @@
             </button>
         </form>
     </section>
+
+    @if ($ehWebcard ?? false)
+        @include('rh.beneficios._webcard_solicitacoes', [
+            'beneficio' => $beneficio,
+            'webcardConfig' => $webcardConfig,
+            'webcardSolicitacoes' => $webcardSolicitacoes,
+        ])
+    @endif
 
     <section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div class="border-b border-zinc-100 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5">

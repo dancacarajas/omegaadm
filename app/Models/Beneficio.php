@@ -27,4 +27,9 @@ class Beneficio extends Model
     {
         return $this->hasMany(ColaboradorBeneficio::class);
     }
+
+    public function extratoRegra()
+    {
+        return $this->hasOne(BeneficioExtratoRegra::class);
+    }
 }

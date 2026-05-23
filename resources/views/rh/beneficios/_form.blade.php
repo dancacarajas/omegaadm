@@ -44,9 +44,18 @@
             <span class="{{ $labelClass }}">Fornecedor</span>
             <input name="fornecedor" value="{{ $value('fornecedor') }}" placeholder="Operadora ou fornecedor" class="{{ $inputClass }}">
         </label>
-        <label>
+        <label id="beneficio-campo-valor">
             <span class="{{ $labelClass }}">Valor</span>
-            <input type="number" step="0.01" min="0" name="valor" value="{{ $value('valor') }}" placeholder="0,00" class="{{ $inputClass }}">
+            <input type="number" step="0.01" min="0" name="valor" id="beneficio-valor-input" value="{{ $value('valor') }}" placeholder="0,00" class="{{ $inputClass }}">
+            <p class="mt-1 text-[11px] leading-snug text-brand-gray">
+                Benefícios com valor fixo na folha (ex.: plano com mensalidade fixa). Deixe em branco ou <strong>0</strong> se o valor for calculado por regra.
+            </p>
+            <p id="beneficio-valor-hint-webcard" class="mt-2 hidden rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] leading-snug text-violet-950">
+                <strong>WebCard:</strong> não use este campo para o limite por solicitação. O sistema calcula
+                <strong>30% do salário</strong> de cada colaborador (ficha do efetivo), com teto mensal de
+                <strong>R$ 1.500,00</strong>. Após salvar, configure em
+                <strong>RH → Benefícios → Extrato → Configuração/Regras</strong> e registre as solicitações na gestão do benefício.
+            </p>
         </label>
         <label>
             <span class="{{ $labelClass }}">Periodicidade</span>
@@ -74,3 +83,30 @@
         </label>
     </div>
 </section>
+
+@push('scripts')
+<script>
+(function () {
+    const hint = document.getElementById('beneficio-valor-hint-webcard');
+    const inputValor = document.getElementById('beneficio-valor-input');
+    const campos = ['nome', 'tipo', 'codigo'].map((n) => document.querySelector('[name="' + n + '"]')).filter(Boolean);
+    if (!hint || campos.length === 0) return;
+
+    function pareceWebcard() {
+        const texto = campos.map((el) => (el.value || '').toLowerCase()).join(' ');
+        return /\bweb\s*card\b|webcard|adiantamento\s+salarial/.test(texto);
+    }
+
+    function atualizar() {
+        const ativo = pareceWebcard();
+        hint.classList.toggle('hidden', !ativo);
+        if (inputValor && ativo && (inputValor.value === '' || parseFloat(inputValor.value) > 0)) {
+            inputValor.placeholder = '0 — regra no extrato';
+        }
+    }
+
+    campos.forEach((el) => el.addEventListener('input', atualizar));
+    atualizar();
+})();
+</script>
+@endpush

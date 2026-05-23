@@ -9,6 +9,7 @@ use App\Models\Colaborador;
 use App\Services\Rh\BeneficioExtratoCalculoService;
 use App\Support\Rh\CafeDaManhaRegraConfig;
 use App\Support\Rh\ValeAlimentacaoRegraConfig;
+use App\Support\Rh\WebcardRegraConfig;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -59,6 +60,7 @@ class BeneficioExtratoController extends Controller
             $padroes = match ($tipo) {
                 BeneficioExtratoRegra::TIPO_ASSIDUIDADE => ValeAlimentacaoRegraConfig::padroes(),
                 BeneficioExtratoRegra::TIPO_CAFE_MANHA => CafeDaManhaRegraConfig::padroes(),
+                BeneficioExtratoRegra::TIPO_WEBCARD => WebcardRegraConfig::padroes(),
                 default => [],
             };
 
@@ -67,7 +69,7 @@ class BeneficioExtratoController extends Controller
             $regra->tipo_regra = $tipo;
             $regra->ativo = true;
 
-            if (in_array($tipo, [BeneficioExtratoRegra::TIPO_ASSIDUIDADE, BeneficioExtratoRegra::TIPO_CAFE_MANHA], true)) {
+            if (in_array($tipo, [BeneficioExtratoRegra::TIPO_ASSIDUIDADE, BeneficioExtratoRegra::TIPO_CAFE_MANHA, BeneficioExtratoRegra::TIPO_WEBCARD], true)) {
                 if ($tipoAnterior !== $tipo || empty($regra->parametros)) {
                     $regra->parametros = $padroes;
                     $regra->ano_vigencia = (int) ($padroes['ano_vigencia'] ?? date('Y'));
@@ -135,6 +137,10 @@ class BeneficioExtratoController extends Controller
 
         if ($regra->tipo_regra === BeneficioExtratoRegra::TIPO_CAFE_MANHA) {
             return $this->salvarRegraCafeDaManha($request, $beneficio, $regra);
+        }
+
+        if ($regra->tipo_regra === BeneficioExtratoRegra::TIPO_WEBCARD) {
+            return $this->salvarRegraWebcard($request, $beneficio, $regra);
         }
 
         $request->validate([
@@ -218,6 +224,36 @@ class BeneficioExtratoController extends Controller
         return redirect()
             ->route('rh.beneficios.extrato.regras')
             ->with('success', "Regras de café da manhã «{$beneficio->nome}» salvas (vigência {$regra->ano_vigencia}).");
+    }
+
+    private function salvarRegraWebcard(Request $request, Beneficio $beneficio, BeneficioExtratoRegra $regra)
+    {
+        $request->validate([
+            'ano_vigencia' => ['required', 'integer', 'min:2020', 'max:2100'],
+            'percentual_limite_por_solicitacao' => ['required', 'numeric', 'min:0.01', 'max:100'],
+            'limite_mensal' => ['required', 'numeric', 'min:0.01', 'max:999999'],
+            'dia_renovacao_saldo' => ['required', 'integer', 'min:1', 'max:28'],
+        ]);
+
+        $parametros = WebcardRegraConfig::mesclar(
+            WebcardRegraConfig::padroes((int) $request->input('ano_vigencia')),
+            [
+                'ano_vigencia' => (int) $request->input('ano_vigencia'),
+                'percentual_limite_por_solicitacao' => $request->input('percentual_limite_por_solicitacao'),
+                'limite_mensal' => $request->input('limite_mensal'),
+                'dia_renovacao_saldo' => $request->input('dia_renovacao_saldo'),
+            ]
+        );
+
+        $regra->update([
+            'ano_vigencia' => (int) $parametros['ano_vigencia'],
+            'parametros' => $parametros,
+            'configurado' => true,
+        ]);
+
+        return redirect()
+            ->route('rh.beneficios.extrato.regras')
+            ->with('success', "Regras WebCard «{$beneficio->nome}» salvas (vigência {$regra->ano_vigencia}).");
     }
 
     public function gerar(Request $request, BeneficioExtratoCalculoService $calculo)

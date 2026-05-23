@@ -37,4 +37,9 @@ class ColaboradorBeneficio extends Model
     {
         return $this->belongsTo(Beneficio::class);
     }
+
+    public function webcardSolicitacoes()
+    {
+        return $this->hasMany(ColaboradorBeneficioWebcardSolicitacao::class);
+    }
 }

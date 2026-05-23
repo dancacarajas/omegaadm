@@ -73,6 +73,15 @@
                             <i data-lucide="coffee" class="h-4 w-4"></i>
                             Configurar café da manhã
                         </button>
+                    @elseif ($regra->tipo_regra === \App\Models\BeneficioExtratoRegra::TIPO_WEBCARD)
+                        <button
+                            type="button"
+                            class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 text-sm font-semibold text-violet-950"
+                            data-abrir-modal-webcard="{{ $b->id }}"
+                        >
+                            <i data-lucide="credit-card" class="h-4 w-4"></i>
+                            Configurar WebCard
+                        </button>
                     @else
                         <p class="text-sm text-brand-gray">Valor fixo do cadastro — sem parâmetros adicionais.</p>
                     @endif
@@ -110,6 +119,13 @@
                 'config' => $regra->configCafeDaManha(),
             ])
         @endif
+        @if ($regra->tipo_regra === \App\Models\BeneficioExtratoRegra::TIPO_WEBCARD && $b)
+            @include('rh.beneficios.extrato._modal_webcard', [
+                'beneficio' => $b,
+                'regra' => $regra,
+                'config' => $regra->configWebcard(),
+            ])
+        @endif
     @endforeach
 @endpush
 
@@ -138,7 +154,10 @@
     document.querySelectorAll('[data-abrir-modal-cafe]').forEach((btn) => {
         btn.addEventListener('click', () => abrirModalExtrato('modal-cafe-' + btn.getAttribute('data-abrir-modal-cafe')));
     });
-    document.querySelectorAll('[data-fechar-modal-va], [data-fechar-modal-cafe]').forEach((btn) => {
+    document.querySelectorAll('[data-abrir-modal-webcard]').forEach((btn) => {
+        btn.addEventListener('click', () => abrirModalExtrato('modal-webcard-' + btn.getAttribute('data-abrir-modal-webcard')));
+    });
+    document.querySelectorAll('[data-fechar-modal-va], [data-fechar-modal-cafe], [data-fechar-modal-webcard]').forEach((btn) => {
         btn.addEventListener('click', () => fecharModalExtrato(btn));
     });
     document.querySelectorAll('.extrato-modal').forEach((modal) => {

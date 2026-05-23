@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Rh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
+use App\Models\BeneficioExtratoRegra;
 use App\Models\Colaborador;
+use App\Models\ColaboradorBeneficioWebcardSolicitacao;
+use App\Support\Rh\WebcardRegraConfig;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -70,7 +73,18 @@ class BeneficioController extends Controller
             return app(BeneficioColaboradorController::class)->store($request, $beneficio);
         }
 
-        $beneficio->load(['colaboradores.colaborador']);
+        $beneficio->load(['colaboradores.colaborador', 'extratoRegra']);
+        $ehWebcard = BeneficioExtratoRegra::pareceWebcard($beneficio);
+        $webcardConfig = $beneficio->extratoRegra?->configWebcard() ?? WebcardRegraConfig::resolver(null);
+        $webcardSolicitacoes = $ehWebcard
+            ? ColaboradorBeneficioWebcardSolicitacao::query()
+                ->whereIn('colaborador_beneficio_id', $beneficio->colaboradores->pluck('id'))
+                ->with(['vinculo.colaborador'])
+                ->orderByDesc('data_solicitacao')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get()
+            : collect();
 
         $ordenacao = $request->input('ordenacao', 'alfabetica');
         $busca = trim((string) $request->input('busca', ''));
@@ -100,7 +114,10 @@ class BeneficioController extends Controller
             'colaboradoresVinculados',
             'ordenacao',
             'busca',
-            'cartao'
+            'cartao',
+            'ehWebcard',
+            'webcardConfig',
+            'webcardSolicitacoes',
         ));
     }
 
