@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Colaborador;
+use App\Support\PublicWebBase;
 use App\Support\TextoApresentacaoAssinatura;
 
 final class EmailAssinaturaService
@@ -84,13 +85,13 @@ final class EmailAssinaturaService
 
     public function backgroundUrl(): string
     {
-        return $this->assetUrlAbsoluto('images/email/assinatura-eletronica-bg.jpg');
+        return PublicWebBase::assetUrl('images/email/assinatura-eletronica-bg.jpg');
     }
 
     public function cssFonteArial(): string
     {
-        $normal = $this->assetUrlAbsoluto('fonts/Arial.ttf');
-        $bold = $this->assetUrlAbsoluto('fonts/Arial-Bold.ttf');
+        $normal = PublicWebBase::assetUrl('fonts/Arial.ttf');
+        $bold = PublicWebBase::assetUrl('fonts/Arial-Bold.ttf');
 
         return <<<HTML
 <style type="text/css">
@@ -133,14 +134,5 @@ HTML;
         ])->render();
 
         return $this->cssFonteArial().$corpo;
-    }
-
-    private function assetUrlAbsoluto(string $path): string
-    {
-        $asset = asset($path);
-
-        return str_starts_with($asset, 'http')
-            ? $asset
-            : rtrim((string) config('app.url'), '/').$asset;
     }
 }

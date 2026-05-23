@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\AssinaturaEmailImagem;
 use RuntimeException;
 
 /**
@@ -89,7 +90,7 @@ final class EmailAssinaturaJpegService
 
     private function criarCanvasComFundo(int $largura, int $altura): \GdImage
     {
-        $caminhoBg = public_path('images/email/assinatura-eletronica-bg.jpg');
+        $caminhoBg = AssinaturaEmailImagem::caminhoFundoPublico();
         if (! is_file($caminhoBg)) {
             throw new RuntimeException('Imagem de fundo da assinatura não encontrada.');
         }
@@ -99,24 +100,29 @@ final class EmailAssinaturaJpegService
             throw new RuntimeException('Não foi possível ler o fundo da assinatura.');
         }
 
+        $fundo = AssinaturaEmailImagem::recortarSemBorda($origem);
+        if ($fundo !== $origem) {
+            imagedestroy($origem);
+        }
+
         $canvas = imagecreatetruecolor($largura, $altura);
         imagealphablending($canvas, true);
         imagesavealpha($canvas, false);
 
         imagecopyresampled(
             $canvas,
-            $origem,
+            $fundo,
             0,
             0,
             0,
             0,
             $largura,
             $altura,
-            imagesx($origem),
-            imagesy($origem)
+            imagesx($fundo),
+            imagesy($fundo)
         );
 
-        imagedestroy($origem);
+        imagedestroy($fundo);
 
         return $canvas;
     }

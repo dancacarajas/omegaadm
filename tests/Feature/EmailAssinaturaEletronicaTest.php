@@ -57,6 +57,32 @@ class EmailAssinaturaEletronicaTest extends TestCase
         $this->assertStringContainsString('assinatura-eletronica-bg.jpg', $html);
     }
 
+    public function test_preview_urls_incluem_public_em_producao_hostinger(): void
+    {
+        config([
+            'app.url' => 'https://omegaadm.feston.net.br',
+            'app.force_public_url' => true,
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->postJson(route('configuracoes.email.assinatura.preview'), [
+                'nome' => 'Maria da Silva',
+                'funcao' => 'Eletricista II',
+                'contrato' => '286',
+                'telefone' => '(94) 99236-4397',
+                'email' => 'maria@omegaservice.com.br',
+            ]);
+
+        $response->assertOk();
+        $html = (string) $response->json('html');
+
+        $this->assertStringContainsString('/public/images/email/assinatura-eletronica-bg.jpg', $html);
+        $this->assertStringContainsString('/public/fonts/Arial.ttf', $html);
+        $this->assertStringContainsString('/public/fonts/Arial-Bold.ttf', $html);
+    }
+
     public function test_dados_colaborador_json(): void
     {
         $user = User::factory()->create();

@@ -57,6 +57,20 @@ class AssetsDiagnosticoCommand extends Command
 
         $this->info('Todos os arquivos do manifest existem em public/build/');
 
+        $assinaturaAssets = [
+            'images/email/assinatura-eletronica-bg.jpg',
+            'fonts/Arial.ttf',
+            'fonts/Arial-Bold.ttf',
+        ];
+        foreach ($assinaturaAssets as $relative) {
+            if (! is_file(public_path($relative))) {
+                $this->error('Arquivo ausente (assinatura eletrônica): public/'.$relative);
+
+                return self::FAILURE;
+            }
+        }
+        $this->info('Assets da assinatura eletrônica presentes em public/');
+
         $appUrl = rtrim((string) config('app.url'), '/');
         $this->line('APP_URL: '.$appUrl);
         $this->line('force_public_url: '.(config('app.force_public_url') ? 'true' : 'false'));
@@ -89,8 +103,15 @@ class AssetsDiagnosticoCommand extends Command
         $this->line('PublicWebBase (simulação /public/...): '.(PublicWebBase::shouldUse($request) ? 'SIM' : 'NÃO'));
         $this->line('rootUrl: '.(PublicWebBase::rootUrl($request) ?? '(null)'));
 
+        $assinaturaUrls = [
+            PublicWebBase::assetUrl('images/email/assinatura-eletronica-bg.jpg'),
+            PublicWebBase::assetUrl('fonts/Arial.ttf'),
+        ];
+        $this->line('Assinatura BG: '.$assinaturaUrls[0]);
+        $this->line('Assinatura fonte: '.$assinaturaUrls[1]);
+
         if ($this->option('curl')) {
-            $this->verificarHttpExterno([$cssUrl, $jsUrl]);
+            $this->verificarHttpExterno(array_merge([$cssUrl, $jsUrl], $assinaturaUrls));
         } else {
             $this->line('Dica: php artisan assets:diagnostico --curl');
         }

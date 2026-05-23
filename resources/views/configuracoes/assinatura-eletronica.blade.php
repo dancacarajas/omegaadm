@@ -131,8 +131,8 @@
             </div>
 
             <div class="flex flex-col items-start gap-4 p-6">
-                <div id="preview-wrap" class="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 shadow-inner" style="width: {{ $largura }}px; max-width: 100%;">
-                    <div id="preview-assinatura" class="normal-case bg-white" style="width: {{ $largura }}px; height: {{ $altura }}px; text-transform: none; font-family: Arial, sans-serif;">
+                <div id="preview-wrap" class="overflow-hidden" style="width: {{ $largura }}px; max-width: 100%; line-height: 0;">
+                    <div id="preview-assinatura" class="normal-case" style="width: {{ $largura }}px; height: {{ $altura }}px; text-transform: none; font-family: Arial, sans-serif; border: 0; outline: 0;">
                         <p class="flex h-full items-center justify-center text-center text-xs text-zinc-400 px-4">
                             Selecione um colaborador ou preencha os campos para gerar a assinatura.
                         </p>

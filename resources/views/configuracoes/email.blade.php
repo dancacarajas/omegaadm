@@ -54,6 +54,26 @@
     <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-zinc-50/90 to-white px-6 py-5">
             <div>
+                <h2 class="text-lg font-bold text-zinc-900">Gerador de Assinatura Eletrônica</h2>
+                <p class="mt-1 max-w-2xl text-sm text-zinc-500">
+                    Monte a assinatura corporativa (fundo Omega, Arial, exportação HTML e JPEG) com dados do colaborador ou preenchimento manual.
+                </p>
+            </div>
+            <span class="rounded-full bg-brand-burgundy-soft px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">RH / comunicação</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 p-6 sm:p-8">
+            <a href="{{ route('configuracoes.email.assinatura.index') }}"
+               class="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-burgundy px-5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                <i data-lucide="signature" class="h-4 w-4"></i>
+                Abrir gerador de assinatura
+            </a>
+            <p class="text-xs text-zinc-500">Pré-visualização 583×186 px · mesmo layout em localhost e produção (assets em <code class="rounded bg-zinc-100 px-1">/public/images/email</code>).</p>
+        </div>
+    </section>
+
+    <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-zinc-50/90 to-white px-6 py-5">
+            <div>
                 <h2 class="text-lg font-bold text-zinc-900">Servidor de e-mail (SMTP)</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
                     Configure o envio de e-mails do sistema. A senha SMTP só é alterada se você preencher o campo abaixo.
