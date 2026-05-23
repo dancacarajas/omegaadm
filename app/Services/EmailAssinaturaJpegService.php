@@ -37,8 +37,8 @@ final class EmailAssinaturaJpegService
         $imagem = $this->criarCanvasComFundo($largura, $altura);
         $cor = imagecolorallocate($imagem, 0, 0, 0);
 
-        $fonteNormal = resource_path('fonts/Arial.ttf');
-        $fonteNegrito = resource_path('fonts/Arial-Bold.ttf');
+        $fonteNormal = $this->resolverFonte('Arial.ttf');
+        $fonteNegrito = $this->resolverFonte('Arial-Bold.ttf');
         if (! is_file($fonteNormal) || ! is_file($fonteNegrito)) {
             imagedestroy($imagem);
             throw new RuntimeException('Fontes Arial não encontradas em resources/fonts.');
@@ -152,5 +152,16 @@ final class EmailAssinaturaJpegService
         }
 
         return $linhas;
+    }
+
+    private function resolverFonte(string $arquivo): string
+    {
+        foreach ([resource_path('fonts/'.$arquivo), public_path('fonts/'.$arquivo)] as $caminho) {
+            if (is_file($caminho)) {
+                return $caminho;
+            }
+        }
+
+        return resource_path('fonts/'.$arquivo);
     }
 }

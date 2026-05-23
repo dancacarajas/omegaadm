@@ -83,7 +83,16 @@ final class AssinaturaPublicaController extends Controller
             ], 422);
         }
 
-        $conteudo = $jpegService->render($data);
+        try {
+            $conteudo = $jpegService->render($data);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Não foi possível gerar a assinatura. Tente novamente.',
+            ], 500);
+        }
+
         $slug = preg_replace('/[^\w-]+/', '-', strtolower($normalizado['nome'] ?: 'assinatura')) ?: 'assinatura';
         $nomeArquivo = 'assinatura-'.$slug.'.jpg';
 
