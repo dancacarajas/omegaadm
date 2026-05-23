@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Beneficio;
 use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
+use App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService;
 use App\Services\Rh\BeneficioAdesaoService;
 use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
@@ -152,18 +153,59 @@ class BeneficioColaboradorController extends Controller
         return $vinculo;
     }
 
+    public function enviarSolicitacaoMatriz(
+        Beneficio $beneficio,
+        ColaboradorBeneficio $vinculo,
+        BeneficioAdesaoMatrizNotificacaoService $notificacao,
+    ) {
+        if ((int) $vinculo->beneficio_id !== (int) $beneficio->id) {
+            throw ValidationException::withMessages([
+                'vinculo_id' => 'Este vínculo não pertence a este benefício.',
+            ]);
+        }
+
+        try {
+            $resultado = $notificacao->enviarSolicitacao($vinculo, request()->user());
+        } catch (ValidationException $e) {
+            return $this->redirectAposAcao($beneficio, $vinculo)
+                ->withErrors($e->errors())
+                ->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        $qtd = $resultado['enviados'];
+        $lista = implode(', ', $resultado['destinatarios']);
+
+        return $this->redirectAposAcao($beneficio, $vinculo)
+            ->with('success', "Solicitação enviada à Matriz ({$qtd} destinatário(s): {$lista}). O formulário assinado foi anexado ao e-mail.");
+    }
+
     public function downloadFormularioAdesao(Beneficio $beneficio, ColaboradorBeneficio $vinculo)
+    {
+        return $this->respostaFormularioAdesaoAssinado($beneficio, $vinculo, inline: false);
+    }
+
+    public function visualizarFormularioAdesaoAssinado(Beneficio $beneficio, ColaboradorBeneficio $vinculo)
+    {
+        return $this->respostaFormularioAdesaoAssinado($beneficio, $vinculo, inline: true);
+    }
+
+    private function respostaFormularioAdesaoAssinado(Beneficio $beneficio, ColaboradorBeneficio $vinculo, bool $inline)
     {
         abort_if((int) $vinculo->beneficio_id !== (int) $beneficio->id, 404);
         abort_unless($vinculo->temFormularioAdesaoAssinado(), 404);
 
         $path = str_replace('\\', '/', (string) $vinculo->formulario_adesao_assinado_path);
+        $nome = basename($path);
 
-        return Storage::disk('public')->response(
-            $path,
-            basename($path),
-            ['Cache-Control' => 'private, max-age=3600'],
-        );
+        $headers = [
+            'Cache-Control' => 'private, max-age=3600',
+        ];
+
+        if ($inline) {
+            $headers['Content-Disposition'] = 'inline; filename="'.$nome.'"';
+        }
+
+        return Storage::disk('public')->response($path, $nome, $headers);
     }
 
     /**

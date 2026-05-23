@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SistemaConfiguracaoEmail;
 use App\Services\ConfiguracaoEmailService;
 use App\Services\AuthEmailService;
+use App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService;
 use App\Services\SsmaTstRegistroNotificacaoService;
 use App\Support\EmailLayout;
 use App\Support\TstRegistroNotificacaoDestinatarios;
@@ -18,8 +19,11 @@ class ConfiguracaoEmailController extends Controller
     {
         $dados = $service->dadosParaFormulario();
         $registro = $dados['registro'];
-        $destinatarios = TstRegistroNotificacaoDestinatarios::normalizar(
+        $destinatariosTst = TstRegistroNotificacaoDestinatarios::normalizar(
             $registro->notificacao_registro_tst_destinatarios ?? []
+        );
+        $destinatariosBeneficioAdesao = TstRegistroNotificacaoDestinatarios::normalizar(
+            $registro->notificacao_beneficio_adesao_matriz_destinatarios ?? []
         );
 
         return view('configuracoes.email', array_merge($dados, [
@@ -27,7 +31,9 @@ class ConfiguracaoEmailController extends Controller
             'criptografias' => ConfiguracaoEmailService::criptografiasDisponiveis(),
             'authEmailPreviews' => AuthEmailService::tiposPreview(),
             'tstEmailPreviews' => SsmaTstRegistroNotificacaoService::tiposPreview(),
-            'tstDestinatariosCapsulas' => TstRegistroNotificacaoDestinatarios::resolverParaExibicao($destinatarios),
+            'beneficioAdesaoEmailPreviews' => BeneficioAdesaoMatrizNotificacaoService::tiposPreview(),
+            'tstDestinatariosCapsulas' => TstRegistroNotificacaoDestinatarios::resolverParaExibicao($destinatariosTst),
+            'beneficioAdesaoDestinatariosCapsulas' => TstRegistroNotificacaoDestinatarios::resolverParaExibicao($destinatariosBeneficioAdesao),
             'colaboradoresEmailOpcoes' => TstRegistroNotificacaoDestinatarios::opcoesColaboradores(),
             'usuariosEmailOpcoes' => TstRegistroNotificacaoDestinatarios::opcoesUsuarios(),
         ]));
@@ -99,6 +105,39 @@ class ConfiguracaoEmailController extends Controller
     public function previewTst(string $tipo, SsmaTstRegistroNotificacaoService $service)
     {
         if (! array_key_exists($tipo, SsmaTstRegistroNotificacaoService::tiposPreview())) {
+            abort(404);
+        }
+
+        $html = $service->renderPreview($tipo);
+
+        return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    public function updateBeneficioAdesaoMatrizDestinatarios(Request $request)
+    {
+        $data = $request->validate([
+            'destinatarios_json' => ['nullable', 'string', 'max:16000'],
+        ]);
+
+        $payload = json_decode($data['destinatarios_json'] ?? '[]', true);
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $registro = SistemaConfiguracaoEmail::registro();
+        $registro->update([
+            'notificacao_beneficio_adesao_matriz_destinatarios' => TstRegistroNotificacaoDestinatarios::validarPayload($payload),
+            'updated_by_id' => $request->user()?->id,
+        ]);
+
+        return redirect()
+            ->route('configuracoes.email.edit')
+            ->with('success', 'Destinatários da solicitação de adesão (Matriz) salvos.');
+    }
+
+    public function previewBeneficioAdesao(string $tipo, BeneficioAdesaoMatrizNotificacaoService $service)
+    {
+        if (! array_key_exists($tipo, BeneficioAdesaoMatrizNotificacaoService::tiposPreview())) {
             abort(404);
         }
 

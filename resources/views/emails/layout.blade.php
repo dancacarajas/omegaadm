@@ -10,6 +10,11 @@
     $ano = $ano ?? now()->format('Y');
     $preheader = trim($__env->yieldContent('preheader'));
     $tituloEmail = trim($__env->yieldContent('titulo', 'Notificação'));
+    $headerTagline = $headerTagline ?? 'Portal de gestão contratual';
+    $exibirRodape = $exibirRodape ?? true;
+    $corpoEstiloBorda = $exibirRodape
+        ? 'border-left:1px solid #e8e8ea;border-right:1px solid #e8e8ea;'
+        : 'border-left:1px solid #e8e8ea;border-right:1px solid #e8e8ea;border-bottom:1px solid #e8e8ea;border-radius:0 0 16px 16px;';
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -56,7 +61,7 @@
                                             <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">Omega Service</p>
                                         @endif
                                         <p style="margin:8px 0 0;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.75);">
-                                            Portal de gestão contratual
+                                            {{ $headerTagline }}
                                         </p>
                                     </td>
                                 </tr>
@@ -86,30 +91,32 @@
 
                     {{-- Corpo --}}
                     <tr>
-                        <td style="background-color:#ffffff;padding:8px 32px 28px;border-left:1px solid #e8e8ea;border-right:1px solid #e8e8ea;">
+                        <td style="background-color:#ffffff;padding:8px 32px 28px;{{ $corpoEstiloBorda }}">
                             @yield('conteudo')
                         </td>
                     </tr>
 
-                    {{-- Rodapé --}}
-                    <tr>
-                        <td style="background-color:{{ $burgundySoft }};border-radius:0 0 16px 16px;padding:24px 32px;border:1px solid #ecd5dc;border-top:none;">
-                            <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:{{ $gray }};text-align:center;">
-                                Esta mensagem foi enviada automaticamente por <strong style="color:{{ $burgundy }};">{{ $emailBrandName ?? 'Omega Adm CT 286' }}</strong>.
-                            </p>
-                            <p style="margin:0;font-size:11px;line-height:1.5;color:{{ $gray }};text-align:center;">
-                                @if (!empty($fromAddress))
-                                    Remetente: {{ $fromAddress }} ·
-                                @endif
-                                © {{ $ano }} Omega Service. Não responda diretamente a este e-mail se não for solicitado.
-                            </p>
-                            @if (!empty($appUrl))
-                                <p style="margin:12px 0 0;text-align:center;">
-                                    <a href="{{ $appUrl }}" style="font-size:11px;font-weight:600;color:{{ $burgundy }};text-decoration:underline;">{{ parse_url($appUrl, PHP_URL_HOST) ?: $appUrl }}</a>
+                    @if ($exibirRodape)
+                        {{-- Rodapé --}}
+                        <tr>
+                            <td style="background-color:{{ $burgundySoft }};border-radius:0 0 16px 16px;padding:24px 32px;border:1px solid #ecd5dc;border-top:none;">
+                                <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:{{ $gray }};text-align:center;">
+                                    Esta mensagem foi enviada automaticamente por <strong style="color:{{ $burgundy }};">{{ $emailBrandName ?? 'Omega Adm CT 286' }}</strong>.
                                 </p>
-                            @endif
-                        </td>
-                    </tr>
+                                <p style="margin:0;font-size:11px;line-height:1.5;color:{{ $gray }};text-align:center;">
+                                    @if (!empty($fromAddress))
+                                        Remetente: {{ $fromAddress }} ·
+                                    @endif
+                                    © {{ $ano }} Omega Service. Não responda diretamente a este e-mail se não for solicitado.
+                                </p>
+                                @if (!empty($appUrl))
+                                    <p style="margin:12px 0 0;text-align:center;">
+                                        <a href="{{ $appUrl }}" style="font-size:11px;font-weight:600;color:{{ $burgundy }};text-decoration:underline;">{{ parse_url($appUrl, PHP_URL_HOST) ?: $appUrl }}</a>
+                                    </p>
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
 
                 </table>
             </td>

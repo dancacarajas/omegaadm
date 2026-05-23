@@ -66,4 +66,24 @@
             <p class="mt-1.5 text-[10px] leading-relaxed text-brand-gray">Data em que a Matriz comunicou que o cartão está na unidade para você retirar.</p>
         </label>
     </div>
+
+    <div class="mt-4 rounded-xl border border-brand-burgundy/15 bg-brand-burgundy-soft/40 p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-burgundy">Enviar pedido à Matriz</p>
+        <p class="mt-1 text-[11px] leading-relaxed text-brand-gray">
+            O e-mail será enviado para os destinatários configurados em <strong class="text-brand-black">Configurações → E-mail</strong>
+            (seção Benefícios / Matriz), com o formulário assinado em anexo. A mensagem é dirigida a
+            <strong class="text-brand-black">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}</strong>.
+        </p>
+        @if ($vinculo->temFormularioAdesaoAssinado())
+            <form method="POST" action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}" class="mt-3" onsubmit="return confirm('Enviar e-mail de solicitação à Matriz com o formulário em anexo?');">
+                @csrf
+                <button type="submit" class="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                    Enviar solicitação por e-mail
+                </button>
+            </form>
+        @else
+            <p class="mt-3 text-xs font-semibold text-amber-800">Anexe o formulário de adesão assinado acima para habilitar o envio.</p>
+        @endif
+    </div>
 </div>

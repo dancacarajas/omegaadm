@@ -73,6 +73,12 @@ Route::middleware(['installed', 'guest'])->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['installed', 'auth'])->name('logout');
 
+Route::middleware(['installed', 'signed'])->get(
+    'rh/beneficios/{beneficio}/vinculos/{vinculo}/formulario-adesao/visualizar',
+    [BeneficioColaboradorController::class, 'visualizarFormularioAdesaoAssinado']
+)->whereNumber(['beneficio', 'vinculo'])
+    ->name('rh.beneficios.vinculos.formulario-adesao.visualizar');
+
 Route::middleware(['installed'])->prefix('ponto')->name('ponto.')->group(function () {
     Route::get('/', fn () => redirect()->route('ponto.identificar'))->name('home');
     Route::get('/identificar', [PontoColaboradorController::class, 'showIdentificar'])->name('identificar');
@@ -243,6 +249,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/email/preview/tst/{tipo}', [ConfiguracaoEmailController::class, 'previewTst'])->name('email.preview.tst');
         Route::put('/email', [ConfiguracaoEmailController::class, 'update'])->name('email.update');
         Route::put('/email/tst-destinatarios', [ConfiguracaoEmailController::class, 'updateTstDestinatarios'])->name('email.tst-destinatarios.update');
+        Route::get('/email/preview/beneficio-adesao/{tipo}', [ConfiguracaoEmailController::class, 'previewBeneficioAdesao'])->name('email.preview.beneficio-adesao');
+        Route::put('/email/beneficio-adesao-matriz-destinatarios', [ConfiguracaoEmailController::class, 'updateBeneficioAdesaoMatrizDestinatarios'])->name('email.beneficio-adesao-matriz-destinatarios.update');
         Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
     });
 
@@ -442,6 +450,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('beneficios/{beneficio}/vinculos/{vinculo}/formulario-adesao', [BeneficioColaboradorController::class, 'downloadFormularioAdesao'])
             ->whereNumber(['beneficio', 'vinculo'])
             ->name('beneficios.vinculos.formulario-adesao');
+        Route::post('beneficios/{beneficio}/vinculos/{vinculo}/enviar-solicitacao-matriz', [BeneficioColaboradorController::class, 'enviarSolicitacaoMatriz'])
+            ->whereNumber(['beneficio', 'vinculo'])
+            ->name('beneficios.vinculos.enviar-solicitacao-matriz');
         Route::get('beneficios/extrato/config', [BeneficioExtratoController::class, 'config'])->name('beneficios.extrato.config');
         Route::post('beneficios/extrato/config', [BeneficioExtratoController::class, 'salvarConfig'])->name('beneficios.extrato.config.salvar');
         Route::get('beneficios/extrato/regras', [BeneficioExtratoController::class, 'regras'])->name('beneficios.extrato.regras');

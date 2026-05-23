@@ -19,6 +19,7 @@ class SistemaConfiguracaoEmail extends Model
         'mail_from_name',
         'mail_from_address',
         'notificacao_registro_tst_destinatarios',
+        'notificacao_beneficio_adesao_matriz_destinatarios',
         'updated_by_id',
     ];
 
@@ -26,6 +27,7 @@ class SistemaConfiguracaoEmail extends Model
         'mail_port' => 'integer',
         'mail_password' => 'encrypted',
         'notificacao_registro_tst_destinatarios' => 'array',
+        'notificacao_beneficio_adesao_matriz_destinatarios' => 'array',
     ];
 
     public function updatedBy(): BelongsTo

@@ -186,10 +186,21 @@
                                 @endif
                             </td>
                             <td class="px-5 py-4 text-right">
-                                <a href="{{ route('rh.beneficios.show', $vinculo->beneficio_id) }}?busca={{ urlencode($vinculo->colaborador?->nome ?? '') }}" class="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                                    <i data-lucide="pencil-line" class="h-4 w-4"></i>
-                                    Gerenciar
-                                </a>
+                                <div class="flex flex-col items-end gap-2">
+                                    @if ($vinculo->temFormularioAdesaoAssinado())
+                                        <form method="POST" action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}" onsubmit="return confirm('Enviar e-mail de solicitação à Matriz?');">
+                                            @csrf
+                                            <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-burgundy/30 bg-brand-burgundy-soft px-3 text-xs font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
+                                                <i data-lucide="send" class="h-4 w-4"></i>
+                                                E-mail Matriz
+                                            </button>
+                                        </form>
+                                    @endif
+                                    <a href="{{ route('rh.beneficios.show', $vinculo->beneficio_id) }}?vinculo={{ $vinculo->id }}#vinculo-{{ $vinculo->id }}" class="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+                                        <i data-lucide="pencil-line" class="h-4 w-4"></i>
+                                        Gerenciar
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty
