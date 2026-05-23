@@ -4,89 +4,21 @@
     <meta charset="utf-8">
     <title>Nada Consta Demissional — {{ $colaborador->nome }}</title>
     @include('rh.chamados-movimentacao._pdf-arial-fonts')
+    @include('rh.chamados-movimentacao._pdf-estilos-omega')
     <style>
-        @page { margin: 16px 20px 14px 20px; }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            font-size: 7px;
-            color: #000;
-            line-height: 1.2;
-        }
-        table { border-collapse: collapse; width: 100%; }
-        .hdr-box {
-            margin-bottom: 4px;
-            border: 1px solid #000;
-        }
-        .hdr-box td {
-            border: 1px solid #000;
-            vertical-align: middle;
-        }
-        .hdr-logo {
-            width: 20%;
-            padding: 6px 8px;
-            text-align: center;
-        }
-        .hdr-logo img { height: 34px; width: auto; max-width: 120px; }
-        .hdr-titulo {
-            width: 52%;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 5px 4px;
-            letter-spacing: 0.02em;
-        }
-        .hdr-rg {
-            text-align: center;
-            font-size: 7px;
-            font-weight: 700;
-            padding: 4px 3px;
-        }
-        .hdr-rev,
-        .hdr-data {
-            text-align: center;
-            font-size: 6.5px;
-            font-weight: 700;
-            padding: 3px 2px;
-        }
-        .dados-func {
-            margin: 0 0 4px;
-            border: 1px solid #000;
-            font-size: 7.5px;
-        }
-        .dados-func td {
-            border: 1px solid #000;
-            padding: 3px 5px;
-            vertical-align: middle;
-        }
-        .dados-func .lbl { font-weight: 700; white-space: nowrap; }
+        body { font-size: 7px; line-height: 1.2; }
+        .hdr-titulo { font-size: 12px; letter-spacing: 0.02em; text-transform: none; }
+        .dados-func { margin: 0 0 4px; }
         .tbl-nc { margin-top: 0; table-layout: fixed; }
         .tbl-nc + .tbl-nc { margin-top: 0; }
         .tbl-itens { margin-top: 4px; margin-bottom: 0; }
         .tbl-nc td,
         .tbl-nc th {
-            border: 1px solid #000;
             padding: 2px 4px;
             vertical-align: middle;
-        }
-        .secao-titulo {
-            background: #6f1731;
-            color: #fff;
-            font-weight: 700;
-            font-size: 8.5px;
-            text-align: center;
-            padding: 2px 4px;
-            text-transform: uppercase;
-        }
-        .th-principal {
-            background: #e8e8e8;
             font-size: 6.5px;
-            font-weight: 700;
-            text-align: center;
-            text-transform: uppercase;
-            padding: 3px 2px;
         }
+        .th-principal { font-size: 6.5px; padding: 3px 2px; }
         .col-item { width: 38%; text-align: left; }
         .col-sim { width: 11%; text-align: center; }
         .col-nao { width: 11%; text-align: center; }
@@ -227,23 +159,13 @@
     </style>
 </head>
 <body>
-    <table class="hdr-box">
-        <tr>
-            <td rowspan="2" class="hdr-logo">
-                @if ($logoBase64)
-                    <img src="{{ $logoBase64 }}" alt="Omega Service">
-                @else
-                    <strong style="font-size: 10px; color: #6f1731;">OMEGA SERVICE</strong>
-                @endif
-            </td>
-            <td rowspan="2" class="hdr-titulo">NADA CONSTA DEMISSIONAL</td>
-            <td colspan="2" class="hdr-rg">{{ \App\Support\Rh\MovimentacaoDesligamentoCatalog::NADA_CONSTA_DOC_CODIGO }}</td>
-        </tr>
-        <tr>
-            <td class="hdr-rev">REV {{ \App\Support\Rh\MovimentacaoDesligamentoCatalog::NADA_CONSTA_DOC_REV }}</td>
-            <td class="hdr-data">DATA:{{ $dataEmissao->format('d/m/Y') }}</td>
-        </tr>
-    </table>
+    @include('rh.chamados-movimentacao._pdf-cabecalho', [
+        'pdfTitulo' => 'Nada Consta Demissional',
+        'pdfCodigo' => \App\Support\Rh\MovimentacaoDesligamentoCatalog::NADA_CONSTA_DOC_CODIGO,
+        'pdfRev' => \App\Support\Rh\MovimentacaoDesligamentoCatalog::NADA_CONSTA_DOC_REV,
+        'pdfData' => $dataEmissao,
+        'logoBase64' => $logoBase64,
+    ])
 
     <table class="dados-func">
         <tr>

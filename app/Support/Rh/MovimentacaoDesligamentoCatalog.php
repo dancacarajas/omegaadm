@@ -33,6 +33,8 @@ final class MovimentacaoDesligamentoCatalog
 
     public const NADA_CONSTA_DOC_REV = '03';
 
+    public const CHAMADO_RESUMO_DOC_REV = '01';
+
     /** Pacote único com todos os documentos obrigatórios do desligamento (PDF ou ZIP). */
     public const ANEXO_PACOTE_DOCUMENTOS = 'pacote_documentos_desligamento';
 

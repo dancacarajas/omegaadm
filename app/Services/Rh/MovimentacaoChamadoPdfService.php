@@ -4,6 +4,8 @@ namespace App\Services\Rh;
 
 use App\Models\Rh\RhMovimentacaoAnexo;
 use App\Models\Rh\RhMovimentacaoChamado;
+use App\Support\Pdf\DompdfArial;
+use App\Support\Pdf\MovimentacaoPdfBranding;
 use App\Support\Rh\ColaboradorMovimentacaoTipos;
 use App\Support\Rh\MovimentacaoDesligamentoCatalog;
 use Dompdf\Dompdf;
@@ -51,13 +53,13 @@ final class MovimentacaoChamadoPdfService
     public function renderPdf(RhMovimentacaoChamado $chamado): string
     {
         $options = new Options();
-        $options->set('defaultFont', 'DejaVu Sans');
+        DompdfArial::applyOptions($options);
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
 
         $pdf = new Dompdf($options);
         $pdf->loadHtml($this->html($chamado), 'UTF-8');
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('letter', 'portrait');
         $pdf->render();
 
         return $pdf->output();
@@ -68,6 +70,8 @@ final class MovimentacaoChamadoPdfService
         $dados = $chamado->dados_depois_json ?? [];
         $tiposRescisao = ColaboradorMovimentacaoTipos::tiposRescisao();
 
+        $setor = MovimentacaoPdfBranding::resolverSetorTrabalho($chamado->colaborador, $dados);
+
         return view('rh.chamados-movimentacao.pdf', [
             'chamado' => $chamado,
             'dados' => $dados,
@@ -76,6 +80,8 @@ final class MovimentacaoChamadoPdfService
             'labelsAreas' => MovimentacaoDesligamentoCatalog::labelsAreas(),
             'areasCatalogo' => MovimentacaoDesligamentoCatalog::areasNadaConsta(),
             'geradoEm' => now(),
+            'logoBase64' => MovimentacaoPdfBranding::logoBase64(),
+            'setorTrabalho' => $setor !== '' ? $setor : '—',
         ])->render();
     }
 }

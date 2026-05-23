@@ -58,11 +58,7 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
             'tipo_contrato' => 'Prazo indeterminado',
         ]);
 
-        $service = app(\App\Services\Rh\MovimentacaoNadaConstaPdfService::class);
-        $method = new \ReflectionMethod($service, 'resolverSetorTrabalho');
-        $method->setAccessible(true);
-
-        $setor = $method->invoke($service, $colab, [
+        $setor = \App\Support\Pdf\MovimentacaoPdfBranding::resolverSetorTrabalho($colab, [
             'colaborador_contrato' => 'Prazo indeterminado',
         ]);
 

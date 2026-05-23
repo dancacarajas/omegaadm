@@ -6,6 +6,7 @@ use App\Models\Rh\RhMovimentacaoAnexo;
 use App\Models\Rh\RhMovimentacaoChamado;
 use App\Models\Rh\RhMovimentacaoNadaConstaItem;
 use App\Support\Pdf\DompdfArial;
+use App\Support\Pdf\MovimentacaoPdfBranding;
 use App\Support\Rh\MovimentacaoDesligamentoCatalog;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -108,7 +109,7 @@ final class MovimentacaoNadaConstaPdfService
         }
 
         $local = $this->resolverLocal($colaborador, $dados);
-        $setorTrabalho = $this->resolverSetorTrabalho($colaborador, $dados);
+        $setorTrabalho = MovimentacaoPdfBranding::resolverSetorTrabalho($colaborador, $dados);
 
         return view('rh.chamados-movimentacao.pdf-nada-consta', [
             'chamado' => $chamado,
@@ -117,7 +118,7 @@ final class MovimentacaoNadaConstaPdfService
             'dados' => $dados,
             'itensPorArea' => $itensPorArea,
             'labelsAreas' => MovimentacaoDesligamentoCatalog::labelsAreas(),
-            'logoBase64' => $this->logoBase64(),
+            'logoBase64' => MovimentacaoPdfBranding::logoBase64(),
             'local' => $local,
             'setorTrabalho' => $setorTrabalho !== '' ? $setorTrabalho : '—',
             'dataEmissao' => $nada->data_emissao ?? today(),
@@ -153,26 +154,6 @@ final class MovimentacaoNadaConstaPdfService
     }
 
     /**
-     * Setor de trabalho no PDF = centro de custo do colaborador (ex.: CT 286 - SALOBO).
-     *
-     * @param  array<string, mixed>  $dados
-     */
-    private function resolverSetorTrabalho(\App\Models\Colaborador $colaborador, array $dados): string
-    {
-        $centroCusto = trim((string) ($colaborador->centro_custo ?? ''));
-        if ($centroCusto === '') {
-            $centroCusto = trim((string) ($dados['centro_custo'] ?? ''));
-        }
-
-        $localTrabalho = trim((string) ($colaborador->local_trabalho ?? ''));
-        if ($centroCusto !== '' && $localTrabalho !== '' && ! str_contains(strtoupper($centroCusto), strtoupper($localTrabalho))) {
-            return $centroCusto.' - '.$localTrabalho;
-        }
-
-        return $centroCusto !== '' ? $centroCusto : $localTrabalho;
-    }
-
-    /**
      * @param  array<string, mixed>  $dados
      */
     private function resolverLocal(\App\Models\Colaborador $colaborador, array $dados): string
@@ -192,13 +173,4 @@ final class MovimentacaoNadaConstaPdfService
         return $local !== '' ? strtoupper($local) : '—';
     }
 
-    private function logoBase64(): ?string
-    {
-        $path = public_path('logo.png');
-        if (! is_file($path)) {
-            return null;
-        }
-
-        return 'data:image/png;base64,'.base64_encode(file_get_contents($path));
-    }
 }
