@@ -4,6 +4,7 @@ use App\Models\Beneficio;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthEmailPreviewController;
 use App\Http\Controllers\ConfiguracaoEmailController;
+use App\Http\Controllers\EmailAssinaturaController;
 use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ContratoHistogramaController;
@@ -254,6 +255,10 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/email/preview/beneficio-adesao/{tipo}', [ConfiguracaoEmailController::class, 'previewBeneficioAdesao'])->name('email.preview.beneficio-adesao');
         Route::put('/email/beneficio-adesao-matriz-destinatarios', [ConfiguracaoEmailController::class, 'updateBeneficioAdesaoMatrizDestinatarios'])->name('email.beneficio-adesao-matriz-destinatarios.update');
         Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
+        Route::get('/email/assinatura-eletronica', [EmailAssinaturaController::class, 'index'])->name('email.assinatura.index');
+        Route::get('/email/assinatura-eletronica/colaborador/{colaborador}', [EmailAssinaturaController::class, 'dadosColaborador'])->name('email.assinatura.colaborador');
+        Route::post('/email/assinatura-eletronica/preview', [EmailAssinaturaController::class, 'preview'])->name('email.assinatura.preview');
+        Route::post('/email/assinatura-eletronica/jpeg', [EmailAssinaturaController::class, 'jpeg'])->name('email.assinatura.jpeg');
     });
 
     Route::post('/veiculos/solicitacoes', [VeiculoController::class, 'storeSolicitacao'])->name('veiculos.solicitacoes.store');

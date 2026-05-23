@@ -427,9 +427,13 @@
                                 <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $configuracoesOpen ? 'rotate-180' : '' }}" data-menu-chevron="configuracoes"></i>
                             </button>
                             <div data-menu-panel="configuracoes" class="{{ $configuracoesOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
-                                <a href="{{ route('configuracoes.email.edit') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 font-semibold transition {{ request()->routeIs('configuracoes.email.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <a href="{{ route('configuracoes.email.edit') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('configuracoes.email.edit') || request()->routeIs('configuracoes.email.update') || request()->routeIs('configuracoes.email.testar') || request()->routeIs('configuracoes.email.layout-preview') || request()->routeIs('configuracoes.email.preview.*') || request()->routeIs('configuracoes.email.tst-destinatarios.*') || request()->routeIs('configuracoes.email.beneficio-adesao-matriz-destinatarios.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="mail" class="h-4 w-4"></i>
                                     E-mail
+                                </a>
+                                <a href="{{ route('configuracoes.email.assinatura.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('configuracoes.email.assinatura.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="signature" class="h-4 w-4"></i>
+                                    Gerador de Assinatura Eletrônica
                                 </a>
                             </div>
                         </div>
