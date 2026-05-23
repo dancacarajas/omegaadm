@@ -188,7 +188,17 @@
                                 </span>
                             </td>
                             <td class="px-5 py-4 tabular-nums">{{ $vinculo->data_formulario_recebido?->format('d/m/Y') ?: '—' }}</td>
-                            <td class="px-5 py-4 tabular-nums">{{ $vinculo->data_envio_matriz?->format('d/m/Y') ?: '—' }}</td>
+                            <td class="px-5 py-4">
+                                @if ($vinculo->emailSolicitacaoMatrizJaEnviado())
+                                    <p class="tabular-nums text-xs font-semibold text-brand-black">{{ $vinculo->rotuloEmailSolicitacaoMatrizEnviadoBrasilia() }}</p>
+                                    <p class="mt-0.5 text-[10px] text-brand-gray">E-mail · Brasília</p>
+                                @elseif ($vinculo->data_envio_matriz)
+                                    <p class="tabular-nums text-xs text-brand-gray">{{ $vinculo->data_envio_matriz->format('d/m/Y') }}</p>
+                                    <p class="mt-0.5 text-[10px] text-zinc-400">Registro manual</p>
+                                @else
+                                    <span class="text-xs text-zinc-400">—</span>
+                                @endif
+                            </td>
                             <td class="px-5 py-4 tabular-nums">{{ $dataAviso?->format('d/m/Y') ?: '—' }}</td>
                             <td class="px-5 py-4">
                                 @if ($vinculo->data_envio_matriz)
@@ -200,13 +210,22 @@
                             <td class="px-5 py-4 text-right">
                                 <div class="flex flex-col items-end gap-2">
                                     @if ($vinculo->temFormularioAdesaoAssinado())
-                                        <form method="POST" action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}" onsubmit="return confirm('Enviar e-mail de solicitação à Matriz?');">
-                                            @csrf
-                                            <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-burgundy/30 bg-brand-burgundy-soft px-3 text-xs font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
-                                                <i data-lucide="send" class="h-4 w-4"></i>
-                                                E-mail Matriz
-                                            </button>
-                                        </form>
+                                        @if ($vinculo->emailSolicitacaoMatrizJaEnviado())
+                                            <p class="max-w-[200px] text-right text-[10px] leading-snug text-emerald-800">
+                                                Enviado {{ $vinculo->rotuloEmailSolicitacaoMatrizEnviadoBrasilia() }}
+                                            </p>
+                                        @endif
+                                        <button
+                                            type="button"
+                                            data-abrir-modal-email-matriz
+                                            data-action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
+                                            data-colaborador="{{ $vinculo->colaborador?->nome }}"
+                                            data-beneficio="{{ $vinculo->beneficio?->nome }}"
+                                            class="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-burgundy/30 bg-brand-burgundy-soft px-3 text-xs font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10"
+                                        >
+                                            <i data-lucide="send" class="h-4 w-4"></i>
+                                            E-mail Matriz
+                                        </button>
                                     @endif
                                     <a href="{{ route('rh.beneficios.show', $vinculo->beneficio_id) }}?vinculo={{ $vinculo->id }}#vinculo-{{ $vinculo->id }}" class="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
                                         <i data-lucide="pencil-line" class="h-4 w-4"></i>
@@ -239,4 +258,6 @@
         <i data-lucide="info" class="mt-0.5 h-4 w-4 shrink-0 text-brand-burgundy"></i>
         <span><strong class="text-brand-black">Fluxo:</strong> formulário → pedido à Matriz (e-mail) → aguardar aviso de que o cartão está para <strong>coleta</strong> (a Matriz não informa previsão) → retirar na Matriz e entregar ao colaborador. O indicador de prazo mostra os dias entre o pedido e o aviso, ou quantos dias já passaram aguardando o aviso.</span>
     </p>
+
+    @include('rh.beneficios.partials._modal_confirmar_email_matriz')
 @endsection

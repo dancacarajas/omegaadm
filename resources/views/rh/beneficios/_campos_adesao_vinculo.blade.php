@@ -77,6 +77,7 @@
             (seção Benefícios / Matriz), com o formulário assinado em anexo. A mensagem é dirigida a
             <strong class="text-brand-black">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}</strong>.
         </p>
+        @include('rh.beneficios.partials._status_email_matriz', ['vinculo' => $vinculo])
         @if (! ($emailMatrizDiag['pode_enviar'] ?? false))
             <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
                 <p class="font-bold">E-mail à Matriz indisponível no momento</p>
@@ -88,11 +89,12 @@
             </div>
         @elseif ($vinculo->temFormularioAdesaoAssinado())
             <button
-                type="submit"
-                formaction="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
-                formmethod="post"
+                type="button"
+                data-abrir-modal-email-matriz
+                data-action="{{ route('rh.beneficios.vinculos.enviar-solicitacao-matriz', ['beneficio' => $vinculo->beneficio_id, 'vinculo' => $vinculo->id]) }}"
+                data-colaborador="{{ $vinculo->colaborador?->nome }}"
+                data-beneficio="{{ $vinculo->beneficio?->nome }}"
                 class="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-burgundy px-4 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark"
-                onclick="return confirm('Enviar e-mail de solicitação à Matriz com o formulário em anexo?');"
             >
                 <i data-lucide="send" class="h-4 w-4"></i>
                 Enviar solicitação por e-mail

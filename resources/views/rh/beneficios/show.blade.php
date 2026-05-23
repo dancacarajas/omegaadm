@@ -283,6 +283,8 @@
             </div>
         @endif
     </section>
+
+    @include('rh.beneficios.partials._modal_confirmar_email_matriz')
 @endsection
 
 @push('scripts')

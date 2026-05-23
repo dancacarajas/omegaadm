@@ -20,6 +20,7 @@ class ColaboradorBeneficio extends Model
         'formulario_adesao_assinado_path',
         'data_envio_matriz',
         'protocolo_matriz',
+        'email_solicitacao_matriz_enviado_em',
         'data_aviso_coleta_matriz',
         'data_retorno_matriz',
         'data_previsao_cartao',
@@ -38,6 +39,7 @@ class ColaboradorBeneficio extends Model
         'beneficio_ativo' => 'boolean',
         'data_formulario_recebido' => 'date',
         'data_envio_matriz' => 'date',
+        'email_solicitacao_matriz_enviado_em' => 'datetime',
         'data_aviso_coleta_matriz' => 'date',
         'data_retorno_matriz' => 'date',
         'data_previsao_cartao' => 'date',
@@ -94,6 +96,22 @@ class ColaboradorBeneficio extends Model
     public function adesaoEmAndamento(): bool
     {
         return in_array($this->status_adesao, BeneficioAdesaoStatus::emAndamento(), true);
+    }
+
+    public function emailSolicitacaoMatrizJaEnviado(): bool
+    {
+        return $this->email_solicitacao_matriz_enviado_em !== null;
+    }
+
+    public function rotuloEmailSolicitacaoMatrizEnviadoBrasilia(): ?string
+    {
+        if ($this->email_solicitacao_matriz_enviado_em === null) {
+            return null;
+        }
+
+        return $this->email_solicitacao_matriz_enviado_em
+            ->timezone('America/Sao_Paulo')
+            ->format('d/m/Y \à\s H:i');
     }
 
     public function temFormularioAdesaoAssinado(): bool

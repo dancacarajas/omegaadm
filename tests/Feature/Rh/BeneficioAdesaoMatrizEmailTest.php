@@ -110,6 +110,11 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         $vinculo->refresh();
         $this->assertNotNull($vinculo->data_envio_matriz);
+        $this->assertNotNull($vinculo->email_solicitacao_matriz_enviado_em);
+        $this->assertSame(
+            now()->timezone('America/Sao_Paulo')->format('d/m/Y H:i'),
+            $vinculo->email_solicitacao_matriz_enviado_em->timezone('America/Sao_Paulo')->format('d/m/Y H:i'),
+        );
         $this->assertSame(BeneficioAdesaoStatus::AGUARDANDO_CARTAO, $vinculo->status_adesao);
     }
 

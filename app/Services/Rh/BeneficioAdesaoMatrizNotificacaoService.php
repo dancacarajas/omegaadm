@@ -210,10 +210,9 @@ final class BeneficioAdesaoMatrizNotificacaoService
         }
 
         $dados['adesao_atualizado_por_id'] = $enviadoPor?->id;
+        $dados['email_solicitacao_matriz_enviado_em'] = now();
 
-        if ($dados !== []) {
-            $vinculo->update($dados);
-        }
+        $vinculo->update($dados);
     }
 
     private function nomeAnexoFormulario(ColaboradorBeneficio $vinculo): string
