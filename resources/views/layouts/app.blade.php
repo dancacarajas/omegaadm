@@ -22,11 +22,19 @@
                     </button>
                 </div>
 
+                @php
+                    $usuarioLogado = auth()->user();
+                    $fotoUsuarioSidebar = $usuarioLogado?->urlFotoPerfil();
+                @endphp
                 <div class="border-b border-zinc-100 px-4 py-5">
                     <div class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft px-3 py-3 shadow-sm">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-burgundy-soft text-brand-burgundy">
-                            <i data-lucide="user" class="h-5 w-5"></i>
-                        </div>
+                        @if ($fotoUsuarioSidebar)
+                            <img src="{{ $fotoUsuarioSidebar }}" alt="Foto de {{ $usuarioLogado?->name }}" class="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-brand-burgundy/15">
+                        @else
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-burgundy-soft text-xs font-bold text-brand-burgundy ring-1 ring-brand-burgundy/10">
+                                {{ $usuarioLogado?->iniciais() ?? '?' }}
+                            </div>
+                        @endif
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-semibold text-brand-black">{{ auth()->user()?->name ?? 'Usuário' }}</p>
                             <p class="truncate text-xs font-medium text-brand-gray">{{ auth()->user()?->email ?? 'omega286.local' }}</p>
