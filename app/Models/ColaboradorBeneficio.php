@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ColaboradorBeneficio extends Model
 {
@@ -16,6 +17,7 @@ class ColaboradorBeneficio extends Model
         'beneficio_ativo',
         'status_adesao',
         'data_formulario_recebido',
+        'formulario_adesao_assinado_path',
         'data_envio_matriz',
         'protocolo_matriz',
         'data_aviso_coleta_matriz',
@@ -92,5 +94,32 @@ class ColaboradorBeneficio extends Model
     public function adesaoEmAndamento(): bool
     {
         return in_array($this->status_adesao, BeneficioAdesaoStatus::emAndamento(), true);
+    }
+
+    public function temFormularioAdesaoAssinado(): bool
+    {
+        return filled($this->formulario_adesao_assinado_path)
+            && Storage::disk('public')->exists((string) $this->formulario_adesao_assinado_path);
+    }
+
+    public function urlFormularioAdesaoAssinado(): ?string
+    {
+        if (! $this->temFormularioAdesaoAssinado()) {
+            return null;
+        }
+
+        return route('rh.beneficios.vinculos.formulario-adesao', [
+            'beneficio' => $this->beneficio_id,
+            'vinculo' => $this->id,
+        ]);
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (ColaboradorBeneficio $vinculo): void {
+            if (filled($vinculo->formulario_adesao_assinado_path)) {
+                Storage::disk('public')->delete((string) $vinculo->formulario_adesao_assinado_path);
+            }
+        });
     }
 }

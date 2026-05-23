@@ -70,7 +70,7 @@
     </summary>
 
     <div class="border-t border-zinc-100 bg-zinc-50/30 px-4 pb-5 pt-4 sm:px-5">
-        <form method="POST" action="{{ $urlGestaoBeneficio }}" class="space-y-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
+        <form method="POST" action="{{ $urlGestaoBeneficio }}" enctype="multipart/form-data" class="space-y-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
             @csrf
             <input type="hidden" name="vinculo_id" value="{{ $vinculo->id }}">
 
@@ -84,7 +84,7 @@
                 </label>
                 <input type="hidden" name="cartao_entregue" value="0">
                 <label class="flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3 text-xs font-semibold has-[:checked]:border-brand-burgundy/40 has-[:checked]:bg-brand-burgundy-soft">
-                    <input type="checkbox" name="cartao_entregue" value="1" @checked($vinculo->cartao_entregue) class="accent-brand-burgundy">
+                    <input type="checkbox" name="cartao_entregue" value="1" data-cartao-entregue-target @checked($vinculo->cartao_entregue) class="accent-brand-burgundy">
                     Cartão entregue
                 </label>
                 <input type="hidden" name="beneficio_ativo" value="0">
@@ -109,7 +109,7 @@
                 </div>
                 <label>
                     <span class="{{ $labelClass }}">Entrega do cartão</span>
-                    <input type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" class="{{ $inputClass }}">
+                    <input type="date" name="data_entrega_cartao" value="{{ $vinculo->data_entrega_cartao?->format('Y-m-d') }}" data-sync-cartao-entregue class="{{ $inputClass }}">
                 </label>
                 <label class="sm:col-span-2">
                     <span class="{{ $labelClass }}">Número do cartão</span>

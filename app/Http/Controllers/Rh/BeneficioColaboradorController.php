@@ -9,6 +9,7 @@ use App\Models\ColaboradorBeneficio;
 use App\Services\Rh\BeneficioAdesaoService;
 use App\Support\Rh\BeneficioAdesaoStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -76,7 +77,14 @@ class BeneficioColaboradorController extends Controller
         }
 
         $payload = $this->validatedData($request, $beneficio, $vinculo);
+
+        if (filled($payload['data_entrega_cartao'] ?? null)) {
+            $request->merge(['cartao_entregue' => '1']);
+        }
+
+        $payload = array_merge($payload, $this->processarFormularioAdesaoAssinado($request, $vinculo));
         $payload = $this->adesaoService->normalizarDadosAdesao($vinculo, $payload, $request);
+
         $vinculo->update([
             ...$payload,
             'tem_direito' => $request->boolean('tem_direito'),
@@ -144,6 +152,49 @@ class BeneficioColaboradorController extends Controller
         return $vinculo;
     }
 
+    public function downloadFormularioAdesao(Beneficio $beneficio, ColaboradorBeneficio $vinculo)
+    {
+        abort_if((int) $vinculo->beneficio_id !== (int) $beneficio->id, 404);
+        abort_unless($vinculo->temFormularioAdesaoAssinado(), 404);
+
+        $path = str_replace('\\', '/', (string) $vinculo->formulario_adesao_assinado_path);
+
+        return Storage::disk('public')->response(
+            $path,
+            basename($path),
+            ['Cache-Control' => 'private, max-age=3600'],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function processarFormularioAdesaoAssinado(Request $request, ColaboradorBeneficio $vinculo): array
+    {
+        if ($request->boolean('remover_formulario_adesao')) {
+            if (filled($vinculo->formulario_adesao_assinado_path)) {
+                Storage::disk('public')->delete((string) $vinculo->formulario_adesao_assinado_path);
+            }
+
+            return ['formulario_adesao_assinado_path' => null];
+        }
+
+        if (! $request->hasFile('formulario_adesao_assinado')) {
+            return [];
+        }
+
+        if (filled($vinculo->formulario_adesao_assinado_path)) {
+            Storage::disk('public')->delete((string) $vinculo->formulario_adesao_assinado_path);
+        }
+
+        $path = $request->file('formulario_adesao_assinado')->store(
+            'rh/beneficios/formularios-adesao',
+            'public',
+        );
+
+        return ['formulario_adesao_assinado_path' => $path];
+    }
+
     private function validatedData(Request $request, Beneficio $beneficio, ?ColaboradorBeneficio $vinculo = null): array
     {
         return $request->validate([
@@ -168,6 +219,8 @@ class BeneficioColaboradorController extends Controller
             'data_aviso_coleta_matriz' => ['nullable', 'date'],
             'data_retorno_matriz' => ['nullable', 'date'],
             'data_previsao_cartao' => ['nullable', 'date'],
+            'formulario_adesao_assinado' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'remover_formulario_adesao' => ['sometimes', 'boolean'],
         ]);
     }
 }

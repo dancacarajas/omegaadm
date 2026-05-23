@@ -265,3 +265,29 @@
         @endif
     </section>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    function sincronizarCartaoEntregue(input) {
+        if (!input.value) {
+            return;
+        }
+        const form = input.closest('form');
+        const checkbox = form?.querySelector('[data-cartao-entregue-target]');
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    document.querySelectorAll('[data-sync-cartao-entregue]').forEach((input) => {
+        input.addEventListener('change', () => sincronizarCartaoEntregue(input));
+        input.addEventListener('input', () => sincronizarCartaoEntregue(input));
+        if (input.value) {
+            sincronizarCartaoEntregue(input);
+        }
+    });
+})();
+</script>
+@endpush

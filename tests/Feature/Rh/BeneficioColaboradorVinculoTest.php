@@ -7,6 +7,8 @@ use App\Models\Colaborador;
 use App\Models\ColaboradorBeneficio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BeneficioColaboradorVinculoTest extends TestCase
@@ -338,5 +340,77 @@ class BeneficioColaboradorVinculoTest extends TestCase
             ])
             ->assertRedirect(route('rh.beneficios.show', $beneficio))
             ->assertSessionHasErrors('vinculo_id');
+    }
+
+    public function test_data_entrega_cartao_marca_cartao_entregue_sem_checkbox(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'Vale',
+            'status' => 'ativo',
+            'requer_controle_adesao' => true,
+        ]);
+        $colaborador = Colaborador::query()->create(['nome' => 'Maria', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'tem_direito' => true,
+            'cartao_entregue' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'salvar',
+                'tem_direito' => '1',
+                'cartao_entregue' => '0',
+                'data_entrega_cartao' => '2026-05-20',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $vinculo->refresh();
+        $this->assertTrue($vinculo->cartao_entregue);
+        $this->assertSame('2026-05-20', $vinculo->data_entrega_cartao?->format('Y-m-d'));
+    }
+
+    public function test_upload_e_download_formulario_adesao_assinado(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'Vale',
+            'status' => 'ativo',
+            'requer_controle_adesao' => true,
+        ]);
+        $colaborador = Colaborador::query()->create(['nome' => 'João', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'tem_direito' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('rh.beneficios.show', $beneficio))
+            ->post(route('rh.beneficios.show', $beneficio), [
+                'vinculo_id' => $vinculo->id,
+                'acao' => 'salvar',
+                'tem_direito' => '1',
+                'formulario_adesao_assinado' => UploadedFile::fake()->create('adesao.pdf', 50, 'application/pdf'),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $vinculo->refresh();
+        $this->assertNotNull($vinculo->formulario_adesao_assinado_path);
+        Storage::disk('public')->assertExists($vinculo->formulario_adesao_assinado_path);
+
+        $this->actingAs($user)
+            ->get(route('rh.beneficios.vinculos.formulario-adesao', [
+                'beneficio' => $beneficio,
+                'vinculo' => $vinculo,
+            ]))
+            ->assertOk();
     }
 }

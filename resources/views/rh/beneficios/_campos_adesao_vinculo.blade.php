@@ -30,6 +30,28 @@
             <span class="{{ $labelClass }}">Formulário recebido</span>
             <input type="date" name="data_formulario_recebido" value="{{ old('data_formulario_recebido', $vinculo->data_formulario_recebido?->format('Y-m-d')) }}" class="{{ $inputClass }}">
         </label>
+        <div class="sm:col-span-2 lg:col-span-3">
+            <span class="{{ $labelClass }}">Formulário de adesão assinado</span>
+            @if ($vinculo->temFormularioAdesaoAssinado())
+                <div class="mt-1.5 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 px-3 py-2.5">
+                    <a href="{{ $vinculo->urlFormularioAdesaoAssinado() }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:underline">
+                        <i data-lucide="file-text" class="h-4 w-4"></i>
+                        Ver anexo atual
+                    </a>
+                    <label class="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-brand-gray">
+                        <input type="checkbox" name="remover_formulario_adesao" value="1" class="accent-brand-burgundy">
+                        Remover anexo
+                    </label>
+                </div>
+            @endif
+            <input
+                type="file"
+                name="formulario_adesao_assinado"
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                class="mt-1.5 block w-full text-sm text-brand-gray file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy-soft file:px-3 file:py-2 file:text-xs file:font-bold file:text-brand-burgundy hover:file:bg-brand-burgundy/10"
+            >
+            <p class="mt-1.5 text-[10px] leading-relaxed text-brand-gray">PDF ou imagem (JPG/PNG), até 10 MB. {{ $vinculo->temFormularioAdesaoAssinado() ? 'Envie outro arquivo para substituir.' : 'Anexe o formulário assinado pelo colaborador.' }}</p>
+        </div>
         <label>
             <span class="{{ $labelClass }}">Pedido enviado à Matriz</span>
             <input type="date" name="data_envio_matriz" value="{{ old('data_envio_matriz', $vinculo->data_envio_matriz?->format('Y-m-d')) }}" class="{{ $inputClass }}">

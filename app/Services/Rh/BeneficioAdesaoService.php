@@ -38,7 +38,7 @@ class BeneficioAdesaoService
             $status = $vinculo->status_adesao ?? BeneficioAdesaoStatus::PENDENTE_FORMULARIO;
         }
 
-        if ($request->boolean('cartao_entregue')) {
+        if (! empty($dados['data_entrega_cartao']) || $request->boolean('cartao_entregue')) {
             $status = BeneficioAdesaoStatus::CARTAO_ENTREGUE;
             if (empty($dados['data_entrega_cartao'])) {
                 $dados['data_entrega_cartao'] = now()->toDateString();
