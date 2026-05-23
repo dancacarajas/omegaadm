@@ -146,8 +146,29 @@
                 </summary>
 
                 <div class="space-y-6 border-t border-zinc-100/80 px-4 py-4 sm:px-5 sm:py-5">
-                    <div class="flex flex-wrap items-center justify-between gap-2 sm:hidden">
-                        <span class="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-bold uppercase">{{ $nada->statusLabel() }}</span>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="rounded-full bg-zinc-100 px-3 py-1 text-[10px] font-bold uppercase sm:hidden">{{ $nada->statusLabel() }}</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="{{ route('rh.chamados-movimentacao.nada-consta.pdf', $chamado) }}" target="_blank" class="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-3 text-xs font-bold text-brand-burgundy transition hover:border-brand-burgundy">
+                                <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
+                                PDF Nada Consta (RG-006-07)
+                            </a>
+                            @if ($editavel)
+                                <form method="POST" action="{{ route('rh.chamados-movimentacao.nada-consta.pdf.arquivar', $chamado) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-zinc-800 transition hover:border-zinc-300">
+                                        <i data-lucide="archive" class="h-3.5 w-3.5"></i>
+                                        Arquivar PDF no chamado
+                                    </button>
+                                </form>
+                            @endif
+                            @if ($nadaConstaPdfAnexo ?? null)
+                                <a href="{{ route('rh.chamados-movimentacao.anexos.download', $nadaConstaPdfAnexo) }}" class="inline-flex h-9 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800">
+                                    <i data-lucide="download" class="h-3.5 w-3.5"></i>
+                                    Baixar PDF arquivado
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 @if ($editavel)
                     <form method="POST" action="{{ route('rh.chamados-movimentacao.nada-consta', $chamado) }}" class="space-y-6">

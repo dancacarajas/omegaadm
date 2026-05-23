@@ -13,6 +13,12 @@
         <i data-lucide="file-text" class="h-4 w-4"></i>
         PDF do chamado
     </a>
+    @if ($chamado->tipo === 'desligamento' && $chamado->nadaConsta)
+        <a href="{{ route('rh.chamados-movimentacao.nada-consta.pdf', $chamado) }}" target="_blank" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy">
+            <i data-lucide="clipboard-check" class="h-4 w-4"></i>
+            PDF Nada Consta
+        </a>
+    @endif
     @if ($pdfAnexo ?? null)
         <a href="{{ route('rh.chamados-movimentacao.anexos.download', $pdfAnexo) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
             <i data-lucide="download" class="h-4 w-4"></i>

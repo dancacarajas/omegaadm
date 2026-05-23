@@ -35,6 +35,65 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_nada_consta_pdf_endpoint_retorna_pdf_no_modelo_rg_006_07(): void
+    {
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $response = $this->actingAs($user)->get(route('rh.chamados-movimentacao.nada-consta.pdf', $chamado));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_pdf_setor_trabalho_usa_centro_de_custo_do_colaborador(): void
+    {
+        $colab = Colaborador::query()->create([
+            'nome' => 'Colaborador CC',
+            'status' => 'ativo',
+            'matricula' => '8000',
+            'centro_custo' => 'CT 286',
+            'local_trabalho' => 'SALOBO',
+            'tipo_contrato' => 'Prazo indeterminado',
+        ]);
+
+        $service = app(\App\Services\Rh\MovimentacaoNadaConstaPdfService::class);
+        $method = new \ReflectionMethod($service, 'resolverSetorTrabalho');
+        $method->setAccessible(true);
+
+        $setor = $method->invoke($service, $colab, [
+            'colaborador_contrato' => 'Prazo indeterminado',
+        ]);
+
+        $this->assertSame('CT 286 - SALOBO', $setor);
+    }
+
+    public function test_arquivar_nada_consta_pdf_cria_anexo(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $chamado = $this->criarChamadoDesligamento($user);
+
+        $this->actingAs($user)
+            ->post(route('rh.chamados-movimentacao.nada-consta.pdf.arquivar', $chamado))
+            ->assertRedirect(route('rh.chamados-movimentacao.show', $chamado));
+
+        $this->assertTrue(
+            $chamado->fresh()->anexos()->where('tipo_documento', MovimentacaoDesligamentoCatalog::ANEXO_NADA_CONSTA_PDF)->exists()
+        );
+    }
+
+    public function test_catalogo_nada_consta_inclui_financeiro_e_rh(): void
+    {
+        $areas = MovimentacaoDesligamentoCatalog::areasNadaConsta();
+
+        $this->assertArrayHasKey('financeiro', $areas);
+        $this->assertArrayHasKey('rh', $areas);
+        $this->assertContains('emprestimo_consignado', array_column($areas['financeiro'], 'slug'));
+        $this->assertContains('cracha_funcional', array_column($areas['rh'], 'slug'));
+    }
+
     public function test_chamado_finalizado_bloqueia_edicao_sigo(): void
     {
         Storage::fake('public');
@@ -195,14 +254,14 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
 
         RhMovimentacaoNadaConstaItem::query()->create([
             'nada_consta_id' => $nada->id,
-            'area' => 'rh',
-            'item' => 'cracha_funcional',
+            'area' => 'legado',
+            'item' => 'item_obsoleto',
             'status_tratativa' => MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA,
         ]);
         RhMovimentacaoNadaConstaItem::query()->create([
             'nada_consta_id' => $nada->id,
-            'area' => 'financeiro',
-            'item' => 'despesas_prestacao',
+            'area' => 'transportes',
+            'item' => 'avarias',
             'status_tratativa' => MovimentacaoDesligamentoCatalog::TRATATIVA_SEM_PENDENCIA,
         ]);
 
@@ -211,12 +270,13 @@ class MovimentacaoDesligamentoCompletoTest extends TestCase
         $slugs = $nada->fresh('itens')->itens->pluck('item')->all();
         $areas = $nada->fresh('itens')->itens->pluck('area')->unique()->all();
 
-        $this->assertNotContains('cracha_funcional', $slugs);
-        $this->assertNotContains('emprestimo_consignado', $slugs);
-        $this->assertNotContains('webcard_adiantamentos', $slugs);
-        $this->assertNotContains('adiantamentos', $slugs);
-        $this->assertNotContains('despesas_prestacao', $slugs);
-        $this->assertNotContains('financeiro', $areas);
+        $this->assertNotContains('item_obsoleto', $slugs);
+        $this->assertNotContains('avarias', $slugs);
+        $this->assertNotContains('legado', $areas);
+        $this->assertContains('cracha_funcional', $slugs);
+        $this->assertContains('emprestimo_consignado', $slugs);
+        $this->assertContains('financeiro', $areas);
+        $this->assertContains('rh', $areas);
     }
 
     public function test_pacote_documentos_dispensa_conferencia_item_a_item_do_nada_consta(): void

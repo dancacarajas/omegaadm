@@ -365,6 +365,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
             Route::post('/checklist/{item}/toggle', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'toggleChecklist'])->name('checklist.toggle')->whereNumber('item');
             Route::get('/anexos/{anexo}/download', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'downloadAnexo'])->name('anexos.download')->whereNumber('anexo');
             Route::get('/{chamado}/pdf', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'pdf'])->name('pdf')->whereNumber('chamado');
+            Route::get('/{chamado}/nada-consta/pdf', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'nadaConstaPdf'])->name('nada-consta.pdf')->whereNumber('chamado');
+            Route::post('/{chamado}/nada-consta/pdf', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'nadaConstaPdfArquivar'])->name('nada-consta.pdf.arquivar')->whereNumber('chamado');
             Route::get('/{chamado}', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'show'])->name('show')->whereNumber('chamado');
             Route::post('/etapas/{etapa}/checklist/concluir-todos', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirChecklistEtapa'])->name('etapas.checklist.concluir-todos')->whereNumber('etapa');
             Route::post('/etapas/{etapa}/concluir', [\App\Http\Controllers\Rh\MovimentacaoChamadoController::class, 'concluirEtapa'])->name('etapas.concluir')->whereNumber('etapa');

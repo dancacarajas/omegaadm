@@ -27,6 +27,12 @@ final class MovimentacaoDesligamentoCatalog
 
     public const ANEXO_CHAMADO_PDF = 'chamado_resumo_pdf';
 
+    public const ANEXO_NADA_CONSTA_PDF = 'nada_consta_demissional_pdf';
+
+    public const NADA_CONSTA_DOC_CODIGO = 'RG-006-07';
+
+    public const NADA_CONSTA_DOC_REV = '03';
+
     /** Pacote único com todos os documentos obrigatórios do desligamento (PDF ou ZIP). */
     public const ANEXO_PACOTE_DOCUMENTOS = 'pacote_documentos_desligamento';
 
@@ -75,6 +81,7 @@ final class MovimentacaoDesligamentoCatalog
             self::ANEXO_CIENCIA_COLABORADOR => 'Documento de ciência do colaborador',
             self::ANEXO_EMAIL_AUTORIZACAO => 'E-mail ou autorização interna',
             self::ANEXO_CHAMADO_PDF => 'PDF completo do chamado (gerado pelo sistema)',
+            self::ANEXO_NADA_CONSTA_PDF => 'Nada Consta Demissional (PDF gerado pelo sistema)',
             self::ANEXO_PACOTE_DOCUMENTOS => 'Pacote único — documentos obrigatórios do desligamento',
         ];
     }
@@ -186,11 +193,47 @@ final class MovimentacaoDesligamentoCatalog
             ],
             'transportes' => [
                 ['slug' => 'cracha_telemetria', 'nome' => 'Devolução do crachá/chave de telemetria'],
-                ['slug' => 'auto_infracao', 'nome' => 'Verificar auto de infração no veículo'],
-                ['slug' => 'avarias', 'nome' => 'Verificar pendência de avarias'],
-                ['slug' => 'devolucao_veiculo', 'nome' => 'Devolução do veículo ou equipamento (checklist)'],
+                ['slug' => 'auto_infracao', 'nome' => 'Verificar auto de infração no veículo e pendência de avarias'],
+                ['slug' => 'devolucao_veiculo', 'nome' => 'Devolução do veículo ou equipamento (verificar check-list)'],
+            ],
+            'financeiro' => [
+                ['slug' => 'emprestimo_consignado', 'nome' => 'Empréstimo consignado'],
+                ['slug' => 'adiantamentos', 'nome' => 'Adiantamentos'],
+                ['slug' => 'despesas_prestacoes', 'nome' => 'Despesas e prestações de conta'],
+            ],
+            'rh' => [
+                ['slug' => 'cracha_funcional', 'nome' => 'Devolução de crachá funcional'],
+                ['slug' => 'cartao_web_card', 'nome' => 'Cartão Web Card (ou outros de adiantamentos)'],
             ],
         ];
+    }
+
+    /**
+     * Ordem das seções no PDF oficial (modelo RG-006-07).
+     *
+     * @return list<string>
+     */
+    public static function ordemAreasNadaConstaPdf(): array
+    {
+        return [
+            'almoxarifado_obra',
+            'almoxarifado_central',
+            'patrimonio',
+            'transportes',
+            'financeiro',
+            'rh',
+        ];
+    }
+
+    public static function nomeItemNadaConsta(string $area, string $slug): string
+    {
+        foreach (self::areasNadaConsta()[$area] ?? [] as $def) {
+            if ($def['slug'] === $slug) {
+                return $def['nome'];
+            }
+        }
+
+        return $slug;
     }
 
     /** @return array<string, string> */
@@ -201,6 +244,8 @@ final class MovimentacaoDesligamentoCatalog
             'almoxarifado_central' => 'Almoxarifado Central',
             'patrimonio' => 'Patrimônio',
             'transportes' => 'Transportes',
+            'financeiro' => 'Financeiro',
+            'rh' => 'RH',
         ];
     }
 

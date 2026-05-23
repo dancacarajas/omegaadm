@@ -45,10 +45,6 @@ final class MovimentacaoChamadoPdfService
             'uploaded_by' => $userId,
         ]);
 
-        if ($chamado->nadaConsta !== null && $chamado->nadaConsta->arquivo_pdf_id === null) {
-            $chamado->nadaConsta->update(['arquivo_pdf_id' => $anexo->id]);
-        }
-
         return $anexo;
     }
 

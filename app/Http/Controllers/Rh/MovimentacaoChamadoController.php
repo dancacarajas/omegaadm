@@ -16,6 +16,7 @@ use App\Services\Rh\MovimentacaoDesligamentoRules;
 use App\Services\Rh\MovimentacaoFinalizacaoService;
 use App\Services\Rh\MovimentacaoLogService;
 use App\Services\Rh\MovimentacaoChamadoPdfService;
+use App\Services\Rh\MovimentacaoNadaConstaPdfService;
 use App\Services\Rh\MovimentacaoNadaConstaService;
 use App\Services\Rh\MovimentacaoSubstituicaoVagaService;
 use App\Services\Rh\MovimentacaoWorkflowService;
@@ -28,6 +29,7 @@ use App\Support\Rh\MovimentacaoAfastamentoInssCatalog;
 use App\Support\Rh\MovimentacaoChamadoStatus;
 use App\Support\Rh\MovimentacaoChamadoTipo;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -262,6 +264,7 @@ class MovimentacaoChamadoController extends Controller
         }
 
         $pdfAnexo = $chamado->anexos->firstWhere('tipo_documento', MovimentacaoDesligamentoCatalog::ANEXO_CHAMADO_PDF);
+        $nadaConstaPdfAnexo = $chamado->anexos->firstWhere('tipo_documento', MovimentacaoDesligamentoCatalog::ANEXO_NADA_CONSTA_PDF);
 
         $vagaSubstituicao = null;
         if ($chamado->tipo === MovimentacaoChamadoTipo::DESLIGAMENTO) {
@@ -279,6 +282,7 @@ class MovimentacaoChamadoController extends Controller
             'podeValidarRh' => $chamado->isAberto() && $acesso->podeValidarNadaConstaRh($user),
             'areasNadaConstaEditaveis' => $acesso->areasEditaveis($user),
             'pdfAnexo' => $pdfAnexo,
+            'nadaConstaPdfAnexo' => $nadaConstaPdfAnexo,
             'labelsAnexosDesligamento' => MovimentacaoDesligamentoCatalog::labelsAnexos(),
             'anexosObrigatoriosDesligamento' => MovimentacaoDesligamentoCatalog::anexosObrigatoriosPorTipoRescisao(
                 (string) ($chamado->dados_depois_json['tipo_rescisao'] ?? '')
@@ -340,6 +344,36 @@ class MovimentacaoChamadoController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="chamado-'.$chamado->protocolo.'.pdf"',
         ]);
+    }
+
+    public function nadaConstaPdf(RhMovimentacaoChamado $chamado, MovimentacaoNadaConstaPdfService $pdfService): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_unless($chamado->tipo === 'desligamento', 404);
+
+        $chamado->load(['colaborador', 'nadaConsta.itens']);
+        $matricula = $chamado->colaborador->matricula ?? $chamado->colaborador_id;
+        $conteudo = $pdfService->renderPdf($chamado);
+
+        return response($conteudo, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="nada-consta-'.$matricula.'.pdf"',
+        ]);
+    }
+
+    public function nadaConstaPdfArquivar(
+        RhMovimentacaoChamado $chamado,
+        MovimentacaoNadaConstaPdfService $pdfService,
+        MovimentacaoLogService $logService,
+    ): RedirectResponse {
+        abort_unless($chamado->tipo === 'desligamento', 404);
+        abort_unless($chamado->isAberto(), 422);
+
+        $anexo = $pdfService->gerarEArmazenar($chamado, auth()->id());
+        $logService->registrar($chamado, 'nada_consta_pdf_gerado', null, null, $anexo->nome_arquivo, auth()->id());
+
+        return redirect()
+            ->route('rh.chamados-movimentacao.show', $chamado)
+            ->with('success', 'PDF do Nada Consta gerado e anexado ao chamado.');
     }
 
     public function downloadAnexo(RhMovimentacaoAnexo $anexo): StreamedResponse
