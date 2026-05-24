@@ -59,12 +59,14 @@ class SigoInsumosController extends Controller
         }
 
         if (! $resultado['ok']) {
-            $erro = $resultado['resumo']['erro'] ?? 'Nenhum insumo foi extraído. Verifique login, rede ou seletores do SIGO.';
+            $erro = $this->extracao->formatarErroParaUsuario($resultado['resumo']['erro'] ?? null);
 
             return redirect()
                 ->route('almoxarifado.sigo-insumos.index')
                 ->with('error', $erro)
-                ->with('sigo_extracao_resultado', $resultado['resumo']);
+                ->with('sigo_extracao_resultado', array_merge($resultado['resumo'], [
+                    'erro' => $erro,
+                ]));
         }
 
         return redirect()

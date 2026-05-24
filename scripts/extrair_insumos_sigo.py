@@ -28,9 +28,14 @@ from pathlib import Path
 
 try:
     from playwright.sync_api import Page, sync_playwright
-except ImportError:
-    print("Instale: pip install playwright && playwright install chromium", file=sys.stderr)
-    raise
+except Exception as exc:  # noqa: BLE001
+    print(
+        "Playwright indisponível. Execute: python -m pip install --force-reinstall playwright openpyxl "
+        "&& python -m playwright install chromium",
+        file=sys.stderr,
+    )
+    print(f"Detalhe: {exc}", file=sys.stderr)
+    raise SystemExit(1) from exc
 
 try:
     import openpyxl

@@ -13,6 +13,8 @@ class SigoInsumosExtracaoService
 {
     private const STORAGE_DIR = 'almoxarifado/sigo-extracoes';
 
+    private const PYTHON_CHECK = 'from playwright.sync_api import Page, sync_playwright; import openpyxl; print("ok")';
+
     /** @return array{ok: bool, token: string, resumo: array<string, mixed>} */
     public function extrair(string $usuario, string $senha): array
     {
@@ -26,17 +28,19 @@ class SigoInsumosExtracaoService
         $process = new Process(
             $this->montarComando($usuario, $senha, $dirAbsoluto),
             base_path(),
-            $this->montarAmbiente($usuario, $senha, $dirAbsoluto),
+            null,
             null,
             (int) config('sigo.timeout_seconds', 3600),
         );
+
+        $env = $this->montarAmbiente($usuario, $senha, $dirAbsoluto);
 
         try {
             $process->mustRun(function (string $type, string $buffer): void {
                 if ($type === Process::ERR) {
                     return;
                 }
-            });
+            }, $env);
         } catch (ProcessFailedException $e) {
             $resumo = $this->lerResumo($dirAbsoluto) ?? [
                 'ok' => false,
@@ -93,6 +97,30 @@ class SigoInsumosExtracaoService
         }
 
         return $real;
+    }
+
+    public function formatarErroParaUsuario(?string $erro): string
+    {
+        $erro = trim((string) $erro);
+        if ($erro === '') {
+            return 'Nenhum insumo foi extraído. Verifique login, rede ou seletores do SIGO.';
+        }
+
+        if (str_contains($erro, 'playwright.sync_api') || str_contains($erro, 'ModuleNotFoundError')) {
+            return 'Playwright instalado de forma incompleta. No PowerShell, na pasta do projeto, execute: '
+                .'python -m pip install --force-reinstall playwright openpyxl && python -m playwright install chromium. '
+                .'Reinicie o Laravel e tente novamente.';
+        }
+
+        if (str_contains($erro, 'Timeout') && str_contains($erro, 'wait_for')) {
+            return 'Login no SIGO pode ter funcionado, mas a tela Novo PM não carregou o campo de busca de insumos. '
+                .'Confirme usuário/senha, URL do SIGO e se a rede alcança sigo.omegaservice.com.br.';
+        }
+
+        $linhas = preg_split('/\R/', $erro) ?: [$erro];
+        $ultima = trim((string) end($linhas));
+
+        return Str::limit($ultima !== '' ? $ultima : $erro, 400);
     }
 
     /** @return array{python: string, script: string, diagnostico?: string} */
@@ -203,19 +231,19 @@ class SigoInsumosExtracaoService
     {
         if (str_contains($python, ' ')) {
             $process = Process::fromShellCommandline(
-                $python.' -c "import playwright, openpyxl; print(\'ok\')"',
+                $python.' -c "'.self::PYTHON_CHECK.'"',
                 base_path(),
                 null,
                 null,
-                45,
+                60,
             );
         } else {
             $process = new Process(
-                [$python, '-c', 'import playwright, openpyxl; print("ok")'],
+                [$python, '-c', self::PYTHON_CHECK],
                 base_path(),
                 null,
                 null,
-                45,
+                60,
             );
         }
 
