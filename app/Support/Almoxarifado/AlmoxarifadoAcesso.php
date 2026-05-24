@@ -140,6 +140,11 @@ final class AlmoxarifadoAcesso
         return self::podeVisualizar($user);
     }
 
+    public static function podeExtrairInsumosSigo(?User $user = null): bool
+    {
+        return self::isGestao($user);
+    }
+
     public static function abortUnless(bool $allowed, string $message = 'Sem permissão para esta ação no Almoxarifado.'): void
     {
         abort_unless($allowed, 403, $message);

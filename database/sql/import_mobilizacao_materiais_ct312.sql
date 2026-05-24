@@ -1,8 +1,10 @@
--- Importação: Controle de Materiais da Mobilização — Contrato 312 PGU SALOBO
+-- Importação: Controle de Materiais da Mobilização — Contrato 312
 --
 -- PRÉ-REQUISITOS (produção MySQL):
 --   1. php artisan migrate --force  (inclui colunas disciplina, categoria_descricao, situacao_*)
---   2. Contrato 312 / PGU SALOBO cadastrado em `contratos`
+--   2. Contrato cadastrado em `contratos` (produção Hostinger):
+--      id=2, numero='312 - PROJETO ATHENAS', nome='PGU SALOBO - 312', centro_custo='312'
+--      Rótulo no sistema: 312 - PROJETO ATHENAS — PGU SALOBO - 312
 --   3. Executar este arquivo no phpMyAdmin ou: mysql -u USER -p DB < import_mobilizacao_materiais_ct312.sql
 --
 -- Gerado em 2026-05-24T19:01:28
@@ -10,18 +12,32 @@
 -- Registros: 692
 --
 SET NAMES utf8mb4;
+-- Produção: numero + nome separados (ver contratos.sql do dump)
 SET @contrato_id := (
   SELECT id FROM contratos
-  WHERE numero = '312'
-     OR numero LIKE '%312%'
-     OR nome LIKE '%312%'
-     OR nome LIKE '%SALOBO%'
-     OR nome LIKE '%PGU%SALOBO%'
-  ORDER BY (numero = '312') DESC, id ASC
+  WHERE numero = '312 - PROJETO ATHENAS'
+    AND nome = 'PGU SALOBO - 312'
   LIMIT 1
 );
 
-SELECT @contrato_id AS contrato_id_resolvido;
+SET @contrato_id := COALESCE(@contrato_id, (
+  SELECT id FROM contratos
+  WHERE centro_custo = '312'
+    AND (numero LIKE '%312%' AND numero LIKE '%ATHENAS%')
+    AND nome LIKE '%SALOBO%'
+  ORDER BY id ASC
+  LIMIT 1
+));
+
+-- Se ainda NULL: descomente e informe o id (produção = 2)
+-- SET @contrato_id := 2;
+
+SELECT
+  @contrato_id AS contrato_id_resolvido,
+  (SELECT CONCAT(numero, ' — ', nome) FROM contratos WHERE id = @contrato_id LIMIT 1) AS rotulo_contrato_ui;
+
+-- ATENÇÃO: contrato_id_resolvido deve ser 2 (não NULL). Só então execute os INSERTs abaixo.
+-- No phpMyAdmin: rode o arquivo inteiro (SET + SELECT + INSERTs), não só o bloco INSERT.
 
 -- Opcional: limpar importação anterior do mesmo contrato
 -- DELETE FROM mobilizacao_materiais WHERE contrato_id = @contrato_id AND origem_cadastro = 'IMPORT_CT312';

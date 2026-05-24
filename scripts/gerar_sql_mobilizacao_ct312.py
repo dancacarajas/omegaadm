@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gera SQL de importação mobilizacao_materiais — contrato 312 / PGU SALOBO."""
+"""Gera SQL de importação mobilizacao_materiais — contrato 312 PROJETO ATHENAS PGU SALOBO."""
 from __future__ import annotations
 
 import math
@@ -102,7 +102,8 @@ def main() -> None:
     wb.close()
 
     lines: list[str] = [
-        "-- Importação: Controle de Materiais da Mobilização — Contrato 312 PGU SALOBO",
+        "-- Importação: Controle de Materiais da Mobilização — Contrato 312",
+        "-- Contrato produção: numero='312 - PROJETO ATHENAS', nome='PGU SALOBO - 312', id=2",
         f"-- Gerado em {datetime.now().isoformat(timespec='seconds')}",
         f"-- Origem: {XLSX.name}",
         f"-- Registros: {len(rows)}",
@@ -110,16 +111,25 @@ def main() -> None:
         "SET NAMES utf8mb4;",
         "SET @contrato_id := (",
         "  SELECT id FROM contratos",
-        "  WHERE numero = '312'",
-        "     OR numero LIKE '%312%'",
-        "     OR nome LIKE '%312%'",
-        "     OR nome LIKE '%SALOBO%'",
-        "     OR nome LIKE '%PGU%SALOBO%'",
-        "  ORDER BY (numero = '312') DESC, id ASC",
+        "  WHERE numero = '312 - PROJETO ATHENAS'",
+        "    AND nome = 'PGU SALOBO - 312'",
         "  LIMIT 1",
         ");",
         "",
-        "SELECT @contrato_id AS contrato_id_resolvido;",
+        "SET @contrato_id := COALESCE(@contrato_id, (",
+        "  SELECT id FROM contratos",
+        "  WHERE centro_custo = '312'",
+        "    AND (numero LIKE '%312%' AND numero LIKE '%ATHENAS%')",
+        "    AND nome LIKE '%SALOBO%'",
+        "  ORDER BY id ASC",
+        "  LIMIT 1",
+        "));",
+        "",
+        "-- SET @contrato_id := 2;",
+        "",
+        "SELECT",
+        "  @contrato_id AS contrato_id_resolvido,",
+        "  (SELECT CONCAT(numero, ' — ', nome) FROM contratos WHERE id = @contrato_id LIMIT 1) AS rotulo_contrato_ui;",
         "",
         "-- Opcional: limpar importação anterior do mesmo contrato",
         "-- DELETE FROM mobilizacao_materiais WHERE contrato_id = @contrato_id AND origem_cadastro = 'IMPORT_CT312';",

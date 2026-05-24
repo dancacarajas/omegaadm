@@ -629,13 +629,22 @@ class MobilizacaoMaterialController extends Controller
     {
         return ContratoAccess::applyContratoModel(Contrato::query())
             ->where(function (Builder $q) {
-                $q->where('numero', MobilizacaoPlanilhaCatalogo::CONTRATO_NUMERO_REFERENCIA)
-                    ->orWhere('numero', 'like', '%312%')
-                    ->orWhere('nome', 'like', '%312%')
-                    ->orWhere('nome', 'like', '%'.MobilizacaoPlanilhaCatalogo::CONTRATO_NOME_REFERENCIA.'%')
-                    ->orWhere('nome', 'like', '%SALOBO%');
+                $q->where(function (Builder $exact) {
+                    $exact->where('numero', MobilizacaoPlanilhaCatalogo::CONTRATO_NUMERO_REFERENCIA)
+                        ->where('nome', MobilizacaoPlanilhaCatalogo::CONTRATO_NOME_REFERENCIA);
+                })
+                    ->orWhere('centro_custo', MobilizacaoPlanilhaCatalogo::CONTRATO_CENTRO_CUSTO_REFERENCIA)
+                    ->orWhere(function (Builder $legacy) {
+                        $legacy->where('numero', 'like', '%312%')
+                            ->where('numero', 'like', '%ATHENAS%')
+                            ->where('nome', 'like', '%SALOBO%');
+                    });
             })
-            ->orderByRaw("CASE WHEN numero = '312' THEN 0 ELSE 1 END")
+            ->orderByRaw('CASE WHEN numero = ? AND nome = ? THEN 0 WHEN centro_custo = ? THEN 1 ELSE 2 END', [
+                MobilizacaoPlanilhaCatalogo::CONTRATO_NUMERO_REFERENCIA,
+                MobilizacaoPlanilhaCatalogo::CONTRATO_NOME_REFERENCIA,
+                MobilizacaoPlanilhaCatalogo::CONTRATO_CENTRO_CUSTO_REFERENCIA,
+            ])
             ->first();
     }
 

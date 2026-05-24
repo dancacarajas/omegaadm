@@ -5,9 +5,11 @@ namespace App\Support\Almoxarifado;
 /** Colunas e listas da planilha CT312 (CONTROLE_GERAL). */
 final class MobilizacaoPlanilhaCatalogo
 {
-    public const CONTRATO_NUMERO_REFERENCIA = '312';
+    public const CONTRATO_NUMERO_REFERENCIA = '312 - PROJETO ATHENAS';
 
-    public const CONTRATO_NOME_REFERENCIA = 'PGU SALOBO';
+    public const CONTRATO_NOME_REFERENCIA = 'PGU SALOBO - 312';
+
+    public const CONTRATO_CENTRO_CUSTO_REFERENCIA = '312';
 
     /** @return list<string> */
     public static function disciplinas(): array
