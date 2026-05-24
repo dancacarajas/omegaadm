@@ -12,8 +12,6 @@
 @endsection
 
 @section('content')
-    @include('almoxarifado.mobilizacao.partials.flash')
-
     @include('almoxarifado.mobilizacao.partials.hero', [
         'badge' => 'Integração SIGO',
         'icone' => 'database',
