@@ -2,6 +2,8 @@
 
 namespace App\Support\Almoxarifado;
 
+use App\Models\Almoxarifado\SigoExtracao;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -15,38 +17,112 @@ class SigoInsumosExtracaoService
 
     private const PYTHON_CHECK = 'from playwright.sync_api import Page, sync_playwright; import openpyxl; print("ok")';
 
+    /** @var list<string> */
+    private const WINDOWS_ENV_KEYS = [
+        'PATH', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'Windir',
+        'TEMP', 'TMP', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA', 'ComSpec',
+        'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS',
+    ];
+
     private function scriptVerificacaoDeps(): string
     {
         return (string) config('sigo.check_script', base_path('scripts/sigo_check_deps.py'));
     }
 
-    /** @return array{ok: bool, token: string, resumo: array<string, mixed>} */
-    public function extrair(string $usuario, string $senha): array
+    public function iniciarExtracao(int $userId, string $usuario, string $senha): SigoExtracao
     {
         $this->verificarDependencias();
 
-        $token = now()->format('Ymd_His').'_'.Str::lower(Str::random(8));
-        $dirRelativo = self::STORAGE_DIR.'/'.$token;
-        $dirAbsoluto = Storage::disk('local')->path($dirRelativo);
-        File::ensureDirectoryExists($dirAbsoluto);
+        $uuid = (string) Str::uuid();
+        $dirRelativo = self::STORAGE_DIR.'/'.$uuid;
+        File::ensureDirectoryExists(Storage::disk('local')->path($dirRelativo));
 
-        $process = new Process(
-            $this->montarComando($usuario, $senha, $dirAbsoluto),
-            base_path(),
-            null,
-            null,
-            (int) config('sigo.timeout_seconds', 3600),
+        return SigoExtracao::query()->create([
+            'uuid' => $uuid,
+            'user_id' => $userId,
+            'sigo_usuario' => $usuario,
+            'sigo_senha_criptografada' => Crypt::encryptString($senha),
+            'status' => SigoExtracao::STATUS_PENDENTE,
+            'diretorio_relativo' => $dirRelativo,
+        ]);
+    }
+
+    public function processarExtracao(SigoExtracao $registro): void
+    {
+        if ($registro->sigo_senha_criptografada === null) {
+            throw new RuntimeException('Credenciais SIGO indisponíveis para esta extração.');
+        }
+
+        $senha = Crypt::decryptString($registro->sigo_senha_criptografada);
+        $dirRelativo = $registro->diretorio_relativo ?: self::STORAGE_DIR.'/'.$registro->uuid;
+        $dirAbsoluto = Storage::disk('local')->path($dirRelativo);
+
+        $registro->forceFill([
+            'status' => SigoExtracao::STATUS_EXECUTANDO,
+            'iniciado_em' => now(),
+            'diretorio_relativo' => $dirRelativo,
+        ])->save();
+
+        $resultado = $this->executarScript(
+            $registro->sigo_usuario,
+            $senha,
+            $dirAbsoluto,
+            $dirRelativo,
+            $registro->uuid,
         );
 
+        $registro->limparSenha();
+
+        if ($resultado['ok']) {
+            $resumo = $resultado['resumo'];
+            $registro->forceFill([
+                'status' => SigoExtracao::STATUS_CONCLUIDO,
+                'paginas_lidas' => (int) ($resumo['paginas_lidas'] ?? 0),
+                'registros_brutos' => (int) ($resumo['registros_brutos'] ?? 0),
+                'registros_unicos' => (int) ($resumo['registros_unicos'] ?? 0),
+                'erro_tecnico' => null,
+                'erro_usuario' => null,
+                'finalizado_em' => now(),
+            ])->save();
+
+            return;
+        }
+
+        $erroTecnico = (string) ($resultado['resumo']['erro'] ?? 'Falha desconhecida na extração.');
+        $registro->forceFill([
+            'status' => SigoExtracao::STATUS_ERRO,
+            'erro_tecnico' => $erroTecnico,
+            'erro_usuario' => $this->formatarErroParaUsuario($erroTecnico),
+            'paginas_lidas' => (int) ($resultado['resumo']['paginas_lidas'] ?? 0),
+            'registros_brutos' => (int) ($resultado['resumo']['registros_brutos'] ?? 0),
+            'registros_unicos' => (int) ($resultado['resumo']['registros_unicos'] ?? 0),
+            'finalizado_em' => now(),
+        ])->save();
+    }
+
+    /** @return array{ok: bool, resumo: array<string, mixed>} */
+    private function executarScript(
+        string $usuario,
+        string $senha,
+        string $dirAbsoluto,
+        string $dirRelativo,
+        string $uuid,
+    ): array {
+        File::ensureDirectoryExists($dirAbsoluto);
+        $debugDir = $dirAbsoluto.'/debug';
+        File::ensureDirectoryExists($debugDir);
+
+        $comando = $this->montarComando($dirAbsoluto, $debugDir);
         $env = $this->montarAmbiente($usuario, $senha, $dirAbsoluto);
 
+        $this->gravarDebugContexto($debugDir, $comando, $env);
+
+        $process = $this->criarProcesso($comando, (int) config('sigo.timeout_seconds', 3600));
+
         try {
-            $process->mustRun(function (string $type, string $buffer): void {
-                if ($type === Process::ERR) {
-                    return;
-                }
-            }, $env);
+            $process->mustRun(null, $env);
         } catch (ProcessFailedException $e) {
+            $this->gravarSaidaProcesso($debugDir, $process, $e);
             $resumo = $this->lerResumo($dirAbsoluto) ?? [
                 'ok' => false,
                 'erro' => $this->extrairErroProcesso($process, $e),
@@ -55,39 +131,58 @@ class SigoInsumosExtracaoService
                 'paginas_lidas' => 0,
             ];
 
-            return [
-                'ok' => false,
-                'token' => $token,
-                'resumo' => $resumo,
-            ];
+            return ['ok' => false, 'resumo' => $resumo];
         }
 
+        $this->gravarSaidaProcesso($debugDir, $process);
         $resumo = $this->lerResumo($dirAbsoluto) ?? $this->parseResultadoStdout($process->getOutput());
         if ($resumo === null) {
             throw new RuntimeException('Extração concluída, mas o resumo não foi encontrado.');
         }
 
-        $resumo['token'] = $token;
+        $resumo['uuid'] = $uuid;
         $resumo['dir'] = $dirRelativo;
+        $resumo['token'] = $uuid;
 
         return [
             'ok' => (bool) ($resumo['ok'] ?? false),
-            'token' => $token,
             'resumo' => $resumo,
         ];
     }
 
-    public function caminhoArquivo(string $token, string $tipo): ?string
+    /** @param list<string> $comando */
+    private function criarProcesso(array $comando, int $timeout): Process
     {
-        if (! preg_match('/^[a-zA-Z0-9_\-]+$/', $token)) {
+        if (PHP_OS_FAMILY === 'Windows' && count($comando) >= 2 && ! str_contains($comando[0], ' ')) {
+            $linha = implode(' ', array_map(static fn (string $parte) => escapeshellarg($parte), $comando));
+
+            return Process::fromShellCommandline($linha, base_path(), null, null, (float) $timeout);
+        }
+
+        return new Process($comando, base_path(), null, null, (float) $timeout);
+    }
+
+    public function caminhoArquivo(string $uuid, string $tipo, ?int $userId = null): ?string
+    {
+        if (! Str::isUuid($uuid)) {
             return null;
         }
 
-        $dir = Storage::disk('local')->path(self::STORAGE_DIR.'/'.$token);
+        $query = SigoExtracao::query()->where('uuid', $uuid);
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+        $registro = $query->first();
+        if (! $registro || $registro->diretorio_relativo === null) {
+            return null;
+        }
+
+        $dir = Storage::disk('local')->path($registro->diretorio_relativo);
         $arquivo = match ($tipo) {
             'xlsx' => $dir.'/insumos_sigo_extraidos.xlsx',
             'csv' => $dir.'/insumos_sigo_extraidos.csv',
             'log' => $this->localizarLog($dir),
+            'debug' => $dir.'/debug/erro.txt',
             default => null,
         };
 
@@ -111,21 +206,50 @@ class SigoInsumosExtracaoService
             return 'Nenhum insumo foi extraído. Verifique login, rede ou seletores do SIGO.';
         }
 
+        if (str_contains($erro, '10106') || str_contains($erro, 'WSASYSNOTREADY')) {
+            return 'Falha de rede do Windows ao iniciar o Python pelo PHP (WinError 10106). '
+                .'Execute php artisan sigo:diagnostico e revise storage/.../debug/php_context.json.';
+        }
+
         if (str_contains($erro, 'playwright.sync_api') || str_contains($erro, 'ModuleNotFoundError')) {
-            return 'Playwright instalado de forma incompleta. No PowerShell, na pasta do projeto, execute: '
-                .'python -m pip install --force-reinstall playwright openpyxl && python -m playwright install chromium. '
-                .'Reinicie o Laravel e tente novamente.';
+            return 'Playwright incompleto. Execute: python -m pip install --force-reinstall playwright openpyxl '
+                .'&& python -m playwright install chromium';
         }
 
         if (str_contains($erro, 'Timeout') && str_contains($erro, 'wait_for')) {
-            return 'Login no SIGO pode ter funcionado, mas a tela Novo PM não carregou o campo de busca de insumos. '
-                .'Confirme usuário/senha, URL do SIGO e se a rede alcança sigo.omegaservice.com.br.';
+            return 'Login SIGO pode ter funcionado, mas o campo de busca não apareceu. '
+                .'Valide seletores/URL no F12 (Network → busca LAMPA).';
         }
 
         $linhas = preg_split('/\R/', $erro) ?: [$erro];
         $ultima = trim((string) end($linhas));
 
         return Str::limit($ultima !== '' ? $ultima : $erro, 400);
+    }
+
+    /** @return array<string, mixed> */
+    public function diagnosticoCompleto(): array
+    {
+        $status = $this->statusDependencias();
+        $env = $this->ambienteProcessoCompleto([]);
+
+        return [
+            'dependencias_ok' => ! isset($status['diagnostico']),
+            'dependencias_erro' => $status['diagnostico'] ?? null,
+            'python_configurado' => config('sigo.python'),
+            'python_resolvido' => $status['python'] ?? null,
+            'script_extracao' => config('sigo.script'),
+            'script_verificacao' => $this->scriptVerificacaoDeps(),
+            'php_binary' => PHP_BINARY,
+            'php_sapi' => PHP_SAPI,
+            'php_cwd' => getcwd(),
+            'queue_connection' => config('queue.default'),
+            'env_path' => $env['PATH'] ?? $env['Path'] ?? null,
+            'env_systemroot' => $env['SYSTEMROOT'] ?? $env['SystemRoot'] ?? null,
+            'env_windir' => $env['WINDIR'] ?? $env['Windir'] ?? null,
+            'env_temp' => $env['TEMP'] ?? null,
+            'env_localappdata' => $env['LOCALAPPDATA'] ?? null,
+        ];
     }
 
     /** @return array{python: string, script: string, diagnostico?: string} */
@@ -176,42 +300,24 @@ class SigoInsumosExtracaoService
 
             throw new RuntimeException(
                 'SIGO_PYTHON configurado, mas a verificação falhou em '.$configurado.': '.$resultado['erro']
-                .'. Execute: '.$configurado.' -m pip install --force-reinstall playwright openpyxl && '
-                .$configurado.' -m playwright install chromium'
             );
         }
 
-        $candidatos = array_values(array_unique(array_filter([
-            $configurado !== '' ? $configurado : null,
-            PHP_OS_FAMILY === 'Windows' ? 'py -3' : null,
-            'python3',
-            'python',
-        ])));
-
-        $falhas = [];
-        foreach ($candidatos as $candidato) {
+        foreach (array_merge(
+            [$configurado !== '' ? $configurado : null, 'python3', 'python'],
+            $this->caminhosPythonWindows(),
+        ) as $candidato) {
+            if ($candidato === null || $candidato === '') {
+                continue;
+            }
             $resultado = $this->testarPython($candidato);
             if ($resultado['ok']) {
                 return $candidato;
             }
-            $falhas[] = $candidato.': '.$resultado['erro'];
-        }
-
-        foreach ($this->caminhosPythonWindows() as $caminho) {
-            if (in_array($caminho, $candidatos, true)) {
-                continue;
-            }
-            $resultado = $this->testarPython($caminho);
-            if ($resultado['ok']) {
-                return $caminho;
-            }
-            $falhas[] = $caminho.': '.$resultado['erro'];
         }
 
         throw new RuntimeException(
-            'Dependências Python ausentes ou Python não encontrado pelo PHP. '
-            .'Configure SIGO_PYTHON no .env com o caminho completo do python.exe. '
-            .'Detalhes: '.implode(' | ', array_slice($falhas, 0, 3))
+            'Dependências Python ausentes. Configure SIGO_PYTHON no .env com o caminho completo do python.exe.'
         );
     }
 
@@ -224,7 +330,7 @@ class SigoInsumosExtracaoService
 
         $caminhos = [];
         $where = Process::fromShellCommandline('where python', base_path());
-        $where->run();
+        $where->run(null, $this->ambienteProcessoCompleto([]));
         if ($where->isSuccessful()) {
             foreach (preg_split('/\R/', trim($where->getOutput())) as $linha) {
                 $linha = trim($linha);
@@ -249,42 +355,13 @@ class SigoInsumosExtracaoService
     {
         $checkScript = $this->scriptVerificacaoDeps();
         if (is_file($checkScript)) {
-            if (str_contains($python, ' ')) {
-                $process = Process::fromShellCommandline(
-                    $python.' '.escapeshellarg($checkScript),
-                    base_path(),
-                    null,
-                    null,
-                    90,
-                );
-            } else {
-                $process = new Process(
-                    [$python, $checkScript],
-                    base_path(),
-                    null,
-                    null,
-                    90,
-                );
-            }
-        } elseif (str_contains($python, ' ')) {
-            $process = Process::fromShellCommandline(
-                $python.' -c "'.self::PYTHON_CHECK.'"',
-                base_path(),
-                null,
-                null,
-                90,
-            );
+            $comando = [$python, $checkScript];
         } else {
-            $process = new Process(
-                [$python, '-c', self::PYTHON_CHECK],
-                base_path(),
-                null,
-                null,
-                90,
-            );
+            $comando = [$python, '-c', self::PYTHON_CHECK];
         }
 
-        $process->run();
+        $process = $this->criarProcesso($comando, 90);
+        $process->run(null, $this->ambienteProcessoCompleto([]));
 
         if ($process->isSuccessful()) {
             return ['ok' => true, 'erro' => ''];
@@ -292,7 +369,7 @@ class SigoInsumosExtracaoService
 
         $erro = trim($process->getErrorOutput()) ?: trim($process->getOutput()) ?: 'falha ao importar playwright/openpyxl';
 
-        return ['ok' => false, 'erro' => Str::limit($erro, 180)];
+        return ['ok' => false, 'erro' => Str::limit($erro, 500)];
     }
 
     /** @return list<string> */
@@ -308,11 +385,12 @@ class SigoInsumosExtracaoService
     }
 
     /** @return list<string> */
-    private function montarComando(string $usuario, string $senha, string $outputDir): array
+    private function montarComando(string $outputDir, string $debugDir): array
     {
         return array_merge($this->pythonParaComando(), [
             (string) config('sigo.script'),
             '--output-dir', $outputDir,
+            '--debug-dir', $debugDir,
             '--base-url', (string) config('sigo.base_url'),
             '--login-path', (string) config('sigo.login_path'),
             '--target-path', (string) config('sigo.novo_pm_path'),
@@ -323,7 +401,7 @@ class SigoInsumosExtracaoService
     /** @return array<string, string> */
     private function montarAmbiente(string $usuario, string $senha, string $outputDir): array
     {
-        return array_filter([
+        return $this->ambienteProcessoCompleto(array_filter([
             'SIGO_USER' => $usuario,
             'SIGO_PASS' => $senha,
             'SIGO_OUTPUT_DIR' => $outputDir,
@@ -332,7 +410,72 @@ class SigoInsumosExtracaoService
             'SIGO_PM_PATH' => (string) config('sigo.novo_pm_path'),
             'SIGO_HEADLESS' => config('sigo.headless') ? '1' : '0',
             'PYTHONIOENCODING' => 'utf-8',
-        ], fn ($v) => $v !== null && $v !== '');
+            'PYTHONUNBUFFERED' => '1',
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    /** @param array<string, string> $extra */
+    /** @return array<string, string> */
+    private function ambienteProcessoCompleto(array $extra): array
+    {
+        $env = [];
+
+        foreach ($_SERVER as $chave => $valor) {
+            if (! is_string($chave) || ! is_string($valor) || $valor === '') {
+                continue;
+            }
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $chave)) {
+                $env[$chave] = $valor;
+            }
+        }
+
+        foreach ($_ENV as $chave => $valor) {
+            if (is_string($chave) && is_string($valor) && $valor !== '') {
+                $env[$chave] = $valor;
+            }
+        }
+
+        foreach (self::WINDOWS_ENV_KEYS as $chave) {
+            $valor = getenv($chave);
+            if (is_string($valor) && $valor !== '') {
+                $env[$chave] = $valor;
+            }
+        }
+
+        return array_merge($env, $extra);
+    }
+
+    /** @param list<string> $comando */
+    /** @param array<string, string> $env */
+    private function gravarDebugContexto(string $debugDir, array $comando, array $env): void
+    {
+        $sanitized = $env;
+        foreach (['SIGO_PASS', 'SIGO_USER'] as $k) {
+            if (isset($sanitized[$k])) {
+                $sanitized[$k] = $k === 'SIGO_PASS' ? '***' : $sanitized[$k];
+            }
+        }
+
+        File::put($debugDir.'/php_context.json', json_encode([
+            'php_binary' => PHP_BINARY,
+            'php_sapi' => PHP_SAPI,
+            'cwd' => getcwd(),
+            'comando' => $comando,
+            'sigo_python' => config('sigo.python'),
+            'env' => $sanitized,
+            'timestamp' => now()->toIso8601String(),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    private function gravarSaidaProcesso(string $debugDir, Process $process, ?ProcessFailedException $e = null): void
+    {
+        File::put($debugDir.'/stdout.log', $process->getOutput());
+        File::put($debugDir.'/stderr.log', $process->getErrorOutput());
+        File::put($debugDir.'/exit_code.txt', (string) $process->getExitCode());
+
+        if ($e !== null) {
+            File::put($debugDir.'/erro.txt', $this->extrairErroProcesso($process, $e));
+        }
     }
 
     /** @return array<string, mixed>|null */
@@ -369,10 +512,10 @@ class SigoInsumosExtracaoService
 
         $stderr = trim($process->getErrorOutput());
         if ($stderr !== '') {
-            return Str::limit($stderr, 500);
+            return $stderr;
         }
 
-        return Str::limit($e->getMessage(), 500);
+        return $e->getMessage();
     }
 
     private function localizarLog(string $dir): ?string

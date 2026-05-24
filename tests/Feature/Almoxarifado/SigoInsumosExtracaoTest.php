@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Almoxarifado;
 
+use App\Jobs\ExtrairSigoInsumosJob;
+use App\Models\Almoxarifado\SigoExtracao;
 use App\Models\Perfil;
 use App\Models\User;
 use App\Support\Almoxarifado\SigoInsumosExtracaoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Mockery;
 use Tests\TestCase;
 
@@ -64,34 +68,63 @@ class SigoInsumosExtracaoTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_extracao_valida_credenciais_e_redireciona_com_resultado(): void
+    public function test_extracao_valida_credenciais_e_enfileira_job(): void
     {
+        config(['queue.default' => 'database']);
+        Queue::fake();
+
+        $uuid = (string) Str::uuid();
+        $registro = new SigoExtracao([
+            'uuid' => $uuid,
+            'user_id' => 1,
+            'sigo_usuario' => 'usuario.sigo',
+            'status' => SigoExtracao::STATUS_PENDENTE,
+            'diretorio_relativo' => 'almoxarifado/sigo-extracoes/'.$uuid,
+        ]);
+        $registro->id = 99;
+
         $mock = Mockery::mock(SigoInsumosExtracaoService::class);
-        $mock->shouldReceive('extrair')
+        $mock->shouldReceive('iniciarExtracao')
             ->once()
-            ->with('usuario.sigo', 'senha123')
-            ->andReturn([
-                'ok' => true,
-                'token' => '20260524_teste1234',
-                'resumo' => [
-                    'ok' => true,
-                    'data_extracao' => '2026-05-24 10:00:00',
-                    'paginas_lidas' => 12,
-                    'registros_brutos' => 300,
-                    'registros_unicos' => 280,
-                ],
-            ]);
+            ->with(Mockery::type('int'), 'usuario.sigo', 'senha123')
+            ->andReturn($registro);
 
         $this->app->instance(SigoInsumosExtracaoService::class, $mock);
 
-        $this->actingAs($this->usuarioGestao())
+        $user = $this->usuarioGestao();
+
+        $this->actingAs($user)
             ->post(route('almoxarifado.sigo-insumos.extrair'), [
                 'sigo_usuario' => 'usuario.sigo',
                 'sigo_senha' => 'senha123',
             ])
             ->assertRedirect(route('almoxarifado.sigo-insumos.index'))
             ->assertSessionHas('success')
-            ->assertSessionHas('sigo_extracao_resultado');
+            ->assertSessionHas('sigo_extracao_uuid', $uuid);
+
+        Queue::assertPushed(ExtrairSigoInsumosJob::class, fn (ExtrairSigoInsumosJob $job) => $job->sigoExtracaoId === 99);
+    }
+
+    public function test_status_retorna_json_da_extracao_do_usuario(): void
+    {
+        $user = $this->usuarioGestao();
+        $registro = SigoExtracao::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'sigo_usuario' => 'usuario.sigo',
+            'status' => SigoExtracao::STATUS_CONCLUIDO,
+            'paginas_lidas' => 5,
+            'registros_brutos' => 100,
+            'registros_unicos' => 90,
+            'finalizado_em' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('almoxarifado.sigo-insumos.status', ['uuid' => $registro->uuid]))
+            ->assertOk()
+            ->assertJsonPath('uuid', $registro->uuid)
+            ->assertJsonPath('status', 'concluido')
+            ->assertJsonPath('registros_unicos', 90);
     }
 
     public function test_extracao_exige_usuario_e_senha(): void

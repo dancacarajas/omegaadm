@@ -53,17 +53,58 @@ TIMEOUT_MS = int(os.environ.get("SIGO_TIMEOUT_MS", "60000"))
 
 # Ajuste estes seletores após inspecionar o HTML no navegador (F12).
 SELECTORS = {
-    "login_user": 'input[name*="Usuario"], input[name*="usuario"], input[type="text"]',
-    "login_pass": 'input[name*="Senha"], input[name*="senha"], input[type="password"]',
-    "login_submit": 'input[type="submit"], button[type="submit"]',
-    "search_input": (
-        'input[placeholder*="Descrição"], input[placeholder*="Detalhe"], '
-        'input[placeholder*="Código"], input[name*="Insumo"], input[name*="insumo"]'
+    "login_user": (
+        'input[name*="Usuario"], input[name*="usuario"], input[id*="Usuario"], '
+        'input[id*="Login"], input[name*="Login"], input[type="text"]'
     ),
-    "search_button": 'input[type="submit"], button[type="submit"], input[value*="Pesquis"], button:has-text("Pesquis")',
+    "login_pass": (
+        'input[name*="Senha"], input[name*="senha"], input[id*="Senha"], '
+        'input[id*="Password"], input[type="password"]'
+    ),
+    "login_submit": (
+        'input[type="submit"], button[type="submit"], '
+        'input[value*="Entrar"], input[value*="Login"], button:has-text("Entrar")'
+    ),
+    "search_input": (
+        'input[placeholder*="Descrição"], input[placeholder*="Descricao"], '
+        'input[placeholder*="Detalhe"], input[placeholder*="Código"], input[placeholder*="Codigo"], '
+        'input[name*="Insumo"], input[name*="insumo"], input[id*="Insumo"], input[id*="insumo"], '
+        'input[name*="Descricao"], input[id*="Descricao"], input[name*="Detalhe"], input[id*="Detalhe"], '
+        'input[name*="Codigo"], input[id*="Codigo"], input[type="text"]:visible'
+    ),
+    "search_button": (
+        'input[type="submit"], button[type="submit"], '
+        'input[value*="Pesquis"], input[value*="Buscar"], '
+        'button:has-text("Pesquis"), button:has-text("Buscar")'
+    ),
     "results_table": "table",
     "pagination_links": 'a:has-text("2"), .pagination a, a[href*="Page"]',
 }
+
+LOGIN_PATHS = (
+    "/SIGO/Login",
+    "/SIGO/Login.aspx",
+    "/Login.aspx",
+    "/SIGO/Default.aspx",
+)
+
+SEARCH_INPUT_CANDIDATES = [
+    'input[placeholder*="Descrição" i]',
+    'input[placeholder*="Descricao" i]',
+    'input[placeholder*="Detalhe" i]',
+    'input[placeholder*="Código" i]',
+    'input[placeholder*="Codigo" i]',
+    'input[name*="Insumo" i]',
+    'input[id*="Insumo" i]',
+    'input[name*="Descricao" i]',
+    'input[id*="Descricao" i]',
+    'input[name*="Detalhe" i]',
+    'input[id*="Detalhe" i]',
+    'input[name*="Codigo" i]',
+    'input[id*="Codigo" i]',
+    'input[name*="txt" i][type="text"]',
+    'form input[type="text"]:visible',
+]
 
 CAMPOS = ("cod", "insumo", "detalhe", "und", "grupo", "familia")
 HEADER_ALIASES = {
@@ -110,22 +151,46 @@ def configurar_log(output_dir: Path) -> logging.Logger:
     return logger
 
 
+def locator_visivel(page: Page, seletores: list[str], timeout_ms: int = 8000):
+    for seletor in seletores:
+        loc = page.locator(seletor).first
+        try:
+            loc.wait_for(state="visible", timeout=timeout_ms)
+            if loc.count() > 0 and loc.is_visible():
+                return loc
+        except Exception:  # noqa: BLE001
+            continue
+    return None
+
+
 def fazer_login(page: Page, user: str, password: str, logger: logging.Logger) -> None:
-    login_url = f"{BASE_URL}{LOGIN_PATH}"
-    logger.info("Acessando login: %s", login_url)
-    page.goto(login_url, wait_until="domcontentloaded", timeout=TIMEOUT_MS)
+    login_ok = False
+    for path in LOGIN_PATHS:
+        login_url = f"{BASE_URL}{path}"
+        logger.info("Acessando login: %s", login_url)
+        try:
+            page.goto(login_url, wait_until="domcontentloaded", timeout=TIMEOUT_MS)
+            page.wait_for_load_state("networkidle", timeout=min(TIMEOUT_MS, 30000))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Falha ao abrir %s: %s", login_url, exc)
+            continue
 
-    user_input = page.locator(SELECTORS["login_user"]).first
-    pass_input = page.locator(SELECTORS["login_pass"]).first
-    if user_input.count() == 0 or pass_input.count() == 0:
-        logger.warning("Campos de login não encontrados; tentando continuar (sessão já autenticada?)")
-        return
+        user_input = page.locator(SELECTORS["login_user"]).first
+        pass_input = page.locator(SELECTORS["login_pass"]).first
+        if user_input.count() == 0 or pass_input.count() == 0:
+            logger.warning("Campos de login não encontrados em %s", login_url)
+            continue
 
-    user_input.fill(user)
-    pass_input.fill(password)
-    page.locator(SELECTORS["login_submit"]).first.click()
-    page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
-    logger.info("Login enviado")
+        user_input.fill(user)
+        pass_input.fill(password)
+        page.locator(SELECTORS["login_submit"]).first.click()
+        page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+        logger.info("Login enviado via %s", login_url)
+        login_ok = True
+        break
+
+    if not login_ok:
+        logger.warning("Login automático não concluído; tentando continuar (sessão existente?)")
 
 
 def ir_para_novo_pm(page: Page, logger: logging.Logger) -> None:
@@ -133,6 +198,14 @@ def ir_para_novo_pm(page: Page, logger: logging.Logger) -> None:
     logger.info("Abrindo tela Novo PM: %s", url)
     page.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_MS)
     page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+
+    campo = locator_visivel(page, SEARCH_INPUT_CANDIDATES, timeout_ms=TIMEOUT_MS)
+    if campo is None:
+        raise RuntimeError(
+            "Campo de busca não encontrado na tela Novo PM. "
+            "Verifique login, URL ou seletores (debug: screenshot/HTML em debug/)."
+        )
+    logger.info("Campo de busca localizado: %s", campo)
 
 
 def mapear_colunas(cabecalhos: list[str]) -> dict[str, int]:
@@ -206,14 +279,16 @@ def extrair_linhas(page: Page, logger: logging.Logger) -> list[Insumo]:
 
 
 def pesquisar(page: Page, termo: str, logger: logging.Logger) -> None:
-    campo = page.locator(SELECTORS["search_input"]).first
-    campo.wait_for(state="visible", timeout=TIMEOUT_MS)
+    campo = locator_visivel(page, SEARCH_INPUT_CANDIDATES, timeout_ms=TIMEOUT_MS)
+    if campo is None:
+        raise RuntimeError("Campo de busca não visível para pesquisa.")
+
     campo.fill("")
     if termo:
         campo.fill(termo)
 
     botao = page.locator(SELECTORS["search_button"]).first
-    if botao.count() > 0:
+    if botao.count() > 0 and botao.is_visible():
         botao.click()
     else:
         campo.press("Enter")
@@ -324,6 +399,23 @@ def termos_varredura() -> list[str]:
     return [""] + list(string.ascii_uppercase) + list(string.digits)
 
 
+def salvar_debug_falha(page: Page | None, debug_dir: Path | None, exc: Exception, logger: logging.Logger) -> None:
+    if debug_dir is None:
+        return
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    (debug_dir / "python_erro.txt").write_text(str(exc), encoding="utf-8")
+    if page is None:
+        return
+    try:
+        page.screenshot(path=str(debug_dir / "falha_screenshot.png"), full_page=True)
+    except Exception as shot_exc:  # noqa: BLE001
+        logger.warning("Não foi possível salvar screenshot: %s", shot_exc)
+    try:
+        (debug_dir / "falha_page.html").write_text(page.content(), encoding="utf-8")
+    except Exception as html_exc:  # noqa: BLE001
+        logger.warning("Não foi possível salvar HTML: %s", html_exc)
+
+
 def executar_extracao(
     user: str,
     password: str,
@@ -334,6 +426,7 @@ def executar_extracao(
     target_path: str | None = None,
     headless: bool | None = None,
     timeout_ms: int | None = None,
+    debug_dir: Path | None = None,
 ) -> dict:
     global BASE_URL, LOGIN_PATH, TARGET_PATH, HEADLESS, TIMEOUT_MS, OUTPUT_DIR
 
@@ -352,12 +445,14 @@ def executar_extracao(
     todos_brutos: list[Insumo] = []
     total_paginas = 0
     erro: str | None = None
+    page_atual: Page | None = None
 
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=HEADLESS)
             context = browser.new_context(ignore_https_errors=True)
             page = context.new_page()
+            page_atual = page
             page.set_default_timeout(TIMEOUT_MS)
 
             try:
@@ -388,6 +483,7 @@ def executar_extracao(
     except Exception as exc:  # noqa: BLE001
         erro = str(exc)
         logger.exception("Falha na extração SIGO")
+        salvar_debug_falha(page_atual, debug_dir, exc, logger)
 
     unicos = deduplicar(todos_brutos)
     xlsx_path = csv_path = resumo_path = None
@@ -429,6 +525,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--login-path", default=os.environ.get("SIGO_LOGIN_PATH", ""))
     parser.add_argument("--target-path", default=os.environ.get("SIGO_PM_PATH", ""))
     parser.add_argument("--headless", choices=("0", "1"), default=os.environ.get("SIGO_HEADLESS", "1"))
+    parser.add_argument("--debug-dir", default=os.environ.get("SIGO_DEBUG_DIR", ""))
     return parser.parse_args()
 
 
@@ -443,6 +540,8 @@ def main() -> int:
     output_dir = Path(args.output_dir or (Path(__file__).resolve().parent.parent / "tmp" / "sigo-extracao"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    debug_dir = Path(args.debug_dir) if args.debug_dir else None
+
     resumo = executar_extracao(
         user,
         password,
@@ -451,6 +550,7 @@ def main() -> int:
         login_path=args.login_path or None,
         target_path=args.target_path or None,
         headless=args.headless != "0",
+        debug_dir=debug_dir,
     )
 
     print("SIGO_RESULT:" + json.dumps(resumo, ensure_ascii=False))

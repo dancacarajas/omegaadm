@@ -354,6 +354,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/painel', [MobilizacaoMaterialController::class, 'painel'])->name('painel');
         Route::get('/sigo-insumos', [SigoInsumosController::class, 'index'])->name('sigo-insumos.index');
         Route::post('/sigo-insumos/extrair', [SigoInsumosController::class, 'extrair'])->name('sigo-insumos.extrair');
+        Route::get('/sigo-insumos/status/{uuid}', [SigoInsumosController::class, 'status'])->name('sigo-insumos.status');
         Route::get('/sigo-insumos/download/{token}/{tipo}', [SigoInsumosController::class, 'download'])->name('sigo-insumos.download');
         Route::get('/mobilizacao-materiais/exportar-excel', [MobilizacaoMaterialController::class, 'exportarExcel'])->name('mobilizacao-materiais.exportar-excel');
         Route::post('/mobilizacao-materiais/gerar-cobranca', [MobilizacaoMaterialController::class, 'gerarCobranca'])->name('mobilizacao-materiais.gerar-cobranca');

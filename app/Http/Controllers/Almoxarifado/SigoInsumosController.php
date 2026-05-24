@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Almoxarifado;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ExtrairSigoInsumosJob;
+use App\Models\Almoxarifado\SigoExtracao;
 use App\Support\Almoxarifado\AlmoxarifadoAcesso;
 use App\Support\Almoxarifado\SigoInsumosExtracaoService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -24,12 +27,25 @@ class SigoInsumosController extends Controller
         $status = $this->extracao->statusDependencias();
         $dependenciasOk = ! isset($status['diagnostico']);
 
+        $extracaoAtiva = null;
+        $uuidSessao = session('sigo_extracao_uuid');
+        if (is_string($uuidSessao) && $uuidSessao !== '') {
+            $registro = SigoExtracao::query()
+                ->where('uuid', $uuidSessao)
+                ->where('user_id', auth()->id())
+                ->first();
+            if ($registro) {
+                $extracaoAtiva = $registro->paraPainel();
+            }
+        }
+
         return view('almoxarifado.sigo-insumos.index', [
             'dependenciasOk' => $dependenciasOk,
             'dependenciasMsg' => $status['diagnostico'] ?? null,
             'pythonDetectado' => $status['python'] ?? null,
             'sigoUrl' => config('sigo.base_url').config('sigo.novo_pm_path'),
-            'ultimoResultado' => session('sigo_extracao_resultado'),
+            'extracaoAtiva' => $extracaoAtiva,
+            'queueConnection' => config('queue.default'),
         ]);
     }
 
@@ -45,10 +61,9 @@ class SigoInsumosController extends Controller
             'sigo_senha.required' => 'Informe a senha do SIGO.',
         ]);
 
-        set_time_limit((int) config('sigo.timeout_seconds', 3600));
-
         try {
-            $resultado = $this->extracao->extrair(
+            $registro = $this->extracao->iniciarExtracao(
+                (int) auth()->id(),
                 $data['sigo_usuario'],
                 $data['sigo_senha'],
             );
@@ -58,27 +73,31 @@ class SigoInsumosController extends Controller
                 ->with('error', $e->getMessage());
         }
 
-        if (! $resultado['ok']) {
-            $erro = $this->extracao->formatarErroParaUsuario($resultado['resumo']['erro'] ?? null);
-
-            return redirect()
-                ->route('almoxarifado.sigo-insumos.index')
-                ->with('error', $erro)
-                ->with('sigo_extracao_resultado', array_merge($resultado['resumo'], [
-                    'erro' => $erro,
-                ]));
+        $job = new ExtrairSigoInsumosJob($registro->id);
+        if (config('queue.default') === 'sync') {
+            dispatch_sync($job);
+        } else {
+            dispatch($job);
         }
 
         return redirect()
             ->route('almoxarifado.sigo-insumos.index')
-            ->with('success', sprintf(
-                'Extração concluída: %s insumos únicos (%s páginas lidas).',
-                number_format((int) ($resultado['resumo']['registros_unicos'] ?? 0), 0, ',', '.'),
-                number_format((int) ($resultado['resumo']['paginas_lidas'] ?? 0), 0, ',', '.'),
-            ))
-            ->with('sigo_extracao_resultado', array_merge($resultado['resumo'], [
-                'token' => $resultado['token'],
-            ]));
+            ->with('success', 'Extração iniciada. Aguarde o processamento na tela.')
+            ->with('sigo_extracao_uuid', $registro->uuid);
+    }
+
+    public function status(string $uuid): JsonResponse
+    {
+        AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeExtrairInsumosSigo());
+
+        $registro = SigoExtracao::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        abort_unless($registro !== null, 404);
+
+        return response()->json($registro->paraPainel());
     }
 
     public function download(Request $request, string $token, string $tipo): BinaryFileResponse
@@ -86,14 +105,15 @@ class SigoInsumosController extends Controller
         AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeExtrairInsumosSigo());
 
         $tipo = strtolower($tipo);
-        abort_unless(in_array($tipo, ['xlsx', 'csv', 'log'], true), 404);
+        abort_unless(in_array($tipo, ['xlsx', 'csv', 'log', 'debug'], true), 404);
 
-        $path = $this->extracao->caminhoArquivo($token, $tipo);
+        $path = $this->extracao->caminhoArquivo($token, $tipo, (int) auth()->id());
         abort_unless($path !== null, 404);
 
         $nome = match ($tipo) {
             'xlsx' => 'insumos_sigo_extraidos.xlsx',
             'csv' => 'insumos_sigo_extraidos.csv',
+            'debug' => 'sigo_debug_erro.txt',
             default => basename($path),
         };
 

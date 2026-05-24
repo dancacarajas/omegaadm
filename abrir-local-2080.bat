@@ -62,16 +62,18 @@ goto FALHA
 :DB_OK
 echo     MySQL pronto.
 
-echo [3/4] Laravel :2080 e Vite...
+echo [3/4] Laravel :2080, fila SIGO e Vite...
 start "Omega286 - Laravel" cmd /k "cd /d %~dp0 && C:\xampp\php\php.exe artisan config:clear && C:\xampp\php\php.exe artisan serve --host=127.0.0.1 --port=2080"
 timeout /t 2 /nobreak >nul
+start "Omega286 - Queue" cmd /k "cd /d %~dp0 && C:\xampp\php\php.exe artisan queue:work --sleep=3 --tries=1 --timeout=3700"
+timeout /t 1 /nobreak >nul
 start "Omega286 - Vite" cmd /k "cd /d %~dp0 && npm run dev"
 
 echo [4/4] A aguardar HTTP e a abrir o navegador...
 timeout /t 5 /nobreak >nul
 start "" "http://127.0.0.1:2080/"
 echo.
-echo Pronto. Mantem abertas as janelas "Laravel" e "Vite". Esta pode fechar.
+echo Pronto. Mantem abertas as janelas "Laravel", "Queue" e "Vite". Esta pode fechar.
 timeout /t 4 /nobreak >nul
 exit /b 0
 
