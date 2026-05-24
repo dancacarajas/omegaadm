@@ -63,7 +63,7 @@ goto FALHA
 echo     MySQL pronto.
 
 echo [3/4] Laravel :2080 e Vite...
-start "Omega286 - Laravel" cmd /k "cd /d %~dp0 && php artisan serve --host=127.0.0.1 --port=2080"
+start "Omega286 - Laravel" cmd /k "cd /d %~dp0 && C:\xampp\php\php.exe artisan config:clear && C:\xampp\php\php.exe artisan serve --host=127.0.0.1 --port=2080"
 timeout /t 2 /nobreak >nul
 start "Omega286 - Vite" cmd /k "cd /d %~dp0 && npm run dev"
 

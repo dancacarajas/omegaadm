@@ -15,6 +15,11 @@ class SigoInsumosExtracaoService
 
     private const PYTHON_CHECK = 'from playwright.sync_api import Page, sync_playwright; import openpyxl; print("ok")';
 
+    private function scriptVerificacaoDeps(): string
+    {
+        return (string) config('sigo.check_script', base_path('scripts/sigo_check_deps.py'));
+    }
+
     /** @return array{ok: bool, token: string, resumo: array<string, mixed>} */
     public function extrair(string $usuario, string $senha): array
     {
@@ -163,6 +168,19 @@ class SigoInsumosExtracaoService
     private function resolverPython(): string
     {
         $configurado = trim((string) config('sigo.python', 'python'));
+        if ($configurado !== '' && $configurado !== 'python' && is_file($configurado)) {
+            $resultado = $this->testarPython($configurado);
+            if ($resultado['ok']) {
+                return $configurado;
+            }
+
+            throw new RuntimeException(
+                'SIGO_PYTHON configurado, mas a verificação falhou em '.$configurado.': '.$resultado['erro']
+                .'. Execute: '.$configurado.' -m pip install --force-reinstall playwright openpyxl && '
+                .$configurado.' -m playwright install chromium'
+            );
+        }
+
         $candidatos = array_values(array_unique(array_filter([
             $configurado !== '' ? $configurado : null,
             PHP_OS_FAMILY === 'Windows' ? 'py -3' : null,
@@ -229,13 +247,32 @@ class SigoInsumosExtracaoService
     /** @return array{ok: bool, erro: string} */
     private function testarPython(string $python): array
     {
-        if (str_contains($python, ' ')) {
+        $checkScript = $this->scriptVerificacaoDeps();
+        if (is_file($checkScript)) {
+            if (str_contains($python, ' ')) {
+                $process = Process::fromShellCommandline(
+                    $python.' '.escapeshellarg($checkScript),
+                    base_path(),
+                    null,
+                    null,
+                    90,
+                );
+            } else {
+                $process = new Process(
+                    [$python, $checkScript],
+                    base_path(),
+                    null,
+                    null,
+                    90,
+                );
+            }
+        } elseif (str_contains($python, ' ')) {
             $process = Process::fromShellCommandline(
                 $python.' -c "'.self::PYTHON_CHECK.'"',
                 base_path(),
                 null,
                 null,
-                60,
+                90,
             );
         } else {
             $process = new Process(
@@ -243,7 +280,7 @@ class SigoInsumosExtracaoService
                 base_path(),
                 null,
                 null,
-                60,
+                90,
             );
         }
 

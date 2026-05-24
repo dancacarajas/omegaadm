@@ -11,6 +11,7 @@ return [
             : 'python'
     ),
     'script' => base_path('scripts/extrair_insumos_sigo.py'),
+    'check_script' => base_path('scripts/sigo_check_deps.py'),
     'timeout_seconds' => (int) env('SIGO_EXTRACAO_TIMEOUT', 3600),
     'headless' => env('SIGO_HEADLESS', '1') !== '0',
 ];
