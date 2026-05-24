@@ -21,19 +21,13 @@ class SigoInsumosController extends Controller
     {
         AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeExtrairInsumosSigo());
 
-        $dependenciasOk = true;
-        $dependenciasMsg = null;
-
-        try {
-            $this->extracao->verificarDependencias();
-        } catch (RuntimeException $e) {
-            $dependenciasOk = false;
-            $dependenciasMsg = $e->getMessage();
-        }
+        $status = $this->extracao->statusDependencias();
+        $dependenciasOk = ! isset($status['diagnostico']);
 
         return view('almoxarifado.sigo-insumos.index', [
             'dependenciasOk' => $dependenciasOk,
-            'dependenciasMsg' => $dependenciasMsg,
+            'dependenciasMsg' => $status['diagnostico'] ?? null,
+            'pythonDetectado' => $status['python'] ?? null,
             'sigoUrl' => config('sigo.base_url').config('sigo.novo_pm_path'),
             'ultimoResultado' => session('sigo_extracao_resultado'),
         ]);

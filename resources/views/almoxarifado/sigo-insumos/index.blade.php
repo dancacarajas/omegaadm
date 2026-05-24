@@ -26,8 +26,16 @@
         <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
             <p class="font-bold">Ambiente não preparado para extração</p>
             <p class="mt-1">{{ $dependenciasMsg }}</p>
-            <pre class="mt-3 overflow-x-auto rounded-xl bg-white/80 p-3 text-xs text-zinc-800">pip install -r scripts/requirements-sigo-extractor.txt
-playwright install chromium</pre>
+            <p class="mt-3 font-semibold">No PowerShell, dentro da pasta do projeto:</p>
+            <pre class="mt-2 overflow-x-auto rounded-xl bg-white/80 p-3 text-xs text-zinc-800">cd C:\Users\Administrator\Documents\omega286
+python -m pip install -r scripts/requirements-sigo-extractor.txt
+python -m playwright install chromium</pre>
+            <p class="mt-3 text-xs">Se ainda falhar, adicione no .env: SIGO_PYTHON=C:\Users\Administrator\AppData\Local\Programs\Python\Python313\python.exe</p>
+            <p class="mt-2 text-xs">Reinicie o Laravel (php artisan serve --port=2080) e atualize esta página.</p>
+        </div>
+    @elseif (! empty($pythonDetectado))
+        <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-950">
+            Ambiente pronto. Python: <span class="font-mono text-xs">{{ $pythonDetectado }}</span>
         </div>
     @endif
 

@@ -95,46 +95,164 @@ class SigoInsumosExtracaoService
         return $real;
     }
 
-    /** @return list<string> */
-    public function verificarDependencias(): array
+    /** @return array{python: string, script: string, diagnostico?: string} */
+    public function statusDependencias(): array
     {
-        $python = (string) config('sigo.python', 'python');
         $script = (string) config('sigo.script', '');
 
         if ($script === '' || ! is_file($script)) {
-            throw new RuntimeException('Script de extração SIGO não encontrado em scripts/extrair_insumos_sigo.py.');
+            return [
+                'python' => '',
+                'script' => $script,
+                'diagnostico' => 'Script não encontrado: scripts/extrair_insumos_sigo.py',
+            ];
         }
 
-        $check = Process::fromShellCommandline(
-            escapeshellarg($python).' -c "import playwright, openpyxl"',
-            base_path(),
-            null,
-            null,
-            30,
-        );
-        $check->run();
+        try {
+            $python = $this->resolverPython();
 
-        if (! $check->isSuccessful()) {
-            throw new RuntimeException(
-                'Dependências Python ausentes. Execute: pip install -r scripts/requirements-sigo-extractor.txt && playwright install chromium'
+            return ['python' => $python, 'script' => $script];
+        } catch (RuntimeException $e) {
+            return [
+                'python' => (string) config('sigo.python', 'python'),
+                'script' => $script,
+                'diagnostico' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /** @return list<string> */
+    public function verificarDependencias(): array
+    {
+        $status = $this->statusDependencias();
+        if (isset($status['diagnostico'])) {
+            throw new RuntimeException($status['diagnostico']);
+        }
+
+        return [$status['python'], $status['script']];
+    }
+
+    private function resolverPython(): string
+    {
+        $configurado = trim((string) config('sigo.python', 'python'));
+        $candidatos = array_values(array_unique(array_filter([
+            $configurado !== '' ? $configurado : null,
+            PHP_OS_FAMILY === 'Windows' ? 'py -3' : null,
+            'python3',
+            'python',
+        ])));
+
+        $falhas = [];
+        foreach ($candidatos as $candidato) {
+            $resultado = $this->testarPython($candidato);
+            if ($resultado['ok']) {
+                return $candidato;
+            }
+            $falhas[] = $candidato.': '.$resultado['erro'];
+        }
+
+        foreach ($this->caminhosPythonWindows() as $caminho) {
+            if (in_array($caminho, $candidatos, true)) {
+                continue;
+            }
+            $resultado = $this->testarPython($caminho);
+            if ($resultado['ok']) {
+                return $caminho;
+            }
+            $falhas[] = $caminho.': '.$resultado['erro'];
+        }
+
+        throw new RuntimeException(
+            'Dependências Python ausentes ou Python não encontrado pelo PHP. '
+            .'Configure SIGO_PYTHON no .env com o caminho completo do python.exe. '
+            .'Detalhes: '.implode(' | ', array_slice($falhas, 0, 3))
+        );
+    }
+
+    /** @return list<string> */
+    private function caminhosPythonWindows(): array
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return [];
+        }
+
+        $caminhos = [];
+        $where = Process::fromShellCommandline('where python', base_path());
+        $where->run();
+        if ($where->isSuccessful()) {
+            foreach (preg_split('/\R/', trim($where->getOutput())) as $linha) {
+                $linha = trim($linha);
+                if ($linha !== '' && ! str_contains(strtolower($linha), 'windowsapps')) {
+                    $caminhos[] = $linha;
+                }
+            }
+        }
+
+        $localApp = getenv('LOCALAPPDATA') ?: '';
+        if ($localApp !== '') {
+            foreach (glob($localApp.DIRECTORY_SEPARATOR.'Programs'.DIRECTORY_SEPARATOR.'Python'.DIRECTORY_SEPARATOR.'Python*'.DIRECTORY_SEPARATOR.'python.exe') ?: [] as $path) {
+                $caminhos[] = $path;
+            }
+        }
+
+        return array_values(array_unique($caminhos));
+    }
+
+    /** @return array{ok: bool, erro: string} */
+    private function testarPython(string $python): array
+    {
+        if (str_contains($python, ' ')) {
+            $process = Process::fromShellCommandline(
+                $python.' -c "import playwright, openpyxl; print(\'ok\')"',
+                base_path(),
+                null,
+                null,
+                45,
+            );
+        } else {
+            $process = new Process(
+                [$python, '-c', 'import playwright, openpyxl; print("ok")'],
+                base_path(),
+                null,
+                null,
+                45,
             );
         }
 
-        return [$python, $script];
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            return ['ok' => true, 'erro' => ''];
+        }
+
+        $erro = trim($process->getErrorOutput()) ?: trim($process->getOutput()) ?: 'falha ao importar playwright/openpyxl';
+
+        return ['ok' => false, 'erro' => Str::limit($erro, 180)];
+    }
+
+    /** @return list<string> */
+    private function pythonParaComando(): array
+    {
+        [$python] = $this->verificarDependencias();
+
+        if (str_contains($python, ' ')) {
+            return preg_split('/\s+/', $python) ?: [$python];
+        }
+
+        return [$python];
     }
 
     /** @return list<string> */
     private function montarComando(string $usuario, string $senha, string $outputDir): array
     {
-        return [
-            (string) config('sigo.python', 'python'),
+        return array_merge($this->pythonParaComando(), [
             (string) config('sigo.script'),
             '--output-dir', $outputDir,
             '--base-url', (string) config('sigo.base_url'),
             '--login-path', (string) config('sigo.login_path'),
             '--target-path', (string) config('sigo.novo_pm_path'),
             '--headless', config('sigo.headless') ? '1' : '0',
-        ];
+        ]);
     }
 
     /** @return array<string, string> */
