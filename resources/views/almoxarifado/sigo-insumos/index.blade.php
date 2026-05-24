@@ -157,7 +157,7 @@ python -m playwright install chromium</pre>
             const statusUrlBase = @json($statusUrlBase);
             const downloadUrlBase = @json($downloadUrlBase);
 
-            const elAguardando = document.getElementByIdempot('sigo-status-aguardando');
+            const elAguardando = document.getElementById('sigo-status-aguardando');
             const elStatusTexto = document.getElementById('sigo-status-texto');
             const elDl = document.getElementById('sigo-resultado-dl');
             const elDownloads = document.getElementById('sigo-downloads');
