@@ -98,18 +98,22 @@
     </div>
 
     <div class="mt-6 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-5">
-        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Almoxarifado — papel operacional</p>
-        <p class="mt-1 text-sm text-brand-gray">Define o que o usuário pode fazer no controle de materiais da mobilização (além das ações CRUD na tabela acima).</p>
-        <div class="mt-4 max-w-md">
-            <label>
-                <span class="text-xs font-bold uppercase text-brand-gray">Papel no módulo</span>
-                <select name="permissoes[almoxarifado][papel]" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
-                    <option value="">Automático (conforme CRUD)</option>
-                    @foreach ($almoxarifadoPapeis as $papelKey => $papelLabel)
-                        <option value="{{ $papelKey }}" @selected(old('permissoes.almoxarifado.papel', $almoxarifadoPapelInicial ?? '') === $papelKey)>{{ $papelLabel }}</option>
-                    @endforeach
-                </select>
-            </label>
+        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Almoxarifado — áreas do menu lateral</p>
+        <p class="mt-1 text-sm text-brand-gray">Marque quais opções do Almoxarifado este perfil pode abrir. Só vale se o módulo <strong class="text-brand-black">Almoxarifado</strong> estiver liberado na tabela acima.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($almoxarifadoSecoes as $secaoKey => $secaoLabel)
+                @php
+                    $checked = (bool) old(
+                        "permissoes.almoxarifado.secoes.{$secaoKey}",
+                        $almoxarifadoSecoesInicial[$secaoKey] ?? true,
+                    );
+                @endphp
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-3 shadow-sm transition hover:border-brand-burgundy/40">
+                    <input type="hidden" name="permissoes[almoxarifado][secoes][{{ $secaoKey }}]" value="0">
+                    <input type="checkbox" name="permissoes[almoxarifado][secoes][{{ $secaoKey }}]" value="1" class="mt-0.5 h-5 w-5 shrink-0 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked($checked)>
+                    <span class="text-sm font-semibold text-brand-black">{{ $secaoLabel }}</span>
+                </label>
+            @endforeach
         </div>
     </div>
 

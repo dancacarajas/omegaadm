@@ -60,6 +60,13 @@ class EnsurePerfilPermissaoRota
             abort(403, 'Seu perfil não tem permissão para esta ação no RH.');
         }
 
+        if ($modulo === 'almoxarifado') {
+            $secao = User::almoxarifadoSecaoFromRouteName($routeName);
+            if ($secao !== null && ! $user->podeSecaoAlmoxarifado($secao)) {
+                abort(403, 'Seu perfil não tem acesso a esta área do Almoxarifado.');
+            }
+        }
+
         return $next($request);
     }
 

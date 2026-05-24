@@ -575,6 +575,125 @@ class User extends Authenticatable
         return null;
     }
 
+    /**
+     * Áreas do menu Almoxarifado (chave persistida em permissoes.almoxarifado.secoes.*).
+     *
+     * @return array<string, string>
+     */
+    public static function almoxarifadoSecoesDefinicao(): array
+    {
+        return [
+            'painel' => 'Painel',
+            'mobilizacao_materiais' => 'Mobilização de Materiais',
+            'sigo_insumos' => 'Extrair insumos SIGO',
+        ];
+    }
+
+    /** Nome da rota Laravel → chave de {@see almoxarifadoSecoesDefinicao()} ou null. */
+    public static function almoxarifadoSecaoFromRouteName(?string $routeName): ?string
+    {
+        if ($routeName === null || $routeName === '' || ! str_starts_with($routeName, 'almoxarifado.')) {
+            return null;
+        }
+
+        if ($routeName === 'almoxarifado.index' || $routeName === 'almoxarifado.painel') {
+            return 'painel';
+        }
+
+        if (str_starts_with($routeName, 'almoxarifado.mobilizacao-materiais')) {
+            return 'mobilizacao_materiais';
+        }
+
+        if (str_starts_with($routeName, 'almoxarifado.sigo-insumos')) {
+            return 'sigo_insumos';
+        }
+
+        return null;
+    }
+
+    /**
+     * Acesso à área específica do Almoxarifado (exige permissão no módulo + área marcada no perfil).
+     * Se permissoes.almoxarifado.secoes não existir (perfis antigos), todas as áreas ficam liberadas.
+     */
+    public function podeSecaoAlmoxarifado(string $secao): bool
+    {
+        if (! array_key_exists($secao, self::almoxarifadoSecoesDefinicao())) {
+            return false;
+        }
+
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('almoxarifado')) {
+            return false;
+        }
+
+        $perfil = $this->relationLoaded('perfil') ? $this->perfil : $this->perfil()->first();
+
+        if (! $perfil || ! $perfil->ativo) {
+            return false;
+        }
+
+        $secoes = data_get($perfil->permissoes, 'almoxarifado.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(self::almoxarifadoSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
+
+    /** Há pelo menos uma área do Almoxarifado liberada (para exibir o grupo no menu). */
+    public function temAlgumaSecaoAlmoxarifado(): bool
+    {
+        if (! $this->perfil_id) {
+            return true;
+        }
+
+        if (! $this->temQualquerPermissaoNoModulo('almoxarifado')) {
+            return false;
+        }
+
+        foreach (array_keys(self::almoxarifadoSecoesDefinicao()) as $secao) {
+            if ($this->podeSecaoAlmoxarifado($secao)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function primeiraUrlAlmoxarifadoPermitida(): ?string
+    {
+        $rotas = [
+            'painel' => fn () => route('almoxarifado.painel'),
+            'mobilizacao_materiais' => fn () => route('almoxarifado.mobilizacao-materiais.index'),
+            'sigo_insumos' => fn () => route('almoxarifado.sigo-insumos.index'),
+        ];
+
+        foreach ($rotas as $secao => $resolver) {
+            if ($this->podeSecaoAlmoxarifado($secao)) {
+                return $resolver();
+            }
+        }
+
+        return null;
+    }
+
     public function podeAcaoNoModulo(string $modulo, string $acao): bool
     {
         if (! $this->perfil_id) {
@@ -604,7 +723,7 @@ class User extends Authenticatable
             'sesmt' => fn () => $this->primeiraUrlSesmtPermitida(),
             'contratos' => fn () => route('contratos.index'),
             'patrimonial' => fn () => route('patrimonial.index'),
-            'almoxarifado' => fn () => route('almoxarifado.painel'),
+            'almoxarifado' => fn () => $this->primeiraUrlAlmoxarifadoPermitida() ?? route('almoxarifado.painel'),
             'medicao' => fn () => route('medicao.index'),
             'rdo' => fn () => route('rdo.index'),
             'acessos' => fn () => route('usuarios.index'),

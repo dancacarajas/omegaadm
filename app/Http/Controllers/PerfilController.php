@@ -67,8 +67,8 @@ class PerfilController extends Controller
             'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario(new Perfil(['ativo' => true])),
             'rhSecoes' => User::rhSecoesDefinicao(),
             'rhSecoesInicial' => $this->rhSecoesValoresFormulario(new Perfil(['ativo' => true])),
-            'almoxarifadoPapeis' => \App\Support\Almoxarifado\AlmoxarifadoAcesso::papeisDefinicao(),
-            'almoxarifadoPapelInicial' => data_get((new Perfil(['ativo' => true]))->permissoes, 'almoxarifado.papel', ''),
+            'almoxarifadoSecoes' => User::almoxarifadoSecoesDefinicao(),
+            'almoxarifadoSecoesInicial' => $this->almoxarifadoSecoesValoresFormulario(new Perfil(['ativo' => true])),
         ]);
     }
 
@@ -89,6 +89,7 @@ class PerfilController extends Controller
             'acoes' => self::acoes(),
             'sesmtSecoes' => User::sesmtSecoesDefinicao(),
             'rhSecoes' => User::rhSecoesDefinicao(),
+            'almoxarifadoSecoes' => User::almoxarifadoSecoesDefinicao(),
         ]);
     }
 
@@ -102,8 +103,8 @@ class PerfilController extends Controller
             'sesmtSecoesInicial' => $this->sesmtSecoesValoresFormulario($perfi),
             'rhSecoes' => User::rhSecoesDefinicao(),
             'rhSecoesInicial' => $this->rhSecoesValoresFormulario($perfi),
-            'almoxarifadoPapeis' => \App\Support\Almoxarifado\AlmoxarifadoAcesso::papeisDefinicao(),
-            'almoxarifadoPapelInicial' => data_get($perfi->permissoes, 'almoxarifado.papel', ''),
+            'almoxarifadoSecoes' => User::almoxarifadoSecoesDefinicao(),
+            'almoxarifadoSecoesInicial' => $this->almoxarifadoSecoesValoresFormulario($perfi),
         ]);
     }
 
@@ -160,6 +161,11 @@ class PerfilController extends Controller
             $normalized['rh']['secoes'][$key] = (bool) data_get($permissoes, "rh.secoes.{$key}");
         }
 
+        $normalized['almoxarifado']['secoes'] = [];
+        foreach (array_keys(User::almoxarifadoSecoesDefinicao()) as $key) {
+            $normalized['almoxarifado']['secoes'][$key] = (bool) data_get($permissoes, "almoxarifado.secoes.{$key}");
+        }
+
         $papel = data_get($permissoes, 'almoxarifado.papel');
         if (is_string($papel) && array_key_exists($papel, \App\Support\Almoxarifado\AlmoxarifadoAcesso::papeisDefinicao())) {
             $normalized['almoxarifado']['papel'] = $papel;
@@ -192,6 +198,21 @@ class PerfilController extends Controller
         $legacy = ! is_array($stored);
         $out = [];
         foreach (array_keys(User::rhSecoesDefinicao()) as $key) {
+            $out[$key] = $legacy ? true : (bool) data_get($stored, $key, false);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function almoxarifadoSecoesValoresFormulario(Perfil $perfil): array
+    {
+        $stored = data_get($perfil->permissoes, 'almoxarifado.secoes');
+        $legacy = ! is_array($stored);
+        $out = [];
+        foreach (array_keys(User::almoxarifadoSecoesDefinicao()) as $key) {
             $out[$key] = $legacy ? true : (bool) data_get($stored, $key, false);
         }
 

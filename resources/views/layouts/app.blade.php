@@ -56,6 +56,8 @@
                     $podeSecaoRh = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoRh($secao);
                     $podeRhAcao = fn (string $acao) => auth()->user() && auth()->user()->podeAcaoNoModulo('rh', $acao);
                     $temAlgumaSecaoRh = fn () => auth()->user() && auth()->user()->temAlgumaSecaoRh();
+                    $podeSecaoAlmoxarifado = fn (string $secao) => auth()->user() && auth()->user()->podeSecaoAlmoxarifado($secao);
+                    $temAlgumaSecaoAlmoxarifado = fn () => auth()->user() && auth()->user()->temAlgumaSecaoAlmoxarifado();
                     $temSecaoRhFrequencia = fn () => collect(['frequencia_ponto', 'frequencia_apuracao', 'frequencia_feriados', 'frequencia_justificativas', 'horarios'])
                         ->contains(fn (string $s) => $podeSecaoRh($s));
                     $temSecaoRhRelatorios = fn () => collect(['frequencia_ponto', 'beneficios', 'recrutamento'])
@@ -387,7 +389,7 @@
                             </div>
                         </div>
                         @endif
-                        @if ($podeModulo('almoxarifado'))
+                        @if ($podeModulo('almoxarifado') && $temAlgumaSecaoAlmoxarifado())
                         <div data-menu-group="almoxarifado">
                             <button type="button" data-menu-toggle="almoxarifado" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $almoxarifadoOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                 <i data-lucide="package" class="h-5 w-5"></i>
@@ -395,18 +397,24 @@
                                 <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $almoxarifadoOpen ? 'rotate-180' : '' }}" data-menu-chevron="almoxarifado"></i>
                             </button>
                             <div data-menu-panel="almoxarifado" class="{{ $almoxarifadoOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                @if ($podeSecaoAlmoxarifado('painel'))
                                 <a href="{{ route('almoxarifado.painel') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.painel') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
                                     Painel
                                 </a>
+                                @endif
+                                @if ($podeSecaoAlmoxarifado('mobilizacao_materiais'))
                                 <a href="{{ route('almoxarifado.mobilizacao-materiais.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.mobilizacao-materiais.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="clipboard-list" class="h-4 w-4"></i>
                                     Mobilização de Materiais
                                 </a>
+                                @endif
+                                @if ($podeSecaoAlmoxarifado('sigo_insumos'))
                                 <a href="{{ route('almoxarifado.sigo-insumos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.sigo-insumos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="database" class="h-4 w-4"></i>
                                     Extrair insumos SIGO
                                 </a>
+                                @endif
                             </div>
                         </div>
                         @endif

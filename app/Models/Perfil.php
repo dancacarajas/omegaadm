@@ -93,4 +93,35 @@ class Perfil extends Model
 
         return (bool) ($secoes[$secao] ?? false);
     }
+
+    /**
+     * Se o JSON do perfil ainda não tem almoxarifado.secoes, considera todas as áreas liberadas (compatibilidade).
+     */
+    public function permiteSecaoAlmoxarifado(string $secao): bool
+    {
+        if (! array_key_exists($secao, User::almoxarifadoSecoesDefinicao())) {
+            return false;
+        }
+
+        $secoes = data_get($this->permissoes, 'almoxarifado.secoes');
+        if (! is_array($secoes) || $secoes === []) {
+            return true;
+        }
+
+        $known = array_keys(User::almoxarifadoSecoesDefinicao());
+        $temChaveConhecida = false;
+        foreach ($known as $k) {
+            if (array_key_exists($k, $secoes)) {
+                $temChaveConhecida = true;
+
+                break;
+            }
+        }
+
+        if (! $temChaveConhecida) {
+            return true;
+        }
+
+        return (bool) ($secoes[$secao] ?? false);
+    }
 }
