@@ -239,8 +239,15 @@
         </div>
 
         @if ($colaboradoresVinculados->isNotEmpty())
-            <div class="beneficio-vinculo-list-grid hidden border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-gray sm:grid">
-                <span>Colaborador</span>
+            @include('rh.beneficios.partials._protocolo_entrega_cartao', ['beneficio' => $beneficio])
+
+            <div class="beneficio-vinculos-scroll">
+            <div class="beneficio-vinculos-inner">
+            <div class="beneficio-vinculo-list-grid beneficio-vinculo-list-header hidden border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-gray sm:grid">
+                <span class="flex min-w-0 items-center gap-2">
+                    <input type="checkbox" id="protocolo-selecionar-pagina" class="h-4 w-4 shrink-0 accent-brand-burgundy" title="Selecionar todos desta página">
+                    <span>Colaborador</span>
+                </span>
                 <span class="text-center">Vínculo</span>
                 <span class="text-right">{{ $requerAdesao ? 'Adesão / prazo' : 'Resumo' }}</span>
                 <span class="text-right">Entrega</span>
@@ -261,6 +268,8 @@
                         'emailMatrizDiagnostico' => $emailMatrizDiagnostico,
                     ])
                 @endforeach
+            </div>
+            </div>
             </div>
             @if ($colaboradoresVinculados->hasPages())
                 <div class="border-t border-zinc-100 bg-zinc-50/50 px-5 py-4 sm:px-6">
@@ -322,6 +331,82 @@
             sincronizarCartaoEntregue(input);
         }
     });
+
+    const formProtocolo = document.getElementById('form-protocolo-entrega');
+    const checksProtocolo = () => document.querySelectorAll('.protocolo-vinculo-check');
+    const btnGerarProtocolo = document.getElementById('btn-protocolo-gerar');
+    const labelGerarProtocolo = document.getElementById('btn-protocolo-gerar-label');
+    const selecionarPagina = document.getElementById('protocolo-selecionar-pagina');
+    const btnLimparProtocolo = document.getElementById('btn-protocolo-limpar');
+    const hintSelecaoProtocolo = document.getElementById('protocolo-selecao-hint');
+
+    function atualizarBarraProtocolo() {
+        if (!btnGerarProtocolo || !labelGerarProtocolo) {
+            return;
+        }
+        const n = [...checksProtocolo()].filter((c) => c.checked).length;
+        btnGerarProtocolo.disabled = n === 0;
+        labelGerarProtocolo.textContent = n === 0
+            ? 'Gerar PDF'
+            : `Gerar PDF (${n})`;
+        if (hintSelecaoProtocolo) {
+            if (n === 0) {
+                hintSelecaoProtocolo.classList.add('hidden');
+                hintSelecaoProtocolo.textContent = '';
+            } else {
+                hintSelecaoProtocolo.classList.remove('hidden');
+                hintSelecaoProtocolo.textContent = n === 1
+                    ? '1 colaborador selecionado para o protocolo'
+                    : `${n} colaboradores selecionados para o protocolo`;
+            }
+        }
+        if (selecionarPagina) {
+            const total = checksProtocolo().length;
+            selecionarPagina.checked = total > 0 && n === total;
+            selecionarPagina.indeterminate = n > 0 && n < total;
+        }
+    }
+
+    checksProtocolo().forEach((c) => c.addEventListener('change', atualizarBarraProtocolo));
+
+    selecionarPagina?.addEventListener('change', () => {
+        const marcar = selecionarPagina.checked;
+        checksProtocolo().forEach((c) => { c.checked = marcar; });
+        atualizarBarraProtocolo();
+    });
+
+    btnLimparProtocolo?.addEventListener('click', () => {
+        checksProtocolo().forEach((c) => { c.checked = false; });
+        if (selecionarPagina) {
+            selecionarPagina.checked = false;
+            selecionarPagina.indeterminate = false;
+        }
+        atualizarBarraProtocolo();
+    });
+
+    document.querySelectorAll('[data-gerar-protocolo-unico]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            if (!formProtocolo) {
+                return;
+            }
+            checksProtocolo().forEach((c) => { c.checked = false; });
+            const alvo = formProtocolo.querySelector(`.protocolo-vinculo-check[value="${btn.getAttribute('data-gerar-protocolo-unico')}"]`);
+            if (alvo) {
+                alvo.checked = true;
+            }
+            atualizarBarraProtocolo();
+            if (btnGerarProtocolo && !btnGerarProtocolo.disabled) {
+                formProtocolo.target = '_blank';
+                if (typeof formProtocolo.requestSubmit === 'function') {
+                    formProtocolo.requestSubmit(btnGerarProtocolo);
+                } else {
+                    btnGerarProtocolo.click();
+                }
+            }
+        });
+    });
+
+    atualizarBarraProtocolo();
 })();
 </script>
 @endpush

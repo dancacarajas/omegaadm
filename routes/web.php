@@ -460,6 +460,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('recrutamento/atualizacao-massa/aplicar', [RecrutamentoMassUpdateController::class, 'apply'])
             ->name('recrutamento.atualizacao-massa.aplicar');
         Route::resource('recrutamento', RecrutamentoController::class)->except('show');
+        Route::post('beneficios/{beneficio}/protocolo-entrega-cartao', [\App\Http\Controllers\Rh\BeneficioProtocoloEntregaCartaoController::class, 'pdf'])
+            ->whereNumber('beneficio')
+            ->name('beneficios.protocolo-entrega.pdf');
         Route::get('beneficios/adesoes', [\App\Http\Controllers\Rh\BeneficioAdesaoPainelController::class, 'index'])->name('beneficios.adesoes.index');
         Route::get('beneficios/{beneficio}/vinculos/{vinculo}/formulario-adesao', [BeneficioColaboradorController::class, 'downloadFormularioAdesao'])
             ->whereNumber(['beneficio', 'vinculo'])

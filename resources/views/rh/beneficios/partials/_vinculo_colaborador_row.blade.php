@@ -22,24 +22,35 @@
     class="group border-b border-zinc-100 bg-white transition open:bg-zinc-50/50"
 >
     <summary class="beneficio-vinculo-list-grid cursor-pointer list-none px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
-        <div class="flex min-w-0 items-center gap-3">
+        <div class="beneficio-vinculo-colaborador-wrap beneficio-vinculo-colaborador-linha">
+            <label onclick="event.stopPropagation()">
+                <input
+                    type="checkbox"
+                    form="form-protocolo-entrega"
+                    name="vinculo_ids[]"
+                    value="{{ $vinculo->id }}"
+                    class="protocolo-vinculo-check h-4 w-4 accent-brand-burgundy"
+                    aria-label="Incluir no protocolo de entrega"
+                >
+            </label>
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-burgundy-soft text-xs font-bold text-brand-burgundy ring-1 ring-brand-burgundy/10">
                 {{ $iniciais ?: '?' }}
             </span>
-            <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-brand-black">{{ $nome }}</p>
-                <p class="truncate text-xs text-brand-gray">{{ $vinculo->colaborador->cargo ?: '—' }}</p>
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-bold uppercase leading-snug tracking-wide text-brand-black">{{ $nome }}</p>
+                <p class="truncate text-xs font-medium uppercase leading-snug text-brand-gray">{{ $vinculo->colaborador->cargo ?: '—' }}</p>
             </div>
         </div>
 
-        <div class="flex sm:justify-center">
+        <div class="beneficio-vinculo-meta-mobile">
+        <div class="beneficio-vinculo-vinculo-wrap flex sm:justify-center">
             @include('rh.beneficios.partials._vinculo_indicadores', ['vinculo' => $vinculo])
         </div>
 
         @if ($requerAdesao)
-            <div class="flex min-w-0 flex-col items-end gap-1.5">
+            <div class="beneficio-vinculo-status-wrap beneficio-vinculo-status text-right">
                 <span
-                    class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset {{ $vinculo->badgeStatusAdesao() }}"
+                    class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset {{ $vinculo->badgeStatusAdesao() }}"
                     title="{{ $vinculo->rotuloStatusAdesao() }}"
                 >
                     <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $vinculo->indicadorStatusAdesao() }}"></span>
@@ -48,7 +59,7 @@
                 @include('rh.beneficios.partials._indicador_prazo_matriz', ['vinculo' => $vinculo, 'adesaoService' => $adesaoService])
             </div>
         @else
-            <div class="min-w-0 sm:text-right">
+            <div class="beneficio-vinculo-status-wrap min-w-0 sm:text-right">
                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset {{ $resumoGeral[1] }}">
                     <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $resumoGeral[2] }}"></span>
                     {{ $resumoGeral[0] }}
@@ -56,11 +67,13 @@
             </div>
         @endif
 
-        <p class="text-right text-xs font-medium tabular-nums text-brand-gray">
+        <p class="beneficio-vinculo-entrega-wrap whitespace-nowrap text-right text-xs font-medium tabular-nums text-brand-gray sm:text-right">
+            <span class="mr-1 text-[10px] font-bold uppercase tracking-wide text-brand-gray sm:hidden">Entrega:</span>
             {{ $vinculo->data_entrega_cartao?->format('d/m/Y') ?: '—' }}
         </p>
+        </div>
 
-        <span class="flex justify-end">
+        <span class="beneficio-vinculo-expand-wrap flex shrink-0 justify-end sm:justify-end">
             <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-brand-gray shadow-sm transition group-open:border-brand-burgundy/20 group-open:text-brand-burgundy">
                 <i data-lucide="chevron-down" class="h-4 w-4 transition group-open:rotate-180"></i>
             </span>
@@ -120,6 +133,11 @@
             </div>
 
             <div class="flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
+                <button type="button" data-gerar-protocolo-unico="{{ $vinculo->id }}"
+                    class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 text-sm font-semibold text-brand-burgundy transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
+                    <i data-lucide="file-text" class="h-4 w-4"></i>
+                    Gerar protocolo PDF
+                </button>
                 <button type="submit" name="acao" value="excluir" class="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-gray transition hover:border-red-200 hover:bg-red-50 hover:text-red-700" onclick="return confirm('Remover este colaborador do benefício?')">
                     <i data-lucide="trash-2" class="h-4 w-4"></i>
                     Excluir vínculo

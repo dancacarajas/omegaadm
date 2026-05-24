@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "protocolo:icons": "node scripts/export-protocolo-lucide-icons.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
