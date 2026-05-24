@@ -101,6 +101,10 @@ class EnsurePerfilPermissaoRota
             return 'patrimonial';
         }
 
+        if (str_starts_with($name, 'almoxarifado.')) {
+            return 'almoxarifado';
+        }
+
         if (str_starts_with($name, 'medicao.')) {
             return 'medicao';
         }

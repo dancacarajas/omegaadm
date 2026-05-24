@@ -14,6 +14,8 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\MedicaoContratualController;
 use App\Http\Controllers\MedicaoController;
 use App\Http\Controllers\MedicaoFluxoFinanceiroController;
+use App\Http\Controllers\Almoxarifado\MobilizacaoMaterialController;
+use App\Http\Controllers\AlmoxarifadoController;
 use App\Http\Controllers\PatrimonialController;
 use App\Http\Controllers\PatrimonialHistogramaController;
 use App\Http\Controllers\PerfilController;
@@ -346,6 +348,20 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::put('patrimonial/{patrimonio}/fluxo', [PatrimonialController::class, 'salvarFluxo'])->name('patrimonial.fluxo.update');
     Route::resource('patrimonial', PatrimonialController::class)
         ->parameters(['patrimonial' => 'patrimonio']);
+    Route::get('/almoxarifado', [AlmoxarifadoController::class, 'index'])->name('almoxarifado.index');
+    Route::prefix('almoxarifado')->name('almoxarifado.')->group(function () {
+        Route::get('/painel', [MobilizacaoMaterialController::class, 'painel'])->name('painel');
+        Route::get('/mobilizacao-materiais/exportar-excel', [MobilizacaoMaterialController::class, 'exportarExcel'])->name('mobilizacao-materiais.exportar-excel');
+        Route::post('/mobilizacao-materiais/gerar-cobranca', [MobilizacaoMaterialController::class, 'gerarCobranca'])->name('mobilizacao-materiais.gerar-cobranca');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/sigo', [MobilizacaoMaterialController::class, 'updateSigo'])->name('mobilizacao-materiais.sigo');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/compras', [MobilizacaoMaterialController::class, 'updateCompras'])->name('mobilizacao-materiais.compras');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/recebimentos', [MobilizacaoMaterialController::class, 'storeRecebimento'])->name('mobilizacao-materiais.recebimentos.store');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/anexos', [MobilizacaoMaterialController::class, 'storeAnexo'])->name('mobilizacao-materiais.anexos.store');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/cancelar', [MobilizacaoMaterialController::class, 'cancelar'])->name('mobilizacao-materiais.cancelar');
+        Route::post('/mobilizacao-materiais/{mobilizacao_material}/reabrir', [MobilizacaoMaterialController::class, 'reabrir'])->name('mobilizacao-materiais.reabrir');
+        Route::resource('mobilizacao-materiais', MobilizacaoMaterialController::class)
+            ->parameters(['mobilizacao-materiais' => 'mobilizacao_material']);
+    });
     Route::get('/medicao', [MedicaoController::class, 'index'])->name('medicao.index');
     Route::resource('/medicao/contratual', MedicaoContratualController::class)
         ->except(['show'])

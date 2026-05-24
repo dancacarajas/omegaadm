@@ -76,4 +76,14 @@ class ContratoAccess
 
         return empty($valores) ? $query->whereRaw('1 = 0') : $query->whereIn($column, $valores);
     }
+
+    public static function authorizeContratoId(int $contratoId, ?User $user = null): void
+    {
+        if (! self::shouldRestrict($user)) {
+            return;
+        }
+
+        $ids = self::contratoIds($user);
+        abort_unless(in_array($contratoId, $ids, true), 403, 'Seu usuário não tem acesso a este contrato.');
+    }
 }

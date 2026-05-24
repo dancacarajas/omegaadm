@@ -73,6 +73,7 @@
                     $veiculosTelemetriaOpen = request()->routeIs('veiculos.telemetria.*');
                     $contratosOpen = request()->routeIs('contratos.*') || request()->routeIs('dashboard.pgu') || request()->routeIs('contratos.apresentacao');
                     $patrimonialOpen = request()->routeIs('patrimonial.*');
+                    $almoxarifadoOpen = request()->routeIs('almoxarifado.*');
                     $medicaoOpen = request()->routeIs('medicao.*') || request()->routeIs('rdo.*');
                     $acessosOpen = request()->routeIs('usuarios.*') || request()->routeIs('perfis.*');
                     $configuracoesOpen = request()->routeIs('configuracoes.*');
@@ -382,6 +383,25 @@
                                 <a href="{{ route('patrimonial.histograma.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('patrimonial.histograma.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
                                     Histograma
+                                </a>
+                            </div>
+                        </div>
+                        @endif
+                        @if ($podeModulo('almoxarifado'))
+                        <div data-menu-group="almoxarifado">
+                            <button type="button" data-menu-toggle="almoxarifado" class="group flex h-11 w-full items-center gap-3 rounded-lg px-3 font-semibold transition {{ $almoxarifadoOpen ? 'bg-brand-burgundy text-white shadow-sm shadow-brand-burgundy/20' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <i data-lucide="package" class="h-5 w-5"></i>
+                                <span class="flex-1 text-left">Almoxarifado</span>
+                                <i data-lucide="chevron-down" class="h-4 w-4 transition {{ $almoxarifadoOpen ? 'rotate-180' : '' }}" data-menu-chevron="almoxarifado"></i>
+                            </button>
+                            <div data-menu-panel="almoxarifado" class="{{ $almoxarifadoOpen ? '' : 'hidden' }} mt-2 space-y-1 border-l border-zinc-200 pl-4">
+                                <a href="{{ route('almoxarifado.painel') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.painel') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                                    Painel
+                                </a>
+                                <a href="{{ route('almoxarifado.mobilizacao-materiais.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.mobilizacao-materiais.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="clipboard-list" class="h-4 w-4"></i>
+                                    Mobilização de Materiais
                                 </a>
                             </div>
                         </div>

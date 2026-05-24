@@ -97,6 +97,22 @@
         </div>
     </div>
 
+    <div class="mt-6 rounded-xl border border-zinc-200 bg-brand-gray-soft/40 p-5">
+        <p class="text-xs font-black uppercase tracking-wide text-brand-burgundy">Almoxarifado — papel operacional</p>
+        <p class="mt-1 text-sm text-brand-gray">Define o que o usuário pode fazer no controle de materiais da mobilização (além das ações CRUD na tabela acima).</p>
+        <div class="mt-4 max-w-md">
+            <label>
+                <span class="text-xs font-bold uppercase text-brand-gray">Papel no módulo</span>
+                <select name="permissoes[almoxarifado][papel]" class="mt-1 h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-burgundy focus:ring-2 focus:ring-brand-burgundy/10">
+                    <option value="">Automático (conforme CRUD)</option>
+                    @foreach ($almoxarifadoPapeis as $papelKey => $papelLabel)
+                        <option value="{{ $papelKey }}" @selected(old('permissoes.almoxarifado.papel', $almoxarifadoPapelInicial ?? '') === $papelKey)>{{ $papelLabel }}</option>
+                    @endforeach
+                </select>
+            </label>
+        </div>
+    </div>
+
     <div class="mt-6 flex justify-end gap-2 border-t border-zinc-100 pt-5">
         <a href="{{ route('perfis.index') }}" class="inline-flex h-10 items-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">Cancelar</a>
         <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm shadow-brand-burgundy/20 transition hover:bg-brand-burgundy-dark">

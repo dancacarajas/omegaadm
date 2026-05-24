@@ -154,7 +154,7 @@ class User extends Authenticatable
         }
 
         foreach ($matriz as $chave => $permitido) {
-            if ($chave === 'secoes') {
+            if (in_array($chave, ['secoes', 'papel'], true)) {
                 continue;
             }
             if (is_array($permitido)) {
@@ -604,6 +604,7 @@ class User extends Authenticatable
             'sesmt' => fn () => $this->primeiraUrlSesmtPermitida(),
             'contratos' => fn () => route('contratos.index'),
             'patrimonial' => fn () => route('patrimonial.index'),
+            'almoxarifado' => fn () => route('almoxarifado.painel'),
             'medicao' => fn () => route('medicao.index'),
             'rdo' => fn () => route('rdo.index'),
             'acessos' => fn () => route('usuarios.index'),
