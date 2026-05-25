@@ -222,8 +222,10 @@
             <div>
                 <h2 class="text-lg font-bold text-zinc-900">E-mails — Solicitação de adesão (Matriz)</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
-                    Destinatários e modelo do e-mail enviado ao solicitar adesão do benefício à Matriz, com o formulário assinado em anexo.
-                    A mensagem é endereçada a <strong class="text-zinc-700">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}</strong> (responsável na Matriz).
+                    Ao enviar a solicitação de adesão, o sistema faz <strong class="text-zinc-700">dois envios separados</strong>:
+                    uma cópia para <strong class="text-zinc-700">{{ config('mail.beneficio_adesao_matriz.copia_sistema', 'jarbas.alves@omegaservice.com.br') }}</strong> pelo e-mail do sistema (Configurações SMTP acima)
+                    e o pedido para os destinatários abaixo (ex.: {{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}) pelo SMTP Zimbra do Jarbas, para chegar como enviado por ele.
+                    Configure <code class="rounded bg-zinc-100 px-1 text-xs">MAIL_ZIMBRA_*</code> no servidor (.env) com senha de aplicativo Zimbra.
                 </p>
             </div>
             <span class="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">RH / Benefícios</span>

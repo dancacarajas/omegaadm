@@ -46,6 +46,21 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
             ]
         );
 
+        config([
+            'mail.beneficio_adesao_matriz.copia_sistema' => 'jarbas@test.local',
+            'mail.mailers.zimbra_jarbas' => [
+                'transport' => 'smtp',
+                'host' => 'mail.zimbra.test.local',
+                'port' => 587,
+                'encryption' => 'tls',
+                'username' => 'jarbas@test.local',
+                'password' => 'zimbra-app-pass',
+                'timeout' => null,
+            ],
+            'mail.beneficio_adesao_matriz.zimbra_from_address' => 'jarbas@test.local',
+            'mail.beneficio_adesao_matriz.zimbra_from_name' => 'Jarbas Teste',
+        ]);
+
         app(\App\Services\ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
     }
 
@@ -106,6 +121,17 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
             return count($mail->anexos) === 1
                 && ($mail->anexos[0]['path'] ?? '') !== ''
                 && $mail->assunto === 'Solicitação de adesão à Matriz | Vale Alimentação | 100 - João Silva';
+        });
+
+        Mail::assertSent(LayoutHtmlMail::class, 2);
+
+        Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
+            return $mail->fromAddress === null;
+        });
+
+        Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
+            return $mail->fromAddress === 'jarbas@test.local'
+                && $mail->fromName === 'Jarbas Teste';
         });
 
         $vinculo->refresh();
@@ -261,7 +287,10 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
     public function test_diagnostico_detecta_smtp_log_e_sem_destinatarios(): void
     {
-        config(['mail.default' => 'log']);
+        config([
+            'mail.default' => 'log',
+            'mail.beneficio_adesao_matriz.copia_sistema' => '',
+        ]);
         SistemaConfiguracaoEmail::query()->find(1)?->update([
             'notificacao_beneficio_adesao_matriz_destinatarios' => [],
         ]);
@@ -270,6 +299,23 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         $this->assertFalse($diag['pode_enviar']);
         $this->assertNotEmpty($diag['problemas']);
+    }
+
+    public function test_diagnostico_exige_zimbra_quando_ha_destinatario_matriz(): void
+    {
+        config(['mail.mailers.zimbra_jarbas.password' => null]);
+
+        $matriz = User::factory()->create(['status' => 'ativo', 'email' => 'celiamara@test.local']);
+        SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'notificacao_beneficio_adesao_matriz_destinatarios' => [
+                ['tipo' => 'usuario', 'id' => $matriz->id],
+            ],
+        ]);
+
+        $diag = app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio();
+
+        $this->assertFalse($diag['pode_enviar']);
+        $this->assertContains('celiamara@test.local', $diag['destinatarios_zimbra']);
     }
 
     public function test_assunto_do_email_enviado(): void

@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -20,11 +21,22 @@ class LayoutHtmlMail extends Mailable
         public string $htmlBody,
         public string $assunto,
         public array $anexos = [],
+        public ?string $fromAddress = null,
+        public ?string $fromName = null,
     ) {}
 
     public function envelope(): Envelope
     {
+        $from = null;
+        if (filled($this->fromAddress)) {
+            $from = new Address(
+                (string) $this->fromAddress,
+                (string) ($this->fromName ?? ''),
+            );
+        }
+
         return new Envelope(
+            from: $from,
             subject: $this->assunto,
         );
     }

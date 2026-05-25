@@ -97,6 +97,17 @@ return [
             'retry_after' => 60,
         ],
 
+        'zimbra_jarbas' => [
+            'transport' => 'smtp',
+            'host' => env('MAIL_ZIMBRA_HOST', 'mail.omegaservice.com.br'),
+            'port' => env('MAIL_ZIMBRA_PORT', 587),
+            'encryption' => env('MAIL_ZIMBRA_ENCRYPTION', 'tls'),
+            'username' => env('MAIL_ZIMBRA_USERNAME'),
+            'password' => env('MAIL_ZIMBRA_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
     ],
 
     /*
@@ -124,5 +135,15 @@ return [
     | E-mails automáticos de login (cadastro, recuperação e alteração de senha).
     */
     'auth_emails_enabled' => env('MAIL_AUTH_EMAILS_ENABLED', true),
+
+    /*
+    | Benefício — adesão Matriz: cópia para Jarbas (mailer padrão) + envio à Matriz pelo Zimbra.
+    */
+    'beneficio_adesao_matriz' => [
+        'copia_sistema' => env('MAIL_BENEFICIO_ADESAO_COPIA_JARBAS', 'jarbas.alves@omegaservice.com.br'),
+        'zimbra_mailer' => 'zimbra_jarbas',
+        'zimbra_from_address' => env('MAIL_ZIMBRA_FROM_ADDRESS', 'jarbas.alves@omegaservice.com.br'),
+        'zimbra_from_name' => env('MAIL_ZIMBRA_FROM_NAME', 'Jarbas Alves de Carvalho e Silva'),
+    ],
 
 ];

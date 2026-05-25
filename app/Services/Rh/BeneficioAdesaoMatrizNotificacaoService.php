@@ -60,7 +60,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
     }
 
     /**
-     * @return array{enviados: int, destinatarios: list<string>}
+     * @return array{enviados: int, destinatarios: list<string>, copia_sistema: string|null, destinatarios_zimbra: list<string>}
      */
     public function enviarSolicitacao(ColaboradorBeneficio $vinculo, ?User $enviadoPor = null): array
     {
@@ -78,9 +78,10 @@ final class BeneficioAdesaoMatrizNotificacaoService
             ]);
         }
 
-        $destinatarios = $this->destinatariosConfigurados();
+        $destinatariosMatriz = $this->destinatariosMatrizViaZimbra();
+        $copiaJarbas = $this->emailCopiaSistemaJarbas();
 
-        if ($destinatarios === []) {
+        if ($destinatariosMatriz === [] && $copiaJarbas === null) {
             throw ValidationException::withMessages([
                 'destinatarios' => 'Configure os destinatários em Configurações → E-mail (seção Benefícios / Matriz).',
             ]);
@@ -103,19 +104,48 @@ final class BeneficioAdesaoMatrizNotificacaoService
         );
 
         $html = EmailLayout::render('emails.rh.solicitacao-adesao-matriz', $this->dadosDoVinculo($vinculo, $enviadoPor));
+        $anexos = [['disk' => 'public', 'path' => $path, 'name' => $nomeAnexo]];
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
 
+        $mailerSistema = (string) config('mail.default');
+        $mailerZimbra = (string) config('mail.beneficio_adesao_matriz.zimbra_mailer', 'zimbra_jarbas');
+        $fromZimbra = config('mail.beneficio_adesao_matriz.zimbra_from_address');
+        $fromNameZimbra = config('mail.beneficio_adesao_matriz.zimbra_from_name');
+
         $enviados = 0;
+        $destinatariosEnviados = [];
 
         try {
-            foreach ($destinatarios as $email) {
-                Mail::to($email)->send(new LayoutHtmlMail(
-                    $html,
-                    $assunto,
-                    [['disk' => 'public', 'path' => $path, 'name' => $nomeAnexo]],
-                ));
+            if ($copiaJarbas !== null) {
+                Mail::mailer($mailerSistema)
+                    ->to($copiaJarbas)
+                    ->send(new LayoutHtmlMail($html, $assunto, $anexos));
                 $enviados++;
+                $destinatariosEnviados[] = $copiaJarbas;
+            }
+
+            foreach ($destinatariosMatriz as $email) {
+                try {
+                    Mail::mailer($mailerZimbra)
+                        ->to($email)
+                        ->send(new LayoutHtmlMail(
+                            $html,
+                            $assunto,
+                            $anexos,
+                            (string) $fromZimbra,
+                            (string) $fromNameZimbra,
+                        ));
+                    $enviados++;
+                    $destinatariosEnviados[] = $email;
+                } catch (\Throwable $e) {
+                    Log::error('Erro ao enviar e-mail pelo Zimbra do Jarbas (benefício Matriz).', [
+                        'destinatario' => $email,
+                        'erro' => $e->getMessage(),
+                    ]);
+
+                    throw $e;
+                }
             }
 
             $this->marcarPedidoEnviadoMatriz($vinculo, $enviadoPor);
@@ -124,6 +154,8 @@ final class BeneficioAdesaoMatrizNotificacaoService
                 'vinculo_id' => $vinculo->id,
                 'beneficio_id' => $vinculo->beneficio_id,
                 'enviados' => $enviados,
+                'copia_sistema' => $copiaJarbas,
+                'destinatarios_zimbra' => $destinatariosMatriz,
             ]);
         } catch (\Throwable $e) {
             Log::error('Falha ao enviar solicitação de adesão à Matriz.', [
@@ -138,17 +170,24 @@ final class BeneficioAdesaoMatrizNotificacaoService
 
         return [
             'enviados' => $enviados,
-            'destinatarios' => $destinatarios,
+            'destinatarios' => $destinatariosEnviados,
+            'copia_sistema' => $copiaJarbas,
+            'destinatarios_zimbra' => $destinatariosMatriz,
         ];
     }
 
     /**
-     * @return array{pode_enviar: bool, problemas: list<string>, destinatarios: list<string>, mailer: string|null}
+     * @return array{pode_enviar: bool, problemas: list<string>, destinatarios: list<string>, destinatarios_zimbra: list<string>, copia_sistema: string|null, mailer: string|null, zimbra_configurado: bool}
      */
     public function diagnosticoEnvio(): array
     {
         $problemas = [];
-        $destinatarios = $this->destinatariosConfigurados();
+        $destinatariosMatriz = $this->destinatariosMatrizViaZimbra();
+        $copiaJarbas = $this->emailCopiaSistemaJarbas();
+        $destinatariosTodos = array_values(array_unique(array_filter([
+            ...($copiaJarbas !== null ? [$copiaJarbas] : []),
+            ...$destinatariosMatriz,
+        ])));
 
         if (! config('mail.auth_emails_enabled', true)) {
             $problemas[] = 'Envio de e-mails está desativado (MAIL_AUTH_EMAILS_ENABLED=false no servidor).';
@@ -156,21 +195,34 @@ final class BeneficioAdesaoMatrizNotificacaoService
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
         $mailer = (string) config('mail.default');
+        $zimbraOk = $this->zimbraJarbasConfigurado();
 
         if (in_array($mailer, ['log', 'array'], true)) {
             $problemas[] = 'O servidor está com mailer "'.$mailer.'" (e-mails não saem). Configure SMTP em Configurações → E-mail e salve.';
         } elseif ($mailer === 'smtp') {
             $registro = SistemaConfiguracaoEmail::query()->find(1);
             if (! filled(config('mail.mailers.smtp.password')) && ! ($registro?->senhaConfigurada() ?? false)) {
-                $problemas[] = 'SMTP sem senha configurada. Informe a senha em Configurações → E-mail.';
+                $problemas[] = 'SMTP do sistema sem senha configurada. Informe a senha em Configurações → E-mail.';
             }
             if (blank(config('mail.mailers.smtp.host')) || blank(config('mail.from.address'))) {
-                $problemas[] = 'Host SMTP ou e-mail remetente não configurado em Configurações → E-mail.';
+                $problemas[] = 'Host SMTP ou e-mail remetente do sistema não configurado em Configurações → E-mail.';
             }
         }
 
-        if ($destinatarios === []) {
+        if ($copiaJarbas === null && $destinatariosMatriz === []) {
             $problemas[] = 'Nenhum destinatário em Configurações → E-mail → Benefícios / Matriz (adicione quem recebe o pedido, ex.: Celiamara).';
+        }
+
+        if ($destinatariosMatriz !== [] && ! $zimbraOk) {
+            $problemas[] = 'SMTP Zimbra do Jarbas incompleto no .env (MAIL_ZIMBRA_HOST, MAIL_ZIMBRA_USERNAME, MAIL_ZIMBRA_PASSWORD com senha de aplicativo).';
+        }
+
+        if ($destinatariosMatriz !== [] && $zimbraOk) {
+            $userZimbra = strtolower((string) config('mail.mailers.zimbra_jarbas.username'));
+            $fromZimbra = strtolower((string) config('mail.beneficio_adesao_matriz.zimbra_from_address'));
+            if ($userZimbra !== '' && $fromZimbra !== '' && $userZimbra !== $fromZimbra) {
+                $problemas[] = 'MAIL_ZIMBRA_USERNAME e MAIL_ZIMBRA_FROM_ADDRESS devem ser o mesmo e-mail (jarbas.alves@omegaservice.com.br).';
+            }
         }
 
         if (! \Illuminate\Support\Facades\Schema::hasColumn('sistema_configuracao_email', 'notificacao_beneficio_adesao_matriz_destinatarios')) {
@@ -180,14 +232,57 @@ final class BeneficioAdesaoMatrizNotificacaoService
         return [
             'pode_enviar' => $problemas === [],
             'problemas' => $problemas,
-            'destinatarios' => $destinatarios,
+            'destinatarios' => $destinatariosTodos,
+            'destinatarios_zimbra' => $destinatariosMatriz,
+            'copia_sistema' => $copiaJarbas,
             'mailer' => $mailer !== '' ? $mailer : null,
+            'zimbra_configurado' => $zimbraOk,
         ];
     }
 
     public function podeEnviar(): bool
     {
         return $this->diagnosticoEnvio()['pode_enviar'];
+    }
+
+    /**
+     * Cópia automática para Jarbas pelo mailer padrão do sistema.
+     */
+    public function emailCopiaSistemaJarbas(): ?string
+    {
+        $email = strtolower(trim((string) config('mail.beneficio_adesao_matriz.copia_sistema', '')));
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
+
+    /**
+     * Destinatários da Matriz (ex.: Celiamara) — recebem pelo SMTP Zimbra do Jarbas.
+     *
+     * @return list<string>
+     */
+    public function destinatariosMatrizViaZimbra(): array
+    {
+        $copia = $this->emailCopiaSistemaJarbas();
+        $lista = [];
+
+        foreach ($this->destinatariosConfigurados() as $email) {
+            $email = strtolower(trim($email));
+            if ($email === '' || $email === $copia) {
+                continue;
+            }
+            $lista[$email] = $email;
+        }
+
+        return array_values($lista);
+    }
+
+    public function zimbraJarbasConfigurado(): bool
+    {
+        $mailer = (string) config('mail.beneficio_adesao_matriz.zimbra_mailer', 'zimbra_jarbas');
+
+        return filled(config("mail.mailers.{$mailer}.host"))
+            && filled(config("mail.mailers.{$mailer}.username"))
+            && filled(config("mail.mailers.{$mailer}.password"));
     }
 
     private function marcarPedidoEnviadoMatriz(ColaboradorBeneficio $vinculo, ?User $enviadoPor): void
