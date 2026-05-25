@@ -20,11 +20,8 @@
         @method('PUT')
 
         <div class="rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-950">
-            <p class="font-semibold">Fluxo do e-mail de adesão à Matriz</p>
-            <ol class="mt-2 list-inside list-decimal space-y-1 text-xs sm:text-sm">
-                <li><strong>1º envio</strong> — SMTP central → cópia para o e-mail abaixo (“Cópia automática benefício”).</li>
-                <li><strong>2º envio</strong> — SMTP Zimbra (este bloco) → destinatários da Matriz cadastrados mais abaixo.</li>
-            </ol>
+            <p class="font-semibold">Este bloco só autentica no Zimbra</p>
+            <p class="mt-1 text-xs">Quem recebe cada e-mail e a cópia para você são configurados na seção <strong>“Solicitação de adesão (Matriz)”</strong> mais abaixo.</p>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,12 +62,6 @@
                 E-mail remetente (igual ao usuário SMTP)
                 <input type="email" name="zimbra_from_address" value="{{ old('zimbra_from_address', $zimbra_from_address ?? '') }}" required
                        class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
-            </label>
-            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-3">
-                Cópia automática benefício (via SMTP central — não altera o remetente acima)
-                <input type="email" name="beneficio_adesao_copia_email" value="{{ old('beneficio_adesao_copia_email', $beneficio_adesao_copia_email ?? '') }}"
-                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="jarbas.alves@omegaservice.com.br">
-                <span class="mt-1 block text-[11px] font-normal normal-case text-zinc-500">Quem recebe a cópia interna quando o RH envia o pedido à Matriz.</span>
             </label>
         </div>
 

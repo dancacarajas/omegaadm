@@ -63,20 +63,18 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         $admin = User::factory()->create(['status' => 'ativo']);
 
         $this->actingAs($admin)->put(route('configuracoes.email.zimbra-jarbas.update'), [
-            'zimbra_host' => 'mail.zimbra.test.local',
+            'zimbra_host' => 'smtp.zimbra.test.local',
             'zimbra_port' => 587,
             'zimbra_encryption' => 'tls',
             'zimbra_username' => 'jarbas@test.local',
             'zimbra_password' => 'nova-senha-app',
             'zimbra_from_name' => 'Jarbas Teste',
             'zimbra_from_address' => 'jarbas@test.local',
-            'beneficio_adesao_copia_email' => 'copia@test.local',
         ])->assertRedirect(route('configuracoes.email.edit'));
 
         $registro = SistemaConfiguracaoEmail::query()->find(1);
-        $this->assertSame('mail.zimbra.test.local', $registro->zimbra_host);
+        $this->assertSame('smtp.zimbra.test.local', $registro->zimbra_host);
         $this->assertSame('smtp.test.local', $registro->mail_host);
-        $this->assertSame('copia@test.local', $registro->beneficio_adesao_copia_email);
     }
 
     public function test_salvar_destinatarios_beneficio_adesao_matriz(): void
@@ -89,6 +87,7 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         $this->actingAs($admin)->put(route('configuracoes.email.beneficio-adesao-matriz-destinatarios.update'), [
             'destinatarios_json' => $json,
+            'beneficio_adesao_copia_email' => 'jarbas@test.local',
         ])->assertRedirect(route('configuracoes.email.edit'));
 
         $registro = SistemaConfiguracaoEmail::query()->find(1);
@@ -141,7 +140,8 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         Mail::assertSent(LayoutHtmlMail::class, 2);
 
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
-            return $mail->fromAddress === null;
+            return $mail->fromAddress === 'noreply@test.local'
+                && $mail->fromName === 'Omega Teste';
         });
 
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
@@ -330,6 +330,62 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         $this->assertFalse($diag['pode_enviar']);
         $this->assertContains('celiamara@test.local', $diag['destinatarios_zimbra']);
+    }
+
+    public function test_jarbas_na_lista_matriz_nao_recebe_zimbra_apenas_copia_central(): void
+    {
+        Mail::fake();
+
+        $jarbas = User::factory()->create([
+            'status' => 'ativo',
+            'email' => 'jarbas@test.local',
+            'name' => 'Jarbas',
+        ]);
+        $celiamara = User::factory()->create([
+            'status' => 'ativo',
+            'email' => 'celiamara@test.local',
+            'name' => 'Celiamara',
+        ]);
+
+        SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'beneficio_adesao_copia_email' => 'jarbas@test.local',
+            'notificacao_beneficio_adesao_matriz_destinatarios' => [
+                ['tipo' => 'usuario', 'id' => $jarbas->id],
+                ['tipo' => 'usuario', 'id' => $celiamara->id],
+            ],
+        ]);
+
+        $rh = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'WEBCARD',
+            'status' => 'ativo',
+            'requer_controle_adesao' => true,
+        ]);
+        $colaborador = Colaborador::query()->create(['nome' => 'Samuel', 'status' => 'ativo', 'matricula' => '22479']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'status_adesao' => BeneficioAdesaoStatus::FORMULARIO_RECEBIDO,
+            'tem_direito' => true,
+        ]);
+        $path = UploadedFile::fake()->create('adesao.pdf', 50, 'application/pdf')
+            ->store('rh/beneficios/formularios-adesao', 'public');
+        $vinculo->update(['formulario_adesao_assinado_path' => $path]);
+
+        $this->actingAs($rh)->post(route('rh.beneficios.vinculos.enviar-solicitacao-matriz', [
+            'beneficio' => $beneficio,
+            'vinculo' => $vinculo,
+        ]))->assertRedirect();
+
+        Mail::assertSent(LayoutHtmlMail::class, 2);
+
+        Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
+            return $mail->fromAddress === 'noreply@test.local';
+        });
+
+        Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
+            return $mail->fromAddress === 'jarbas@test.local';
+        });
     }
 
     public function test_assunto_do_email_enviado(): void

@@ -119,6 +119,7 @@ class ConfiguracaoEmailController extends Controller
     {
         $data = $request->validate([
             'destinatarios_json' => ['nullable', 'string', 'max:16000'],
+            'beneficio_adesao_copia_email' => ['required', 'email', 'max:255'],
         ]);
 
         $payload = json_decode($data['destinatarios_json'] ?? '[]', true);
@@ -129,12 +130,13 @@ class ConfiguracaoEmailController extends Controller
         $registro = SistemaConfiguracaoEmail::registro();
         $registro->update([
             'notificacao_beneficio_adesao_matriz_destinatarios' => TstRegistroNotificacaoDestinatarios::validarPayload($payload),
+            'beneficio_adesao_copia_email' => strtolower($data['beneficio_adesao_copia_email']),
             'updated_by_id' => $request->user()?->id,
         ]);
 
         return redirect()
             ->route('configuracoes.email.edit')
-            ->with('success', 'Destinatários da solicitação de adesão (Matriz) salvos.');
+            ->with('success', 'Destinatários e cópia interna (benefício Matriz) salvos.');
     }
 
     public function previewBeneficioAdesao(string $tipo, BeneficioAdesaoMatrizNotificacaoService $service)
@@ -158,7 +160,6 @@ class ConfiguracaoEmailController extends Controller
             'zimbra_password' => ['nullable', 'string', 'max:500'],
             'zimbra_from_name' => ['required', 'string', 'max:120'],
             'zimbra_from_address' => ['required', 'email', 'max:255'],
-            'beneficio_adesao_copia_email' => ['nullable', 'email', 'max:255'],
         ]);
 
         $registro = SistemaConfiguracaoEmail::registro();

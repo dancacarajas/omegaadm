@@ -22,6 +22,9 @@ final class BeneficioAdesaoMatrizNotificacaoService
 {
     public const RESPONSAVEL_MATRIZ = 'Celiamara';
 
+    /** Cópia interna para Jarbas — sempre remetente do SMTP central (Omega). */
+    public const EMAIL_COPIA_INTERNA_PADRAO = 'jarbas.alves@omegaservice.com.br';
+
     public function __construct(
         private readonly ConfiguracaoEmailService $configuracaoEmail,
         private readonly ConfiguracaoZimbraEmailService $configuracaoZimbra,
@@ -111,21 +114,36 @@ final class BeneficioAdesaoMatrizNotificacaoService
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
         $this->configuracaoZimbra->aplicarConfiguracaoRuntime();
 
-        $mailerSistema = (string) config('mail.default');
+        $mailerCentral = $this->mailerSmtpCentral();
         $mailerZimbra = (string) config('mail.beneficio_adesao_matriz.zimbra_mailer', 'zimbra_jarbas');
-        $fromZimbra = config('mail.beneficio_adesao_matriz.zimbra_from_address');
-        $fromNameZimbra = config('mail.beneficio_adesao_matriz.zimbra_from_name');
+        $fromSistema = $this->remetenteSistemaCentral();
+        $fromZimbra = [
+            'address' => (string) config('mail.beneficio_adesao_matriz.zimbra_from_address'),
+            'name' => (string) config('mail.beneficio_adesao_matriz.zimbra_from_name'),
+        ];
 
         $enviados = 0;
         $destinatariosEnviados = [];
 
         try {
             if ($copiaJarbas !== null) {
-                Mail::mailer($mailerSistema)
+                Mail::mailer($mailerCentral)
                     ->to($copiaJarbas)
-                    ->send(new LayoutHtmlMail($html, $assunto, $anexos));
+                    ->send(new LayoutHtmlMail(
+                        $html,
+                        $assunto,
+                        $anexos,
+                        $fromSistema['address'],
+                        $fromSistema['name'],
+                    ));
                 $enviados++;
                 $destinatariosEnviados[] = $copiaJarbas;
+
+                Log::info('Benefício Matriz: cópia interna (SMTP central).', [
+                    'para' => $copiaJarbas,
+                    'mailer' => $mailerCentral,
+                    'de' => $fromSistema['address'],
+                ]);
             }
 
             foreach ($destinatariosMatriz as $email) {
@@ -136,11 +154,17 @@ final class BeneficioAdesaoMatrizNotificacaoService
                             $html,
                             $assunto,
                             $anexos,
-                            (string) $fromZimbra,
-                            (string) $fromNameZimbra,
+                            $fromZimbra['address'],
+                            $fromZimbra['name'],
                         ));
                     $enviados++;
                     $destinatariosEnviados[] = $email;
+
+                    Log::info('Benefício Matriz: pedido à Matriz (SMTP Zimbra).', [
+                        'para' => $email,
+                        'mailer' => $mailerZimbra,
+                        'de' => $fromZimbra['address'],
+                    ]);
                 } catch (\Throwable $e) {
                     $this->configuracaoZimbra->registrarErroSmtp($e, $email);
 
@@ -156,8 +180,10 @@ final class BeneficioAdesaoMatrizNotificacaoService
                 'vinculo_id' => $vinculo->id,
                 'beneficio_id' => $vinculo->beneficio_id,
                 'enviados' => $enviados,
-                'copia_sistema' => $copiaJarbas,
-                'destinatarios_zimbra' => $destinatariosMatriz,
+                'copia_sistema_para' => $copiaJarbas,
+                'copia_remetente' => $fromSistema['address'],
+                'matriz_para' => $destinatariosMatriz,
+                'matriz_remetente' => $fromZimbra['address'],
             ]);
         } catch (ValidationException $e) {
             throw $e;
@@ -257,9 +283,16 @@ final class BeneficioAdesaoMatrizNotificacaoService
     public function emailCopiaSistemaJarbas(): ?string
     {
         $registro = $this->configuracaoEmail->registroSeExistir();
-        $bruto = $registro?->beneficio_adesao_copia_email
-            ?? config('mail.beneficio_adesao_matriz.copia_sistema', '');
-        $email = strtolower(trim((string) $bruto));
+        $bruto = trim((string) (
+            $registro?->beneficio_adesao_copia_email
+            ?? config('mail.beneficio_adesao_matriz.copia_sistema', self::EMAIL_COPIA_INTERNA_PADRAO)
+        ));
+
+        if ($bruto === '') {
+            $bruto = self::EMAIL_COPIA_INTERNA_PADRAO;
+        }
+
+        $email = strtolower($bruto);
 
         return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
     }
@@ -272,17 +305,38 @@ final class BeneficioAdesaoMatrizNotificacaoService
     public function destinatariosMatrizViaZimbra(): array
     {
         $copia = $this->emailCopiaSistemaJarbas();
+        $jarbasPadrao = strtolower(self::EMAIL_COPIA_INTERNA_PADRAO);
         $lista = [];
 
         foreach ($this->destinatariosConfigurados() as $email) {
             $email = strtolower(trim($email));
-            if ($email === '' || $email === $copia) {
+            if ($email === '') {
+                continue;
+            }
+            // Jarbas só recebe cópia pelo SMTP central — nunca pelo Zimbra.
+            if ($email === $copia || $email === $jarbasPadrao) {
                 continue;
             }
             $lista[$email] = $email;
         }
 
         return array_values($lista);
+    }
+
+    private function mailerSmtpCentral(): string
+    {
+        $mailer = (string) config('mail.default');
+
+        return in_array($mailer, ['smtp', 'log', 'array'], true) ? $mailer : 'smtp';
+    }
+
+    /** @return array{address: string, name: string} */
+    private function remetenteSistemaCentral(): array
+    {
+        return [
+            'address' => (string) config('mail.from.address'),
+            'name' => (string) config('mail.from.name'),
+        ];
     }
 
     public function zimbraJarbasConfigurado(): bool

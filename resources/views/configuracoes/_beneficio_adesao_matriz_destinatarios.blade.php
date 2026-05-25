@@ -10,9 +10,26 @@
 
     <input type="hidden" name="destinatarios_json" id="beneficio-adesao-destinatarios-json" value="{{ old('destinatarios_json', json_encode(array_map(fn ($c) => ['tipo' => $c['tipo'], 'id' => $c['id']], $capsulas))) }}">
 
-    <p class="text-sm font-bold text-zinc-900">Destinatários (Matriz)</p>
+    <div class="rounded-xl border border-violet-100 bg-violet-50/80 px-4 py-3 text-sm text-violet-950">
+        <p class="font-semibold">Dois envios separados (não invertam os papéis)</p>
+        <ul class="mt-2 list-inside list-disc space-y-1 text-xs">
+            <li><strong>Sua cópia</strong> → remetente <strong>Omega / SMTP central</strong> (286omega@gmail.com ou o configurado acima).</li>
+            <li><strong>Matriz (ex. Celiamara)</strong> → remetente <strong>Jarbas</strong> via SMTP Zimbra (bloco âmbar).</li>
+        </ul>
+    </div>
+
+    <label class="mt-4 block space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        Sua cópia — remetente do sistema (não coloque Celiamara aqui)
+        <input type="email" name="beneficio_adesao_copia_email" required
+               value="{{ old('beneficio_adesao_copia_email', $beneficio_adesao_copia_email ?? \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::EMAIL_COPIA_INTERNA_PADRAO) }}"
+               class="mt-1 h-11 w-full max-w-xl rounded-xl border border-zinc-200 px-3 text-sm" placeholder="jarbas.alves@omegaservice.com.br">
+        <span class="mt-1 block font-normal normal-case text-zinc-500">E-mail que <strong>você</strong> recebe para conferir o pedido (caixa Zimbra corporativa).</span>
+    </label>
+
+    <p class="mt-6 text-sm font-bold text-zinc-900">Destinatários da Matriz — remetente Jarbas (Zimbra)</p>
     <p class="mt-0.5 text-xs text-zinc-500">
-        Quem receberá o e-mail de solicitação de adesão (ex.: {{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }} e demais contatos da Matriz com e-mail cadastrado no sistema).
+        Quem recebe o pedido como se você tivesse enviado (ex.: {{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}).
+        <strong class="text-zinc-700">Não coloque jarbas.alves@omegaservice.com.br aqui</strong> — use o campo “Sua cópia” acima.
     </p>
 
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">

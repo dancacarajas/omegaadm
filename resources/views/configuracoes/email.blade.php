@@ -217,8 +217,8 @@
             <div>
                 <h2 class="text-lg font-bold text-zinc-900">E-mails — Solicitação de adesão (Matriz)</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
-                    <strong class="text-zinc-700">Dois envios separados:</strong> cópia pelo <strong>SMTP central</strong> (bloco burgundy acima)
-                    e pedido à Matriz pelo <strong>SMTP Zimbra</strong> (bloco âmbar logo acima). Aqui cadastre apenas quem recebe o pedido na Matriz.
+                    Configure <strong>sua cópia</strong> (remetente Omega) e <strong>quem é a Matriz</strong> (remetente Jarbas).
+                    O bloco âmbar acima só guarda senha/host do Zimbra.
                 </p>
             </div>
             <span class="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">RH / Benefícios</span>
