@@ -168,6 +168,17 @@ final class AuthEmailService
         return PublicWebBase::assetUrl(ltrim($path, '/'));
     }
 
+    private function tipoPorView(string $view): string
+    {
+        return match ($view) {
+            'emails.auth.usuario-cadastrado' => 'usuario-cadastrado',
+            'emails.auth.recuperacao-senha' => 'recuperacao-senha',
+            'emails.auth.senha-redefinida' => 'senha-redefinida',
+            'emails.auth.senha-alterada-admin' => 'senha-alterada-admin',
+            default => 'auth-desconhecido',
+        };
+    }
+
     /**
      * @param  array<string, mixed>  $dados
      */
@@ -190,7 +201,19 @@ final class AuthEmailService
 
             $html = EmailLayout::render($view, $dados);
 
-            Mail::to($destinatario)->send(new LayoutHtmlMail($html, $assunto));
+            Mail::to($destinatario)->send(new LayoutHtmlMail(
+                $html,
+                $assunto,
+                metaEnvio: [
+                    'categoria' => 'auth',
+                    'tipo' => $this->tipoPorView($view),
+                    'mailer' => (string) config('mail.default'),
+                    'referencia_tipo' => 'user',
+                    'referencia_id' => isset($dados['usuario']) && $dados['usuario'] instanceof User
+                        ? $dados['usuario']->id
+                        : null,
+                ],
+            ));
 
             Log::info('E-mail de autenticação enviado.', [
                 'view' => $view,

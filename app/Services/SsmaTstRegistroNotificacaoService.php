@@ -80,7 +80,17 @@ final class SsmaTstRegistroNotificacaoService
             $html = EmailLayout::render('emails.sesmt.registro-tst-novo', $this->dadosDoRegistro($registro));
 
             foreach ($destinatarios as $email) {
-                Mail::to($email)->send(new LayoutHtmlMail($html, $assunto));
+                Mail::to($email)->send(new LayoutHtmlMail(
+                    $html,
+                    $assunto,
+                    metaEnvio: [
+                        'categoria' => 'sesmt',
+                        'tipo' => 'registro-tst-novo',
+                        'mailer' => (string) config('mail.default'),
+                        'referencia_tipo' => 'ssma_tst_registro',
+                        'referencia_id' => $registro->id,
+                    ],
+                ));
                 $enviados++;
             }
 

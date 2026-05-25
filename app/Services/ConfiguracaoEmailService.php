@@ -156,7 +156,12 @@ final class ConfiguracaoEmailService
 
         Mail::to($destinatario)->send(new LayoutHtmlMail(
             $html,
-            'Teste de e-mail — '.config('app.name')
+            'Teste de e-mail — '.config('app.name'),
+            metaEnvio: [
+                'categoria' => 'sistema',
+                'tipo' => 'teste-smtp-central',
+                'mailer' => (string) config('mail.default'),
+            ],
         ));
     }
 

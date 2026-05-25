@@ -467,6 +467,10 @@
                                     <i data-lucide="signature" class="h-4 w-4"></i>
                                     Gerador de Assinatura Eletrônica
                                 </a>
+                                <a href="{{ route('configuracoes.emails-enviados.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('configuracoes.emails-enviados.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                    <i data-lucide="inbox" class="h-4 w-4"></i>
+                                    E-mails Enviados
+                                </a>
                             </div>
                         </div>
                         @endif

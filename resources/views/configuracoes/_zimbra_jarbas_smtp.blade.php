@@ -1,4 +1,4 @@
-<section class="mb-6 overflow-hidden rounded-3xl border-2 border-amber-200/80 bg-white shadow-lg shadow-amber-100/40 ring-1 ring-amber-100">
+<section id="zimbra-jarbas" class="mb-6 overflow-hidden rounded-3xl border-2 border-amber-200/80 bg-white shadow-lg shadow-amber-100/40 ring-1 ring-amber-100">
     <div class="flex flex-wrap items-start justify-between gap-3 border-b border-amber-100 bg-gradient-to-r from-amber-50/90 to-white px-6 py-5">
         <div>
             <h2 class="text-lg font-bold text-zinc-900">SMTP Zimbra — envio como Jarbas</h2>

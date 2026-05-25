@@ -4,6 +4,7 @@
     $userOpcoes = $usuariosEmailOpcoes ?? [];
 @endphp
 
+<div id="beneficio-matriz"></div>
 <form method="POST" action="{{ route('configuracoes.email.beneficio-adesao-matriz-destinatarios.update') }}" id="form-beneficio-adesao-destinatarios" class="border-b border-zinc-100 px-4 py-4 sm:px-6 sm:py-5">
     @csrf
     @method('PUT')

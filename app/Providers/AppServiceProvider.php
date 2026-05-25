@@ -10,6 +10,9 @@ use App\Models\ColaboradorMovimentacao;
 use App\Models\SsmaAmbientalRegistro;
 use App\Observers\ColaboradorObserver;
 use App\Support\Rh\MovimentacaoDebugTrace;
+use App\Listeners\LogEmailEnviadoListener;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -30,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(MessageSent::class, LogEmailEnviadoListener::class);
+
         $this->configurarBasePublicaHostinger();
 
         try {

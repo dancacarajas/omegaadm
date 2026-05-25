@@ -138,6 +138,15 @@ final class BeneficioAdesaoMatrizNotificacaoService
                     $anexos,
                     $fromSistema['address'],
                     $fromSistema['name'],
+                    metaEnvio: [
+                        'categoria' => 'rh',
+                        'tipo' => 'solicitacao-adesao-matriz',
+                        'nome' => 'Solicitação Matriz — cópia interna (Omega)',
+                        'mailer' => $mailerCentral,
+                        'referencia_tipo' => 'colaborador_beneficio',
+                        'referencia_id' => $vinculo->id,
+                        'enviado_por_id' => $enviadoPor?->id,
+                    ],
                 ));
             $enviados++;
             $destinatariosEnviados[] = $notificacaoInternaJarbas;
@@ -158,6 +167,15 @@ final class BeneficioAdesaoMatrizNotificacaoService
                             $anexos,
                             $fromZimbra['address'],
                             $fromZimbra['name'],
+                            metaEnvio: [
+                                'categoria' => 'rh',
+                                'tipo' => 'solicitacao-adesao-matriz',
+                                'nome' => 'Solicitação Matriz — destinatário (Zimbra)',
+                                'mailer' => $mailerZimbra,
+                                'referencia_tipo' => 'colaborador_beneficio',
+                                'referencia_id' => $vinculo->id,
+                                'enviado_por_id' => $enviadoPor?->id,
+                            ],
                         ));
                     $enviados++;
                     $destinatariosEnviados[] = $email;

@@ -223,6 +223,11 @@ final class ConfiguracaoZimbraEmailService
                     [],
                     $fromAddress,
                     $fromName,
+                    metaEnvio: [
+                        'categoria' => 'sistema',
+                        'tipo' => 'teste-zimbra-jarbas',
+                        'mailer' => self::MAILER,
+                    ],
                 ));
         } catch (\Throwable $e) {
             $this->registrarErroSmtp($e, $destinatario);

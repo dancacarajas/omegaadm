@@ -5,6 +5,7 @@ use App\Http\Controllers\AssinaturaPublicaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthEmailPreviewController;
 use App\Http\Controllers\ConfiguracaoEmailController;
+use App\Http\Controllers\ConfiguracaoEmailsEnviadosController;
 use App\Http\Controllers\EmailAssinaturaController;
 use App\Http\Controllers\ContratoAcoesRecomendadasController;
 use App\Http\Controllers\ContratoController;
@@ -268,6 +269,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('/email/assinatura-eletronica/colaborador/{colaborador}', [EmailAssinaturaController::class, 'dadosColaborador'])->name('email.assinatura.colaborador');
         Route::post('/email/assinatura-eletronica/preview', [EmailAssinaturaController::class, 'preview'])->name('email.assinatura.preview');
         Route::post('/email/assinatura-eletronica/jpeg', [EmailAssinaturaController::class, 'jpeg'])->name('email.assinatura.jpeg');
+        Route::get('/emails-enviados', [ConfiguracaoEmailsEnviadosController::class, 'index'])->name('emails-enviados.index');
+        Route::get('/emails-enviados/{emailEnviado}', [ConfiguracaoEmailsEnviadosController::class, 'show'])->name('emails-enviados.show');
     });
 
     Route::post('/veiculos/solicitacoes', [VeiculoController::class, 'storeSolicitacao'])->name('veiculos.solicitacoes.store');
