@@ -296,23 +296,57 @@ def pesquisar(page: Page, termo: str, logger: logging.Logger) -> None:
     page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
 
 
+MAX_PAGINA = 50
+
+
+def _texto_link_pagina(link) -> str:
+    return normalizar(link.inner_text())
+
+
+def _numero_pagina_valido(texto: str) -> int | None:
+    if not texto.isdigit():
+        return None
+    numero = int(texto)
+    if numero < 1 or numero > MAX_PAGINA:
+        return None
+    return numero
+
+
 def numeros_paginacao(page: Page) -> list[int]:
     nums: set[int] = set()
     for link in page.locator("a").all():
-        texto = normalizar(link.inner_text())
-        if texto.isdigit():
-            nums.add(int(texto))
+        try:
+            numero = _numero_pagina_valido(_texto_link_pagina(link))
+            if numero is not None:
+                nums.add(numero)
+        except Exception:  # noqa: BLE001
+            continue
     return sorted(nums)
 
 
 def ir_para_pagina(page: Page, numero: int, logger: logging.Logger) -> bool:
-    link = page.locator(f'a:has-text("{numero}")').first
-    if link.count() == 0:
+    alvo = str(numero)
+    candidatos = page.get_by_role("link", name=alvo, exact=True)
+    total = candidatos.count()
+    if total == 0:
+        logger.warning("Link da página %s não encontrado", numero)
         return False
-    logger.info("Indo para página %s", numero)
-    link.click()
-    page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
-    return True
+
+    for i in range(total):
+        link = candidatos.nth(i)
+        try:
+            if _texto_link_pagina(link) != alvo:
+                continue
+            link.scroll_into_view_if_needed(timeout=8000)
+            link.click(timeout=15000)
+            page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+            logger.info("Indo para página %s", numero)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Falha ao clicar página %s (candidato %s): %s", numero, i, exc)
+
+    logger.warning("Nenhum link clicável para a página %s", numero)
+    return False
 
 
 def extrair_pagina_atual_e_restantes(page: Page, logger: logging.Logger) -> tuple[list[Insumo], int]:
