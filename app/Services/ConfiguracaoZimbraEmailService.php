@@ -60,9 +60,6 @@ final class ConfiguracaoZimbraEmailService
             Config::set('mail.beneficio_adesao_matriz.zimbra_from_name', $fromName);
         }
 
-        if ($registro !== null && filled($registro->beneficio_adesao_copia_email)) {
-            Config::set('mail.beneficio_adesao_matriz.copia_sistema', $registro->beneficio_adesao_copia_email);
-        }
     }
 
     public function registroSeExistir(): ?SistemaConfiguracaoEmail

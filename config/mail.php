@@ -140,6 +140,7 @@ return [
     | Benefício — adesão Matriz: cópia para Jarbas (mailer padrão) + envio à Matriz pelo Zimbra.
     */
     'beneficio_adesao_matriz' => [
+        'notificacao_interna_jarbas' => env('MAIL_BENEFICIO_NOTIFICACAO_INTERNA_JARBAS', 'jarbas.alves@omegaservice.com.br'),
         'copia_sistema' => env('MAIL_BENEFICIO_ADESAO_COPIA_JARBAS', 'jarbas.alves@omegaservice.com.br'),
         'zimbra_mailer' => 'zimbra_jarbas',
         'zimbra_from_address' => env('MAIL_ZIMBRA_FROM_ADDRESS', 'jarbas.alves@omegaservice.com.br'),

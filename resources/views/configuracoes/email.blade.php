@@ -217,8 +217,7 @@
             <div>
                 <h2 class="text-lg font-bold text-zinc-900">E-mails — Solicitação de adesão (Matriz)</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
-                    Configure <strong>sua cópia</strong> (remetente Omega) e <strong>quem é a Matriz</strong> (remetente Jarbas).
-                    O bloco âmbar acima só guarda senha/host do Zimbra.
+                    Destinatários extras com remetente Jarbas. O campo <strong>Cópia automática benefício</strong> fica no bloco Zimbra (âmbar).
                 </p>
             </div>
             <span class="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">RH / Benefícios</span>

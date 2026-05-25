@@ -20,8 +20,11 @@
         @method('PUT')
 
         <div class="rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-950">
-            <p class="font-semibold">Este bloco só autentica no Zimbra</p>
-            <p class="mt-1 text-xs">Quem recebe cada e-mail e a cópia para você são configurados na seção <strong>“Solicitação de adesão (Matriz)”</strong> mais abaixo.</p>
+            <p class="font-semibold">Dois envios ao disparar benefício Matriz</p>
+            <ol class="mt-2 list-inside list-decimal space-y-1 text-xs">
+                <li><strong>Para você</strong> — sempre <code class="rounded bg-sky-100 px-1">{{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::EMAIL_NOTIFICACAO_INTERNA_JARBAS }}</code> com remetente <strong>Omega / 286omega@gmail.com</strong> (SMTP central burgundy).</li>
+                <li><strong>Cópia automática benefício</strong> (campo abaixo) + destinatários Matriz — remetente <strong>Jarbas</strong> (este SMTP Zimbra).</li>
+            </ol>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -62,6 +65,14 @@
                 E-mail remetente (igual ao usuário SMTP)
                 <input type="email" name="zimbra_from_address" value="{{ old('zimbra_from_address', $zimbra_from_address ?? '') }}" required
                        class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
+            </label>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-3">
+                Cópia automática benefício — quem recebe com remetente Jarbas (Zimbra)
+                <input type="email" name="beneficio_adesao_copia_email" value="{{ old('beneficio_adesao_copia_email', $beneficio_adesao_copia_email ?? '') }}"
+                       class="mt-1 h-11 w-full max-w-xl rounded-xl border border-zinc-200 px-3 text-sm" placeholder="ex.: parceiro ou e-mail da Matriz">
+                <span class="mt-1 block font-normal normal-case text-zinc-500">
+                    <strong>Não</strong> use {{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::EMAIL_NOTIFICACAO_INTERNA_JARBAS }} aqui — sua cópia com remetente Omega é automática.
+                </span>
             </label>
         </div>
 

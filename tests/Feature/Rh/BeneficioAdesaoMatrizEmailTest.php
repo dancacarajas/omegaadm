@@ -50,9 +50,11 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
                 'zimbra_password' => 'zimbra-app-pass',
                 'zimbra_from_address' => 'jarbas@test.local',
                 'zimbra_from_name' => 'Jarbas Teste',
-                'beneficio_adesao_copia_email' => 'jarbas@test.local',
+                'beneficio_adesao_copia_email' => 'copia-beneficio@test.local',
             ]
         );
+
+        config(['mail.beneficio_adesao_matriz.notificacao_interna_jarbas' => 'jarbas@test.local']);
 
         app(\App\Services\ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
         app(\App\Services\ConfiguracaoZimbraEmailService::class)->aplicarConfiguracaoRuntime();
@@ -87,7 +89,6 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         $this->actingAs($admin)->put(route('configuracoes.email.beneficio-adesao-matriz-destinatarios.update'), [
             'destinatarios_json' => $json,
-            'beneficio_adesao_copia_email' => 'jarbas@test.local',
         ])->assertRedirect(route('configuracoes.email.edit'));
 
         $registro = SistemaConfiguracaoEmail::query()->find(1);
@@ -137,7 +138,7 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
                 && $mail->assunto === 'Solicitação de adesão à Matriz | Vale Alimentação | 100 - João Silva';
         });
 
-        Mail::assertSent(LayoutHtmlMail::class, 2);
+        Mail::assertSent(LayoutHtmlMail::class, 3);
 
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
             return $mail->fromAddress === 'noreply@test.local'
@@ -332,7 +333,7 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         $this->assertContains('celiamara@test.local', $diag['destinatarios_zimbra']);
     }
 
-    public function test_jarbas_na_lista_matriz_nao_recebe_zimbra_apenas_copia_central(): void
+    public function test_copia_beneficio_e_lista_usam_zimbra_jarbas_interna_usa_omega(): void
     {
         Mail::fake();
 
@@ -348,7 +349,7 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         ]);
 
         SistemaConfiguracaoEmail::query()->find(1)?->update([
-            'beneficio_adesao_copia_email' => 'jarbas@test.local',
+            'beneficio_adesao_copia_email' => 'copia-beneficio@test.local',
             'notificacao_beneficio_adesao_matriz_destinatarios' => [
                 ['tipo' => 'usuario', 'id' => $jarbas->id],
                 ['tipo' => 'usuario', 'id' => $celiamara->id],
@@ -377,7 +378,7 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
             'vinculo' => $vinculo,
         ]))->assertRedirect();
 
-        Mail::assertSent(LayoutHtmlMail::class, 2);
+        Mail::assertSent(LayoutHtmlMail::class, 3);
 
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
             return $mail->fromAddress === 'noreply@test.local';
@@ -385,7 +386,20 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
             return $mail->fromAddress === 'jarbas@test.local';
-        });
+        }, 2);
+    }
+
+    public function test_destinatarios_com_remetente_jarbas_inclui_copia_beneficio(): void
+    {
+        SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'beneficio_adesao_copia_email' => 'parceiro@test.local',
+            'notificacao_beneficio_adesao_matriz_destinatarios' => [],
+        ]);
+
+        $lista = app(BeneficioAdesaoMatrizNotificacaoService::class)->destinatariosComRemetenteJarbas();
+
+        $this->assertSame(['parceiro@test.local'], $lista);
+        $this->assertSame('jarbas@test.local', app(BeneficioAdesaoMatrizNotificacaoService::class)->emailNotificacaoInternaJarbas());
     }
 
     public function test_assunto_do_email_enviado(): void
