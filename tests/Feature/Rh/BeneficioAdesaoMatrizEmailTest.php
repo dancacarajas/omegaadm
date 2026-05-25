@@ -43,25 +43,40 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
                 'mail_password' => 'senha-teste',
                 'mail_from_name' => 'Omega Teste',
                 'mail_from_address' => 'noreply@test.local',
+                'zimbra_host' => 'mail.zimbra.test.local',
+                'zimbra_port' => 587,
+                'zimbra_encryption' => 'tls',
+                'zimbra_username' => 'jarbas@test.local',
+                'zimbra_password' => 'zimbra-app-pass',
+                'zimbra_from_address' => 'jarbas@test.local',
+                'zimbra_from_name' => 'Jarbas Teste',
+                'beneficio_adesao_copia_email' => 'jarbas@test.local',
             ]
         );
 
-        config([
-            'mail.beneficio_adesao_matriz.copia_sistema' => 'jarbas@test.local',
-            'mail.mailers.zimbra_jarbas' => [
-                'transport' => 'smtp',
-                'host' => 'mail.zimbra.test.local',
-                'port' => 587,
-                'encryption' => 'tls',
-                'username' => 'jarbas@test.local',
-                'password' => 'zimbra-app-pass',
-                'timeout' => null,
-            ],
-            'mail.beneficio_adesao_matriz.zimbra_from_address' => 'jarbas@test.local',
-            'mail.beneficio_adesao_matriz.zimbra_from_name' => 'Jarbas Teste',
-        ]);
-
         app(\App\Services\ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
+        app(\App\Services\ConfiguracaoZimbraEmailService::class)->aplicarConfiguracaoRuntime();
+    }
+
+    public function test_salvar_smtp_zimbra_separado_do_central(): void
+    {
+        $admin = User::factory()->create(['status' => 'ativo']);
+
+        $this->actingAs($admin)->put(route('configuracoes.email.zimbra-jarbas.update'), [
+            'zimbra_host' => 'mail.zimbra.test.local',
+            'zimbra_port' => 587,
+            'zimbra_encryption' => 'tls',
+            'zimbra_username' => 'jarbas@test.local',
+            'zimbra_password' => 'nova-senha-app',
+            'zimbra_from_name' => 'Jarbas Teste',
+            'zimbra_from_address' => 'jarbas@test.local',
+            'beneficio_adesao_copia_email' => 'copia@test.local',
+        ])->assertRedirect(route('configuracoes.email.edit'));
+
+        $registro = SistemaConfiguracaoEmail::query()->find(1);
+        $this->assertSame('mail.zimbra.test.local', $registro->zimbra_host);
+        $this->assertSame('smtp.test.local', $registro->mail_host);
+        $this->assertSame('copia@test.local', $registro->beneficio_adesao_copia_email);
     }
 
     public function test_salvar_destinatarios_beneficio_adesao_matriz(): void
@@ -287,12 +302,10 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
     public function test_diagnostico_detecta_smtp_log_e_sem_destinatarios(): void
     {
-        config([
-            'mail.default' => 'log',
-            'mail.beneficio_adesao_matriz.copia_sistema' => '',
-        ]);
         SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'mail_mailer' => 'log',
             'notificacao_beneficio_adesao_matriz_destinatarios' => [],
+            'beneficio_adesao_copia_email' => null,
         ]);
 
         $diag = app(BeneficioAdesaoMatrizNotificacaoService::class)->diagnosticoEnvio();
@@ -303,7 +316,8 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
 
     public function test_diagnostico_exige_zimbra_quando_ha_destinatario_matriz(): void
     {
-        config(['mail.mailers.zimbra_jarbas.password' => null]);
+        SistemaConfiguracaoEmail::query()->find(1)?->update(['zimbra_password' => null]);
+        app(\App\Services\ConfiguracaoZimbraEmailService::class)->aplicarConfiguracaoRuntime();
 
         $matriz = User::factory()->create(['status' => 'ativo', 'email' => 'celiamara@test.local']);
         SistemaConfiguracaoEmail::query()->find(1)?->update([

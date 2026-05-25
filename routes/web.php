@@ -261,6 +261,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::put('/email/tst-destinatarios', [ConfiguracaoEmailController::class, 'updateTstDestinatarios'])->name('email.tst-destinatarios.update');
         Route::get('/email/preview/beneficio-adesao/{tipo}', [ConfiguracaoEmailController::class, 'previewBeneficioAdesao'])->name('email.preview.beneficio-adesao');
         Route::put('/email/beneficio-adesao-matriz-destinatarios', [ConfiguracaoEmailController::class, 'updateBeneficioAdesaoMatrizDestinatarios'])->name('email.beneficio-adesao-matriz-destinatarios.update');
+        Route::put('/email/zimbra-jarbas', [ConfiguracaoEmailController::class, 'updateZimbraJarbas'])->name('email.zimbra-jarbas.update');
+        Route::post('/email/zimbra-jarbas/testar', [ConfiguracaoEmailController::class, 'testarZimbraJarbas'])->name('email.zimbra-jarbas.testar');
         Route::post('/email/testar', [ConfiguracaoEmailController::class, 'testar'])->name('email.testar');
         Route::get('/email/assinatura-eletronica', [EmailAssinaturaController::class, 'index'])->name('email.assinatura.index');
         Route::get('/email/assinatura-eletronica/colaborador/{colaborador}', [EmailAssinaturaController::class, 'dadosColaborador'])->name('email.assinatura.colaborador');

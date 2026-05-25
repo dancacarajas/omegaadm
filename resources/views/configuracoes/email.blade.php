@@ -160,6 +160,8 @@
         </form>
     </section>
 
+    @include('configuracoes._zimbra_jarbas_smtp')
+
     <section class="mb-6 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-lg shadow-zinc-200/50 ring-1 ring-zinc-100">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-zinc-50/90 to-white px-6 py-5">
             <div>
@@ -222,10 +224,8 @@
             <div>
                 <h2 class="text-lg font-bold text-zinc-900">E-mails — Solicitação de adesão (Matriz)</h2>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-500">
-                    Ao enviar a solicitação de adesão, o sistema faz <strong class="text-zinc-700">dois envios separados</strong>:
-                    uma cópia para <strong class="text-zinc-700">{{ config('mail.beneficio_adesao_matriz.copia_sistema', 'jarbas.alves@omegaservice.com.br') }}</strong> pelo e-mail do sistema (Configurações SMTP acima)
-                    e o pedido para os destinatários abaixo (ex.: {{ \App\Services\Rh\BeneficioAdesaoMatrizNotificacaoService::RESPONSAVEL_MATRIZ }}) pelo SMTP Zimbra do Jarbas, para chegar como enviado por ele.
-                    Configure <code class="rounded bg-zinc-100 px-1 text-xs">MAIL_ZIMBRA_*</code> no servidor (.env) com senha de aplicativo Zimbra.
+                    <strong class="text-zinc-700">Dois envios separados:</strong> cópia pelo <strong>SMTP central</strong> (bloco burgundy acima)
+                    e pedido à Matriz pelo <strong>SMTP Zimbra</strong> (bloco âmbar logo acima). Aqui cadastre apenas quem recebe o pedido na Matriz.
                 </p>
             </div>
             <span class="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">RH / Benefícios</span>

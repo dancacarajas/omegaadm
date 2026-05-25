@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Colaborador;
 use App\Services\ConfiguracaoEmailService;
+use App\Services\ConfiguracaoZimbraEmailService;
 use App\Models\ColaboradorBeneficio;
 use App\Models\ColaboradorMovimentacao;
 use App\Models\SsmaAmbientalRegistro;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
 
         try {
             app(ConfiguracaoEmailService::class)->aplicarConfiguracaoRuntime();
+            app(ConfiguracaoZimbraEmailService::class)->aplicarConfiguracaoRuntime();
         } catch (\Throwable) {
             // Tabela ainda não migrada ou ambiente de instalação.
         }

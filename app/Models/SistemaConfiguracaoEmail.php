@@ -20,12 +20,24 @@ class SistemaConfiguracaoEmail extends Model
         'mail_from_address',
         'notificacao_registro_tst_destinatarios',
         'notificacao_beneficio_adesao_matriz_destinatarios',
+        'zimbra_host',
+        'zimbra_port',
+        'zimbra_encryption',
+        'zimbra_username',
+        'zimbra_password',
+        'zimbra_from_address',
+        'zimbra_from_name',
+        'beneficio_adesao_copia_email',
+        'zimbra_updated_at',
         'updated_by_id',
     ];
 
     protected $casts = [
         'mail_port' => 'integer',
+        'zimbra_port' => 'integer',
         'mail_password' => 'encrypted',
+        'zimbra_password' => 'encrypted',
+        'zimbra_updated_at' => 'datetime',
         'notificacao_registro_tst_destinatarios' => 'array',
         'notificacao_beneficio_adesao_matriz_destinatarios' => 'array',
     ];
@@ -54,5 +66,10 @@ class SistemaConfiguracaoEmail extends Model
     public function senhaConfigurada(): bool
     {
         return filled($this->mail_password);
+    }
+
+    public function senhaZimbraConfigurada(): bool
+    {
+        return filled($this->zimbra_password);
     }
 }

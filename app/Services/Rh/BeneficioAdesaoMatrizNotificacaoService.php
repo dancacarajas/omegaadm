@@ -7,6 +7,7 @@ use App\Models\ColaboradorBeneficio;
 use App\Models\SistemaConfiguracaoEmail;
 use App\Models\User;
 use App\Services\ConfiguracaoEmailService;
+use App\Services\ConfiguracaoZimbraEmailService;
 use App\Support\EmailLayout;
 use App\Support\PublicWebBase;
 use App\Support\Rh\BeneficioAdesaoMatrizEmailTexto;
@@ -23,6 +24,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
 
     public function __construct(
         private readonly ConfiguracaoEmailService $configuracaoEmail,
+        private readonly ConfiguracaoZimbraEmailService $configuracaoZimbra,
     ) {}
 
     /** @return array<string, string> */
@@ -107,6 +109,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
         $anexos = [['disk' => 'public', 'path' => $path, 'name' => $nomeAnexo]];
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
+        $this->configuracaoZimbra->aplicarConfiguracaoRuntime();
 
         $mailerSistema = (string) config('mail.default');
         $mailerZimbra = (string) config('mail.beneficio_adesao_matriz.zimbra_mailer', 'zimbra_jarbas');
@@ -194,6 +197,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
         }
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
+        $this->configuracaoZimbra->aplicarConfiguracaoRuntime();
         $mailer = (string) config('mail.default');
         $zimbraOk = $this->zimbraJarbasConfigurado();
 
@@ -214,14 +218,14 @@ final class BeneficioAdesaoMatrizNotificacaoService
         }
 
         if ($destinatariosMatriz !== [] && ! $zimbraOk) {
-            $problemas[] = 'SMTP Zimbra do Jarbas incompleto no .env (MAIL_ZIMBRA_HOST, MAIL_ZIMBRA_USERNAME, MAIL_ZIMBRA_PASSWORD com senha de aplicativo).';
+            $problemas[] = 'SMTP Zimbra (seção separada abaixo do SMTP central) incompleto: informe host, usuário e senha de aplicativo do Zimbra.';
         }
 
         if ($destinatariosMatriz !== [] && $zimbraOk) {
             $userZimbra = strtolower((string) config('mail.mailers.zimbra_jarbas.username'));
             $fromZimbra = strtolower((string) config('mail.beneficio_adesao_matriz.zimbra_from_address'));
             if ($userZimbra !== '' && $fromZimbra !== '' && $userZimbra !== $fromZimbra) {
-                $problemas[] = 'MAIL_ZIMBRA_USERNAME e MAIL_ZIMBRA_FROM_ADDRESS devem ser o mesmo e-mail (jarbas.alves@omegaservice.com.br).';
+                $problemas[] = 'No SMTP Zimbra, usuário e e-mail remetente devem ser o mesmo (jarbas.alves@omegaservice.com.br).';
             }
         }
 
@@ -250,7 +254,10 @@ final class BeneficioAdesaoMatrizNotificacaoService
      */
     public function emailCopiaSistemaJarbas(): ?string
     {
-        $email = strtolower(trim((string) config('mail.beneficio_adesao_matriz.copia_sistema', '')));
+        $registro = $this->configuracaoEmail->registroSeExistir();
+        $bruto = $registro?->beneficio_adesao_copia_email
+            ?? config('mail.beneficio_adesao_matriz.copia_sistema', '');
+        $email = strtolower(trim((string) $bruto));
 
         return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
     }
@@ -278,11 +285,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
 
     public function zimbraJarbasConfigurado(): bool
     {
-        $mailer = (string) config('mail.beneficio_adesao_matriz.zimbra_mailer', 'zimbra_jarbas');
-
-        return filled(config("mail.mailers.{$mailer}.host"))
-            && filled(config("mail.mailers.{$mailer}.username"))
-            && filled(config("mail.mailers.{$mailer}.password"));
+        return $this->configuracaoZimbra->configurado();
     }
 
     private function marcarPedidoEnviadoMatriz(ColaboradorBeneficio $vinculo, ?User $enviadoPor): void
