@@ -16,7 +16,6 @@ use App\Http\Controllers\MedicaoContratualController;
 use App\Http\Controllers\MedicaoController;
 use App\Http\Controllers\MedicaoFluxoFinanceiroController;
 use App\Http\Controllers\Almoxarifado\MobilizacaoMaterialController;
-use App\Http\Controllers\Almoxarifado\SigoInsumosController;
 use App\Http\Controllers\AlmoxarifadoController;
 use App\Http\Controllers\PatrimonialController;
 use App\Http\Controllers\PatrimonialHistogramaController;
@@ -357,10 +356,6 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
     Route::get('/almoxarifado', [AlmoxarifadoController::class, 'index'])->name('almoxarifado.index');
     Route::prefix('almoxarifado')->name('almoxarifado.')->group(function () {
         Route::get('/painel', [MobilizacaoMaterialController::class, 'painel'])->name('painel');
-        Route::get('/sigo-insumos', [SigoInsumosController::class, 'index'])->name('sigo-insumos.index');
-        Route::post('/sigo-insumos/extrair', [SigoInsumosController::class, 'extrair'])->name('sigo-insumos.extrair');
-        Route::get('/sigo-insumos/status/{uuid}', [SigoInsumosController::class, 'status'])->name('sigo-insumos.status');
-        Route::get('/sigo-insumos/download/{token}/{tipo}', [SigoInsumosController::class, 'download'])->name('sigo-insumos.download');
         Route::get('/mobilizacao-materiais/exportar-excel', [MobilizacaoMaterialController::class, 'exportarExcel'])->name('mobilizacao-materiais.exportar-excel');
         Route::post('/mobilizacao-materiais/gerar-cobranca', [MobilizacaoMaterialController::class, 'gerarCobranca'])->name('mobilizacao-materiais.gerar-cobranca');
         Route::post('/mobilizacao-materiais/{mobilizacao_material}/sigo', [MobilizacaoMaterialController::class, 'updateSigo'])->name('mobilizacao-materiais.sigo');

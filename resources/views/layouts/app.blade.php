@@ -409,12 +409,6 @@
                                     Mobilização de Materiais
                                 </a>
                                 @endif
-                                @if ($podeSecaoAlmoxarifado('sigo_insumos'))
-                                <a href="{{ route('almoxarifado.sigo-insumos.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('almoxarifado.sigo-insumos.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="database" class="h-4 w-4"></i>
-                                    Extrair insumos SIGO
-                                </a>
-                                @endif
                             </div>
                         </div>
                         @endif

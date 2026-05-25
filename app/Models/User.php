@@ -585,7 +585,6 @@ class User extends Authenticatable
         return [
             'painel' => 'Painel',
             'mobilizacao_materiais' => 'Mobilização de Materiais',
-            'sigo_insumos' => 'Extrair insumos SIGO',
         ];
     }
 
@@ -602,10 +601,6 @@ class User extends Authenticatable
 
         if (str_starts_with($routeName, 'almoxarifado.mobilizacao-materiais')) {
             return 'mobilizacao_materiais';
-        }
-
-        if (str_starts_with($routeName, 'almoxarifado.sigo-insumos')) {
-            return 'sigo_insumos';
         }
 
         return null;
@@ -682,7 +677,6 @@ class User extends Authenticatable
         $rotas = [
             'painel' => fn () => route('almoxarifado.painel'),
             'mobilizacao_materiais' => fn () => route('almoxarifado.mobilizacao-materiais.index'),
-            'sigo_insumos' => fn () => route('almoxarifado.sigo-insumos.index'),
         ];
 
         foreach ($rotas as $secao => $resolver) {

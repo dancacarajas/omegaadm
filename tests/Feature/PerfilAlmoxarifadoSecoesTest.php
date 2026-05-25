@@ -24,8 +24,7 @@ class PerfilAlmoxarifadoSecoesTest extends TestCase
                     'excluir' => false,
                     'secoes' => [
                         'painel' => true,
-                        'mobilizacao_materiais' => true,
-                        'sigo_insumos' => false,
+                        'mobilizacao_materiais' => false,
                     ],
                 ],
             ],
@@ -34,15 +33,15 @@ class PerfilAlmoxarifadoSecoesTest extends TestCase
         $user = User::factory()->create(['perfil_id' => $perfil->id]);
 
         $this->actingAs($user)
-            ->get(route('almoxarifado.mobilizacao-materiais.index'))
+            ->get(route('almoxarifado.painel'))
             ->assertOk();
 
         $this->actingAs($user)
-            ->get(route('almoxarifado.sigo-insumos.index'))
+            ->get(route('almoxarifado.mobilizacao-materiais.index'))
             ->assertForbidden();
 
-        $this->assertTrue($user->podeSecaoAlmoxarifado('mobilizacao_materiais'));
-        $this->assertFalse($user->podeSecaoAlmoxarifado('sigo_insumos'));
+        $this->assertTrue($user->podeSecaoAlmoxarifado('painel'));
+        $this->assertFalse($user->podeSecaoAlmoxarifado('mobilizacao_materiais'));
     }
 
     public function test_store_perfil_persiste_secoes_almoxarifado(): void
