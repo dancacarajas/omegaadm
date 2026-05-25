@@ -8,7 +8,8 @@
                 O SMTP central continua disparando a cópia para você e todos os demais e-mails do sistema.
             </p>
             <p class="mt-2 text-xs text-amber-900/90">
-                Conta com 2FA: use senha de aplicativo Zimbra (ex.: <code class="rounded bg-amber-100 px-1">sistema-omega</code>), não a senha de login.
+                Outlook: <strong>smtp.omegaservice.com.br</strong>, porta <strong>587</strong>, <strong>STARTTLS</strong> (= TLS neste formulário).
+                Conta com 2FA: senha de aplicativo Zimbra (<code class="rounded bg-amber-100 px-1">sistema-omega</code>), não a senha de login.
             </p>
         </div>
         <span class="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-950 ring-1 ring-amber-200">Benefício / Matriz</span>
@@ -29,8 +30,8 @@
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-2">
                 Host SMTP Zimbra
-                <input type="text" name="zimbra_host" value="{{ old('zimbra_host', $zimbra_host ?? 'mail.omegaservice.com.br') }}" required
-                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="mail.omegaservice.com.br">
+                <input type="text" name="zimbra_host" value="{{ old('zimbra_host', $zimbra_host ?? 'smtp.omegaservice.com.br') }}" required
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="smtp.omegaservice.com.br">
             </label>
             <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Porta

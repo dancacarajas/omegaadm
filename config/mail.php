@@ -99,7 +99,7 @@ return [
 
         'zimbra_jarbas' => [
             'transport' => 'smtp',
-            'host' => env('MAIL_ZIMBRA_HOST', 'mail.omegaservice.com.br'),
+            'host' => env('MAIL_ZIMBRA_HOST', 'smtp.omegaservice.com.br'),
             'port' => env('MAIL_ZIMBRA_PORT', 587),
             'encryption' => env('MAIL_ZIMBRA_ENCRYPTION', 'tls'),
             'username' => env('MAIL_ZIMBRA_USERNAME'),

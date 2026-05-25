@@ -18,13 +18,6 @@
             <span>{{ session('success') }}</span>
         </div>
     @endif
-    @if (session('error'))
-        <div class="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-            <i data-lucide="alert-circle" class="mt-0.5 h-4 w-4 shrink-0"></i>
-            <span>{{ session('error') }}</span>
-        </div>
-    @endif
-
     @php
         $usaGmail = str_contains(strtolower((string) ($mail_host ?? '')), 'gmail')
             || str_contains(strtolower((string) ($mail_username ?? '')), '@gmail.com');

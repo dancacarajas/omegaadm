@@ -142,12 +142,11 @@ final class BeneficioAdesaoMatrizNotificacaoService
                     $enviados++;
                     $destinatariosEnviados[] = $email;
                 } catch (\Throwable $e) {
-                    Log::error('Erro ao enviar e-mail pelo Zimbra do Jarbas (benefício Matriz).', [
-                        'destinatario' => $email,
-                        'erro' => $e->getMessage(),
-                    ]);
+                    $this->configuracaoZimbra->registrarErroSmtp($e, $email);
 
-                    throw $e;
+                    throw ValidationException::withMessages([
+                        'email' => $this->configuracaoZimbra->mensagemErroParaUsuario($e),
+                    ]);
                 }
             }
 
@@ -160,14 +159,17 @@ final class BeneficioAdesaoMatrizNotificacaoService
                 'copia_sistema' => $copiaJarbas,
                 'destinatarios_zimbra' => $destinatariosMatriz,
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Falha ao enviar solicitação de adesão à Matriz.', [
                 'vinculo_id' => $vinculo->id,
                 'erro' => $e->getMessage(),
+                'erro_tecnico' => $this->configuracaoZimbra->extrairMensagemTecnica($e),
             ]);
 
             throw ValidationException::withMessages([
-                'email' => 'Não foi possível enviar o e-mail: '.$e->getMessage(),
+                'email' => $this->configuracaoZimbra->mensagemErroParaUsuario($e),
             ]);
         }
 

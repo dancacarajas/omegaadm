@@ -36,7 +36,7 @@ class MailTestZimbraJarbasCommand extends Command
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
-            $this->error($zimbra->mensagemErroAmigavel($e));
+            $this->error($zimbra->mensagemErroParaUsuario($e));
 
             return self::FAILURE;
         }

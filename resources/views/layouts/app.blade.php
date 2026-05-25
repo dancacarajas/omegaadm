@@ -559,9 +559,9 @@
                     @endif
 
                     @if (session('error'))
-                        <div class="mb-5 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm">
-                            <i data-lucide="triangle-alert" class="h-5 w-5"></i>
-                            <span>{{ session('error') }}</span>
+                        <div class="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 shadow-sm">
+                            <i data-lucide="triangle-alert" class="mt-0.5 h-5 w-5 shrink-0"></i>
+                            <span class="whitespace-pre-line">{{ session('error') }}</span>
                         </div>
                     @endif
 

@@ -194,12 +194,12 @@ class ConfiguracaoEmailController extends Controller
                 ->route('configuracoes.email.edit')
                 ->with('success', 'E-mail de teste Zimbra enviado para '.$data['email_teste_zimbra'].'. Verifique se o remetente aparece como Jarbas.');
         } catch (\Throwable $e) {
-            report($e);
+            $zimbraService->registrarErroSmtp($e, $data['email_teste_zimbra']);
 
             return redirect()
                 ->route('configuracoes.email.edit')
                 ->withInput()
-                ->with('error', $zimbraService->mensagemErroAmigavel($e));
+                ->with('error', $zimbraService->mensagemErroParaUsuario($e));
         }
     }
 
