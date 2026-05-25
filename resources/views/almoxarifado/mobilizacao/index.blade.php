@@ -102,7 +102,7 @@
                         <th class="px-4 py-4">PM</th>
                         <th class="px-4 py-4">OC</th>
                         <th class="px-4 py-4">Prev.</th>
-                        <th class="px-4 py-4 text-right">Ações</th>
+                        <th class="min-w-[180px] px-4 py-4">Alterar status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
@@ -141,12 +141,23 @@
                             <td class="px-4 py-4 font-mono text-xs">{{ $item->numero_oc ?? '—' }}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-xs text-brand-gray">{{ $item->previsao_entrega?->format('d/m/Y') ?? '—' }}</td>
                             <td class="px-4 py-4">
-                                <div class="flex justify-end gap-2">
-                                    <a href="{{ route('almoxarifado.mobilizacao-materiais.show', $item) }}" class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white px-3 text-xs font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                                        <i data-lucide="eye" class="h-3.5 w-3.5"></i>
-                                        Abrir
-                                    </a>
-                                </div>
+                                @if ($acesso['alterarStatus'])
+                                    <form method="POST" action="{{ route('almoxarifado.mobilizacao-materiais.status', $item) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <select name="status" onchange="this.form.submit()"
+                                            class="w-full min-w-[160px] rounded-xl border border-zinc-200 bg-white px-2 py-2 text-xs font-semibold text-brand-black outline-none focus:border-brand-burgundy focus:ring-4 focus:ring-brand-burgundy/10">
+                                            @foreach ($statusLabels as $key => $label)
+                                                @if ($key === 'CANCELADO_NAO_NECESSARIO' && ! ($acesso['cancelar'] ?? false))
+                                                    @continue
+                                                @endif
+                                                <option value="{{ $key }}" @selected($item->status === $key)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </form>
+                                @else
+                                    <span class="text-xs text-brand-gray">—</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

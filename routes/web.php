@@ -364,6 +364,7 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::post('/mobilizacao-materiais/{mobilizacao_material}/anexos', [MobilizacaoMaterialController::class, 'storeAnexo'])->name('mobilizacao-materiais.anexos.store');
         Route::post('/mobilizacao-materiais/{mobilizacao_material}/cancelar', [MobilizacaoMaterialController::class, 'cancelar'])->name('mobilizacao-materiais.cancelar');
         Route::post('/mobilizacao-materiais/{mobilizacao_material}/reabrir', [MobilizacaoMaterialController::class, 'reabrir'])->name('mobilizacao-materiais.reabrir');
+        Route::patch('/mobilizacao-materiais/{mobilizacao_material}/status', [MobilizacaoMaterialController::class, 'updateStatus'])->name('mobilizacao-materiais.status');
         Route::resource('mobilizacao-materiais', MobilizacaoMaterialController::class)
             ->parameters(['mobilizacao-materiais' => 'mobilizacao_material']);
     });

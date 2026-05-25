@@ -72,6 +72,8 @@ class MobilizacaoMaterialController extends Controller
                 'criar' => AlmoxarifadoAcesso::podeCriarMaterial(),
                 'exportar' => AlmoxarifadoAcesso::podeExportar(),
                 'cobranca' => AlmoxarifadoAcesso::podeVisualizar(),
+                'alterarStatus' => AlmoxarifadoAcesso::podeEditarMaterialBasico(),
+                'cancelar' => AlmoxarifadoAcesso::podeCancelarItem(),
             ],
         ]);
     }
@@ -383,6 +385,44 @@ class MobilizacaoMaterialController extends Controller
         $this->historico->registrarAlteracoes($mobilizacaoMaterial, $antes, observacao: 'Reabertura: '.$data['justificativa']);
 
         return back()->with('success', 'Item reaberto. Status recalculado automaticamente.');
+    }
+
+    public function updateStatus(Request $request, MobilizacaoMaterial $mobilizacaoMaterial)
+    {
+        $this->authorizeMaterial($mobilizacaoMaterial);
+        AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeEditarMaterialBasico());
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(MobilizacaoMaterialStatus::all())],
+        ]);
+
+        $novoStatus = $data['status'];
+
+        if ($novoStatus === MobilizacaoMaterialStatus::CANCELADO_NAO_NECESSARIO) {
+            AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeCancelarItem());
+        }
+
+        if ($mobilizacaoMaterial->status === MobilizacaoMaterialStatus::CANCELADO_NAO_NECESSARIO
+            && $novoStatus !== MobilizacaoMaterialStatus::CANCELADO_NAO_NECESSARIO) {
+            AlmoxarifadoAcesso::abortUnless(AlmoxarifadoAcesso::podeReabrirItem());
+        }
+
+        $antes = $mobilizacaoMaterial->only(MobilizacaoMaterialCalculoService::CAMPOS_HISTORICO);
+        $mobilizacaoMaterial->status = $novoStatus;
+        $mobilizacaoMaterial->updated_by = auth()->id();
+        $this->calculo->recalcular($mobilizacaoMaterial, false);
+        $mobilizacaoMaterial->save();
+        $this->historico->registrarAlteracoes($mobilizacaoMaterial, $antes, observacao: 'Alteração de status na lista');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'status' => $mobilizacaoMaterial->status,
+                'label' => MobilizacaoMaterialStatus::labels()[$mobilizacaoMaterial->status] ?? $mobilizacaoMaterial->status,
+            ]);
+        }
+
+        return back()->with('success', 'Status atualizado.');
     }
 
     public function destroy(MobilizacaoMaterial $mobilizacaoMaterial)

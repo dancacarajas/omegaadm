@@ -28,7 +28,7 @@ final class MobilizacaoMaterialStatus
             self::COMPRA_PARCIAL => 'Compra parcial',
             self::RECEBIDO_PARCIAL => 'Recebido parcial',
             self::RECEBIDO_TOTAL => 'Recebido total',
-            self::CANCELADO_NAO_NECESSARIO => 'Cancelado / não necessário',
+            self::CANCELADO_NAO_NECESSARIO => 'Cancelado',
         ];
     }
 

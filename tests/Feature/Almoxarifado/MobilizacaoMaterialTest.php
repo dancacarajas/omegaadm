@@ -69,4 +69,52 @@ class MobilizacaoMaterialTest extends TestCase
         $this->assertSame(MobilizacaoMaterialStatus::PEDIDO_NO_SIGO, $material->status);
         $this->assertStringContainsString('Cobrar Compras', $material->acao_do_dia);
     }
+
+    public function test_altera_status_direto_na_lista(): void
+    {
+        $perfil = Perfil::create([
+            'nome' => 'Teste Almox',
+            'permissoes' => [
+                'almoxarifado' => [
+                    'visualizar' => true,
+                    'criar' => true,
+                    'editar' => true,
+                    'excluir' => true,
+                    'papel' => 'gestao',
+                ],
+            ],
+            'ativo' => true,
+        ]);
+
+        $user = User::factory()->create(['perfil_id' => $perfil->id, 'todos_contratos' => true]);
+        $contrato = Contrato::create([
+            'numero' => 'CT-TEST2',
+            'nome' => 'Contrato teste 2',
+            'status' => 'ativo',
+        ]);
+
+        $this->actingAs($user)->post(route('almoxarifado.mobilizacao-materiais.store'), [
+            'contrato_id' => $contrato->id,
+            'disciplina' => 'ELÉTRICA',
+            'categoria_descricao' => 'Material elétrico',
+            'situacao_tratativa' => 'SEM TRATATIVA LOCALIZADA',
+            'descricao_material' => 'Disjuntor 32A',
+            'unidade_medida' => 'UN',
+            'quantidade_necessaria' => 10,
+            'prioridade' => 'MEDIA',
+        ])->assertRedirect();
+
+        $material = MobilizacaoMaterial::query()->where('descricao_material', 'Disjuntor 32A')->first();
+        $this->assertNotNull($material);
+
+        $this->actingAs($user)
+            ->patch(route('almoxarifado.mobilizacao-materiais.status', $material), [
+                'status' => MobilizacaoMaterialStatus::PEDIDO_NO_SIGO,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $material->refresh();
+        $this->assertSame(MobilizacaoMaterialStatus::PEDIDO_NO_SIGO, $material->status);
+    }
 }
