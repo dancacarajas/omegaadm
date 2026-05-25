@@ -42,7 +42,10 @@ final class BeneficioAdesaoMatrizNotificacaoService
     {
         return EmailLayout::render('emails.rh.solicitacao-adesao-matriz', array_merge(
             $this->dadosPreview(),
-            ['preview' => true],
+            [
+                'preview' => true,
+                'assinaturaRodapeHtml' => $this->configuracaoZimbra->renderAssinaturaRodapeHtml(),
+            ],
         ));
     }
 
@@ -109,6 +112,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
         );
 
         $html = EmailLayout::render('emails.rh.solicitacao-adesao-matriz', $this->dadosDoVinculo($vinculo, $enviadoPor));
+        $htmlComAssinaturaZimbra = $html.$this->configuracaoZimbra->renderAssinaturaRodapeHtml();
         $anexos = [['disk' => 'public', 'path' => $path, 'name' => $nomeAnexo]];
 
         $this->configuracaoEmail->aplicarConfiguracaoRuntime();
@@ -149,7 +153,7 @@ final class BeneficioAdesaoMatrizNotificacaoService
                     Mail::mailer($mailerZimbra)
                         ->to($email)
                         ->send(new LayoutHtmlMail(
-                            $html,
+                            $htmlComAssinaturaZimbra,
                             $assunto,
                             $anexos,
                             $fromZimbra['address'],

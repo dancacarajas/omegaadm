@@ -77,4 +77,10 @@
             'texto' => 'Abrir formulário de adesão (PDF)',
         ])
     @endif
+
+    @if (! empty($assinaturaRodapeHtml))
+        <div style="margin:32px 0 0;padding-top:8px;">
+            {!! $assinaturaRodapeHtml !!}
+        </div>
+    @endif
 @endsection

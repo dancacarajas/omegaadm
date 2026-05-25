@@ -66,6 +66,36 @@
                 <input type="email" name="zimbra_from_address" value="{{ old('zimbra_from_address', $zimbra_from_address ?? '') }}" required
                        class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
             </label>
+            <p class="sm:col-span-3 text-xs text-zinc-600">
+                <strong>Assinatura no rodapé</strong> — mesma identidade do
+                <a href="{{ route('configuracoes.email.assinatura.index') }}" class="font-bold text-brand-burgundy underline">Gerador de Assinatura Eletrônica</a>.
+                Aparece no final dos e-mails enviados pelo Zimbra (benefício Matriz, teste Zimbra).
+            </p>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-2">
+                Nome na assinatura (rodapé dos e-mails Zimbra)
+                <input type="text" name="zimbra_assinatura_nome" value="{{ old('zimbra_assinatura_nome', $zimbra_assinatura_nome ?? '') }}"
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="Jarbas Alves de Carvalho e Silva">
+            </label>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Função / cargo
+                <input type="text" name="zimbra_assinatura_funcao" value="{{ old('zimbra_assinatura_funcao', $zimbra_assinatura_funcao ?? '') }}"
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
+            </label>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Contrato
+                <input type="text" name="zimbra_assinatura_contrato" value="{{ old('zimbra_assinatura_contrato', $zimbra_assinatura_contrato ?? '') }}"
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="286">
+            </label>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Telefone (sufixo após (94) 3352 0115/)
+                <input type="text" name="zimbra_assinatura_telefone" value="{{ old('zimbra_assinatura_telefone', $zimbra_assinatura_telefone ?? '') }}"
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
+            </label>
+            <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-2">
+                E-mail na assinatura
+                <input type="email" name="zimbra_assinatura_email" value="{{ old('zimbra_assinatura_email', $zimbra_assinatura_email ?? '') }}"
+                       class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm" placeholder="jarbas.alves@omegaservice.com.br">
+            </label>
             <label class="space-y-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-3">
                 Cópia automática benefício — quem recebe com remetente Jarbas (Zimbra)
                 <input type="email" name="beneficio_adesao_copia_email" value="{{ old('beneficio_adesao_copia_email', $beneficio_adesao_copia_email ?? '') }}"
@@ -95,10 +125,10 @@
             </div>
         </div>
 
-        <div class="flex flex-wrap gap-3">
-            <button type="submit" class="inline-flex h-11 items-center gap-2 rounded-xl bg-amber-700 px-5 text-sm font-bold text-white shadow-md transition hover:bg-amber-800">
-                <i data-lucide="save" class="h-4 w-4"></i>
-                Salvar SMTP Zimbra
+        <div class="flex flex-wrap gap-3 border-t border-amber-100 pt-4">
+            <button type="submit" class="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-burgundy px-5 text-sm font-bold text-white shadow-md shadow-brand-burgundy/20 ring-2 ring-amber-300/80 transition hover:bg-brand-burgundy-dark">
+                <i data-lucide="save" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+                <span>Salvar SMTP Zimbra</span>
             </button>
         </div>
     </form>
@@ -112,9 +142,9 @@
                 <input type="email" name="email_teste_zimbra" value="{{ old('email_teste_zimbra', $zimbra_from_address ?? auth()->user()?->email) }}" required
                        class="mt-1 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm">
             </label>
-            <button type="submit" class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-white px-5 text-sm font-bold text-amber-900 shadow-sm transition hover:border-amber-500">
-                <i data-lucide="send" class="h-4 w-4"></i>
-                Enviar teste Zimbra
+            <button type="submit" class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-sm font-bold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy">
+                <i data-lucide="send" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+                <span>Enviar teste Zimbra</span>
             </button>
         </form>
     </div>

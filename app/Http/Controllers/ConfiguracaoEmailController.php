@@ -159,6 +159,11 @@ class ConfiguracaoEmailController extends Controller
             'zimbra_from_name' => ['required', 'string', 'max:120'],
             'zimbra_from_address' => ['required', 'email', 'max:255'],
             'beneficio_adesao_copia_email' => ['nullable', 'email', 'max:255'],
+            'zimbra_assinatura_nome' => ['nullable', 'string', 'max:255'],
+            'zimbra_assinatura_funcao' => ['nullable', 'string', 'max:255'],
+            'zimbra_assinatura_contrato' => ['nullable', 'string', 'max:255'],
+            'zimbra_assinatura_telefone' => ['nullable', 'string', 'max:80'],
+            'zimbra_assinatura_email' => ['nullable', 'string', 'max:255'],
         ]);
 
         $registro = SistemaConfiguracaoEmail::registro();

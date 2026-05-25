@@ -51,6 +51,13 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
                 'zimbra_from_address' => 'jarbas@test.local',
                 'zimbra_from_name' => 'Jarbas Teste',
                 'beneficio_adesao_copia_email' => 'copia-beneficio@test.local',
+                'zimbra_assinatura' => [
+                    'nome' => 'Jarbas Teste',
+                    'funcao' => 'Gerente RH',
+                    'contrato' => '286',
+                    'telefone' => '99999-0000',
+                    'email' => 'jarbas@test.local',
+                ],
             ]
         );
 
@@ -387,6 +394,46 @@ class BeneficioAdesaoMatrizEmailTest extends TestCase
         Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
             return $mail->fromAddress === 'jarbas@test.local';
         }, 2);
+    }
+
+    public function test_email_zimbra_inclui_assinatura_no_corpo(): void
+    {
+        Mail::fake();
+
+        $matriz = User::factory()->create(['status' => 'ativo', 'email' => 'celiamara@test.local']);
+        SistemaConfiguracaoEmail::query()->find(1)?->update([
+            'notificacao_beneficio_adesao_matriz_destinatarios' => [
+                ['tipo' => 'usuario', 'id' => $matriz->id],
+            ],
+        ]);
+
+        $rh = User::factory()->create(['todos_contratos' => true]);
+        $beneficio = Beneficio::query()->create([
+            'nome' => 'Vale',
+            'status' => 'ativo',
+            'requer_controle_adesao' => true,
+        ]);
+        $colaborador = Colaborador::query()->create(['nome' => 'Ana', 'status' => 'ativo']);
+        $vinculo = ColaboradorBeneficio::query()->create([
+            'beneficio_id' => $beneficio->id,
+            'colaborador_id' => $colaborador->id,
+            'status_adesao' => BeneficioAdesaoStatus::FORMULARIO_RECEBIDO,
+            'tem_direito' => true,
+        ]);
+        $path = UploadedFile::fake()->create('adesao.pdf', 50, 'application/pdf')
+            ->store('rh/beneficios/formularios-adesao', 'public');
+        $vinculo->update(['formulario_adesao_assinado_path' => $path]);
+
+        $this->actingAs($rh)->post(route('rh.beneficios.vinculos.enviar-solicitacao-matriz', [
+            'beneficio' => $beneficio,
+            'vinculo' => $vinculo,
+        ]))->assertRedirect();
+
+        Mail::assertSent(LayoutHtmlMail::class, function (LayoutHtmlMail $mail) {
+            return $mail->fromAddress === 'jarbas@test.local'
+                && str_contains($mail->htmlBody, 'Atenciosamente,')
+                && str_contains($mail->htmlBody, 'assinatura-eletronica-bg');
+        });
     }
 
     public function test_destinatarios_com_remetente_jarbas_inclui_copia_beneficio(): void

@@ -28,6 +28,7 @@ class SistemaConfiguracaoEmail extends Model
         'zimbra_from_address',
         'zimbra_from_name',
         'beneficio_adesao_copia_email',
+        'zimbra_assinatura',
         'zimbra_updated_at',
         'updated_by_id',
     ];
@@ -37,6 +38,7 @@ class SistemaConfiguracaoEmail extends Model
         'zimbra_port' => 'integer',
         'mail_password' => 'encrypted',
         'zimbra_password' => 'encrypted',
+        'zimbra_assinatura' => 'array',
         'zimbra_updated_at' => 'datetime',
         'notificacao_registro_tst_destinatarios' => 'array',
         'notificacao_beneficio_adesao_matriz_destinatarios' => 'array',

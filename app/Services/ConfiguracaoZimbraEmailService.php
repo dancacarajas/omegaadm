@@ -100,7 +100,73 @@ final class ConfiguracaoZimbraEmailService
                 ?? config('mail.beneficio_adesao_matriz.copia_sistema', 'jarbas.alves@omegaservice.com.br'),
             'zimbra_senha_configurada' => $registro->senhaZimbraConfigurada(),
             'zimbra_ultima_atualizacao' => $registro->zimbra_updated_at,
+            ...$this->dadosAssinaturaParaFormulario($registro),
         ];
+    }
+
+    /**
+     * @return array{nome: string, funcao: string, contrato: string, telefone: string, email: string}
+     */
+    public function dadosAssinatura(?SistemaConfiguracaoEmail $registro = null): array
+    {
+        $registro ??= SistemaConfiguracaoEmail::registro();
+        $salva = is_array($registro->zimbra_assinatura) ? $registro->zimbra_assinatura : [];
+
+        return [
+            'nome' => trim((string) ($salva['nome'] ?? $registro->zimbra_from_name ?? '')),
+            'funcao' => trim((string) ($salva['funcao'] ?? '')),
+            'contrato' => trim((string) ($salva['contrato'] ?? '')),
+            'telefone' => trim((string) ($salva['telefone'] ?? '')),
+            'email' => trim((string) ($salva['email'] ?? $registro->zimbra_from_address ?? '')),
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function dadosAssinaturaParaFormulario(SistemaConfiguracaoEmail $registro): array
+    {
+        $a = $this->dadosAssinatura($registro);
+
+        return [
+            'zimbra_assinatura_nome' => $a['nome'],
+            'zimbra_assinatura_funcao' => $a['funcao'],
+            'zimbra_assinatura_contrato' => $a['contrato'],
+            'zimbra_assinatura_telefone' => $a['telefone'],
+            'zimbra_assinatura_email' => $a['email'],
+        ];
+    }
+
+    /**
+     * HTML da assinatura eletrônica para rodapé dos e-mails enviados pelo SMTP Zimbra.
+     */
+    public function renderAssinaturaRodapeHtml(?SistemaConfiguracaoEmail $registro = null): string
+    {
+        if (! $this->assinaturaPreenchida($registro)) {
+            return '';
+        }
+
+        return app(EmailAssinaturaService::class)->renderHtml($this->dadosAssinatura($registro));
+    }
+
+    public function assinaturaPreenchida(?SistemaConfiguracaoEmail $registro = null): bool
+    {
+        $dados = $this->dadosAssinatura($registro);
+
+        return $dados['nome'] !== '' || $dados['funcao'] !== '' || $dados['email'] !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $dados
+     * @return array{nome: string, funcao: string, contrato: string, telefone: string, email: string}
+     */
+    public function normalizarAssinaturaDoRequest(array $dados): array
+    {
+        return app(EmailAssinaturaService::class)->normalizar([
+            'nome' => $dados['zimbra_assinatura_nome'] ?? $dados['zimbra_from_name'] ?? null,
+            'funcao' => $dados['zimbra_assinatura_funcao'] ?? null,
+            'contrato' => $dados['zimbra_assinatura_contrato'] ?? null,
+            'telefone' => $dados['zimbra_assinatura_telefone'] ?? null,
+            'email' => $dados['zimbra_assinatura_email'] ?? $dados['zimbra_from_address'] ?? null,
+        ]);
     }
 
     /**
@@ -118,6 +184,7 @@ final class ConfiguracaoZimbraEmailService
             'zimbra_from_name' => $dados['zimbra_from_name'] ?? null,
             'zimbra_from_address' => $dados['zimbra_from_address'] ?? null,
             'beneficio_adesao_copia_email' => $dados['beneficio_adesao_copia_email'] ?? null,
+            'zimbra_assinatura' => $this->normalizarAssinaturaDoRequest($dados),
             'zimbra_updated_at' => now(),
             'updated_by_id' => $usuarioId,
         ];
@@ -141,11 +208,17 @@ final class ConfiguracaoZimbraEmailService
         $fromAddress = (string) config('mail.beneficio_adesao_matriz.zimbra_from_address');
         $fromName = (string) config('mail.beneficio_adesao_matriz.zimbra_from_name');
 
+        $corpo = '<p style="font-family:Arial,sans-serif;font-size:14px;">Teste de envio pelo SMTP Zimbra (mailer <strong>zimbra_jarbas</strong>) configurado no sistema.</p>';
+        $assinatura = $this->renderAssinaturaRodapeHtml();
+        if ($assinatura !== '') {
+            $corpo .= '<div style="margin-top:24px;">'.$assinatura.'</div>';
+        }
+
         try {
             Mail::mailer(self::MAILER)
                 ->to($destinatario)
                 ->send(new LayoutHtmlMail(
-                    '<p style="font-family:Arial,sans-serif;font-size:14px;">Teste de envio pelo SMTP Zimbra (mailer <strong>zimbra_jarbas</strong>) configurado no sistema.</p>',
+                    $corpo,
                     'Teste SMTP Zimbra — '.config('app.name'),
                     [],
                     $fromAddress,
