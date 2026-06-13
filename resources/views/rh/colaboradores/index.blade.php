@@ -16,7 +16,7 @@
         </a>
     @endif
     @if ($podeRhVisualizar)
-        <a href="{{ route('rh.efetivo.exportar-excel', request()->only(['busca', 'cargo', 'ordenacao'])) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
+        <a href="{{ route('rh.efetivo.exportar-excel', request()->only(['busca', 'cargo', 'centro_custo', 'ordenacao'])) }}" class="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-burgundy/25 bg-brand-burgundy-soft px-4 py-2 text-sm font-semibold text-brand-burgundy shadow-sm transition hover:border-brand-burgundy hover:bg-brand-burgundy/10">
             <i data-lucide="download" class="h-4 w-4"></i>
             Exportar
         </a>
@@ -211,7 +211,7 @@
 
             <form method="GET" class="mt-5 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm">
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-                    <label class="space-y-2 sm:col-span-2 lg:col-span-5">
+                    <label class="space-y-2 sm:col-span-2 lg:col-span-4">
                         <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-gray">
                             <i data-lucide="search" class="h-3.5 w-3.5"></i>
                             Buscar
@@ -230,7 +230,19 @@
                             @endforeach
                         </select>
                     </label>
-                    <label class="space-y-2 lg:col-span-3">
+                    <label class="space-y-2 lg:col-span-2">
+                        <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-gray">
+                            <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+                            Centro de custo
+                        </span>
+                        <select name="centro_custo" class="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm font-medium text-brand-black outline-none transition focus:border-brand-burgundy focus:bg-white focus:ring-4 focus:ring-brand-burgundy/10">
+                            <option value="">Todos</option>
+                            @foreach ($centrosCusto ?? [] as $centroCusto)
+                                <option value="{{ $centroCusto }}" @selected(request('centro_custo') === $centroCusto)>{{ $centroCusto }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="space-y-2 lg:col-span-2">
                         <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-gray">
                             <i data-lucide="arrow-up-down" class="h-3.5 w-3.5"></i>
                             Ordenar
@@ -245,7 +257,7 @@
                             <i data-lucide="filter" class="h-4 w-4"></i>
                             <span class="lg:hidden">Filtrar</span>
                         </button>
-                        @if (request()->filled('busca') || request()->filled('cargo') || request('ordenacao') === 'recentes')
+                        @if (request()->filled('busca') || request()->filled('cargo') || request()->filled('centro_custo') || request('ordenacao') === 'recentes')
                             <a href="{{ route('rh.efetivo.index') }}" class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-brand-gray transition hover:border-zinc-300 hover:text-brand-black" title="Limpar filtros">
                                 <i data-lucide="x" class="h-4 w-4"></i>
                             </a>
@@ -253,7 +265,7 @@
                     </div>
                 </div>
 
-                @if (request()->filled('busca') || request()->filled('cargo') || request('ordenacao') === 'recentes')
+                @if (request()->filled('busca') || request()->filled('cargo') || request()->filled('centro_custo') || request('ordenacao') === 'recentes')
                     <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-brand-gray">Filtros:</span>
                         @if (request()->filled('busca'))
@@ -263,6 +275,9 @@
                         @endif
                         @if (request()->filled('cargo'))
                             <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-brand-gray">{{ request('cargo') }}</span>
+                        @endif
+                        @if (request()->filled('centro_custo'))
+                            <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-brand-gray">Centro de custo: {{ request('centro_custo') }}</span>
                         @endif
                         @if (request('ordenacao') === 'recentes')
                             <span class="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-brand-gray">Mais recentes</span>
@@ -275,7 +290,7 @@
         @if ($podeRhExcluir)
         <form method="POST" action="{{ route('rh.efetivo.excluir-massa') }}" id="form-exclusao-massa" class="hidden border-b border-red-100 bg-gradient-to-r from-red-50/90 to-white px-6 py-3" data-barra-exclusao onsubmit="return confirm('Remover permanentemente os colaboradores selecionados do efetivo? Esta ação não pode ser desfeita.');">
             @csrf
-            @foreach (request()->only(['busca', 'ordenacao', 'cargo']) as $key => $val)
+            @foreach (request()->only(['busca', 'ordenacao', 'cargo', 'centro_custo']) as $key => $val)
                 @if (filled($val))
                     <input type="hidden" name="{{ $key }}" value="{{ $val }}">
                 @endif

@@ -29,10 +29,11 @@ class ColaboradorController extends Controller
             ->withQueryString();
 
         $funcoes = $this->funcoesDistintas();
+        $centrosCusto = $this->centrosCustoDistintos();
 
         $resumoEfetivo = EfetivoResumoCards::paraTelaEfetivo();
 
-        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'resumoEfetivo'));
+        return view('rh.colaboradores.index', compact('colaboradores', 'ordenacao', 'funcoes', 'centrosCusto', 'resumoEfetivo'));
     }
 
     public function exportarExcel(Request $request)
@@ -61,6 +62,7 @@ class ColaboradorController extends Controller
                 });
             })
             ->when($request->filled('cargo'), fn ($query) => $query->where('cargo', $request->input('cargo')))
+            ->when($request->filled('centro_custo'), fn ($query) => $query->where('centro_custo', $request->input('centro_custo')))
             ->when(
                 $ordenacao === 'alfabetica',
                 fn ($query) => $query->orderBy('nome'),
@@ -200,7 +202,7 @@ class ColaboradorController extends Controller
 
         if ($excluidos === 0 && $bloqueados !== []) {
             return redirect()
-                ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo']))
+                ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo', 'centro_custo']))
                 ->with('error', 'Nenhum colaborador foi excluído. '.implode('; ', array_slice($bloqueados, 0, 8)));
         }
 
@@ -216,7 +218,7 @@ class ColaboradorController extends Controller
         }
 
         return redirect()
-            ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo']))
+            ->route('rh.efetivo.index', $request->only(['busca', 'ordenacao', 'cargo', 'centro_custo']))
             ->with($bloqueados === [] ? 'success' : 'warning', $mensagem);
     }
 
@@ -678,6 +680,22 @@ class ColaboradorController extends Controller
             ->distinct()
             ->orderBy('cargo')
             ->pluck('cargo')
+            ->map(fn ($v) => (string) $v)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function centrosCustoDistintos(): array
+    {
+        return Colaborador::query()
+            ->whereNotNull('centro_custo')
+            ->where('centro_custo', '!=', '')
+            ->distinct()
+            ->orderBy('centro_custo')
+            ->pluck('centro_custo')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();
