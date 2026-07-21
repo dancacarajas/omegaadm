@@ -180,6 +180,10 @@ class Colaborador extends Model
             return \App\Support\HorarioEscalaSemanalAlternada::diaNaData($this, $carbon);
         }
 
+        if ($escala->isRotativaDiasUteis()) {
+            return \App\Support\HorarioEscalaDiasUteis::diaNaData($this, $carbon);
+        }
+
         if ($escala->isRotativa()) {
             $indice = \App\Support\HorarioEscalaRotativa::indiceDiaCiclo(
                 $escala,

@@ -56,6 +56,7 @@ class EscalaPontoRegras
             $escala = $colaborador->horarioEscala;
             $rotulo = match (true) {
                 $escala?->isRotativaSemanal() => 'dia de folga na escala rotativa semanal',
+                $escala?->isRotativaDiasUteis() => 'dia de folga na escala rotativa por dias úteis',
                 $escala?->isRotativa() => 'dia de folga no ciclo rotativo',
                 default => 'dia sem jornada na escala',
             };

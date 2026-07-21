@@ -666,7 +666,7 @@ class ColaboradorController extends Controller
         return HorarioEscala::query()
             ->orderByRaw("CASE WHEN status = 'ativo' THEN 0 ELSE 1 END")
             ->orderBy('nome')
-            ->get(['id', 'nome', 'tipo', 'status']);
+            ->get(['id', 'nome', 'tipo', 'status', 'ciclo_dias']);
     }
 
     /**

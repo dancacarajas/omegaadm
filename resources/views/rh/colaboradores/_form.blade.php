@@ -263,6 +263,7 @@
                     @foreach ($horarioEscalas as $escala)
                         @php
                             $rotuloTipo = match ($escala->tipo) {
+                                'rotativa_dias_uteis' => 'rotativa por dias úteis',
                                 'rotativa_semanal' => 'rotativa semanal',
                                 'rotativa' => 'rotativa',
                                 default => 'semanal',
@@ -271,6 +272,7 @@
                         <option
                             value="{{ $escala->id }}"
                             data-tipo="{{ $escala->tipo }}"
+                            data-ciclo-dias="{{ $escala->ciclo_dias ?? 4 }}"
                             @selected((string) old('horario_escala_id', $colaborador->horario_escala_id) === (string) $escala->id)
                         >
                             {{ $escala->nome }} · {{ $rotuloTipo }}@if ($escala->status !== 'ativo') (inativo)@endif
@@ -457,6 +459,7 @@
     const hints = {
         rotativa_semanal: 'Na semana 2 os grupos invertem (seg/qua/sex ↔ ter/qui). Sábado e domingo são folga para todos.',
         rotativa: 'Ciclo de 2 dias: fase 0 trabalha no dia 1, fase 1 no dia oposto.',
+        rotativa_dias_uteis: 'Um colaborador por dia útil. Sábado e domingo são folga e não avançam o rodízio.',
     };
 
     function tipoSelecionado() {
@@ -464,24 +467,53 @@
         return opt?.dataset?.tipo || '';
     }
 
+    function cicloDiasSelecionado() {
+        const opt = select.options[select.selectedIndex];
+        return Math.min(14, Math.max(2, parseInt(opt?.dataset?.cicloDias || '4', 10)));
+    }
+
     function sync() {
         const tipo = tipoSelecionado();
-        const rotativa = tipo === 'rotativa' || tipo === 'rotativa_semanal';
+        const rotativa = tipo === 'rotativa' || tipo === 'rotativa_semanal' || tipo === 'rotativa_dias_uteis';
         wrap.classList.toggle('hidden', !rotativa);
         if (hint) hint.textContent = hints[tipo] || '';
         if (label) {
-            label.textContent = tipo === 'rotativa_semanal'
-                ? 'Grupo na rotatividade (semanal)'
-                : 'Fase no ciclo (dia sim/não)';
+            label.textContent = tipo === 'rotativa_dias_uteis'
+                ? 'Posição no rodízio'
+                : (tipo === 'rotativa_semanal'
+                    ? 'Grupo na rotatividade (semanal)'
+                    : 'Fase no ciclo (dia sim/não)');
         }
-        if (rotativa) {
-            [...offsetSelect.options].forEach((opt) => {
-                const texto = tipo === 'rotativa_semanal'
-                    ? opt.dataset.rotativaSemanal
-                    : opt.dataset.rotativa;
-                if (texto) opt.textContent = texto;
-            });
+        if (!rotativa) return;
+
+        const valorAtual = offsetSelect.value;
+        if (tipo === 'rotativa_dias_uteis') {
+            const qtd = cicloDiasSelecionado();
+            offsetSelect.innerHTML = '';
+            for (let p = 0; p < qtd; p++) {
+                const opt = document.createElement('option');
+                opt.value = String(p);
+                opt.textContent = 'Posição ' + (p + 1);
+                if (String(p) === valorAtual) opt.selected = true;
+                offsetSelect.appendChild(opt);
+            }
+            if (![...offsetSelect.options].some((o) => o.selected) && offsetSelect.options.length) {
+                offsetSelect.options[0].selected = true;
+            }
+            return;
         }
+
+        offsetSelect.innerHTML = '';
+        [
+            ['0', tipo === 'rotativa_semanal' ? 'Grupo 0 — sem.1: seg, qua, sex' : 'Fase 0 — dia 1 do ciclo'],
+            ['1', tipo === 'rotativa_semanal' ? 'Grupo 1 — sem.1: ter, qui' : 'Fase 1 — revezamento oposto'],
+        ].forEach(([v, texto]) => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = texto;
+            if (v === valorAtual) opt.selected = true;
+            offsetSelect.appendChild(opt);
+        });
     }
 
     select.addEventListener('change', sync);

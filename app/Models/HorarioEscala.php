@@ -13,6 +13,7 @@ class HorarioEscala extends Model
         'semanal' => 'Semanal (fixo por dia da semana)',
         'rotativa' => 'Rotativa (ciclo no calendário)',
         'rotativa_semanal' => 'Rotativa (alterna a cada semana — motoristas)',
+        'rotativa_dias_uteis' => 'Rotativa por dias úteis',
     ];
 
     protected $fillable = [
@@ -38,9 +39,14 @@ class HorarioEscala extends Model
         return $this->tipo === 'rotativa_semanal';
     }
 
+    public function isRotativaDiasUteis(): bool
+    {
+        return $this->tipo === 'rotativa_dias_uteis';
+    }
+
     public function usaRotatividade(): bool
     {
-        return $this->isRotativa() || $this->isRotativaSemanal();
+        return $this->isRotativa() || $this->isRotativaSemanal() || $this->isRotativaDiasUteis();
     }
 
     public function isSemanal(): bool
