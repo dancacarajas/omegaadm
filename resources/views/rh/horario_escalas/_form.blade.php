@@ -1,11 +1,14 @@
 @php
     $tipoAtual = $tipoAtual ?? old('tipo', $escala->tipo ?? 'semanal');
     $numDiasGrade = (int) ($numDiasGrade ?? match ($tipoAtual) {
-        'rotativa_semanal' => 1,
+        'rotativa_semanal', 'rotativa_dias_uteis' => 1,
         'rotativa' => max(2, (int) old('ciclo_dias', $escala->ciclo_dias ?? 2)),
         default => 7,
     });
     $diasGradeLabels = $diasGradeLabels ?? [];
+    $segundaPadrao = now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d');
+    $dataInicioDiasUteis = old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? $segundaPadrao);
+    $posicoesDiasUteis = (int) old('ciclo_dias', ($tipoAtual === 'rotativa_dias_uteis' ? ($escala->ciclo_dias ?? 4) : 4));
     $fmtTime = static function ($v) {
         if ($v === null || $v === '') {
             return '';
@@ -42,9 +45,12 @@
             <select name="tipo" id="tipo" data-horario-tipo class="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm transition focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
                 <option value="semanal" @selected($tipoAtual === 'semanal')>Semanal (fixo: seg, ter, qua…)</option>
                 <option value="rotativa_semanal" @selected($tipoAtual === 'rotativa_semanal')>Rotativa motoristas (alterna a cada semana)</option>
+                <option value="rotativa_dias_uteis" @selected($tipoAtual === 'rotativa_dias_uteis')>Rotativa por dias úteis</option>
                 <option value="rotativa" @selected($tipoAtual === 'rotativa')>Rotativa (ciclo dia sim / dia não no calendário)</option>
             </select>
-            <p class="mt-1.5 text-xs text-brand-gray">Para <strong>João seg/qua/sex e Pedro ter/qui na semana 1</strong>, trocando na semana 2, use <strong>alterna a cada semana</strong>. Sábado e domingo ficam sempre de folga.</p>
+            <p class="mt-1.5 text-xs text-brand-gray">
+                <strong>Rotativa por dias úteis:</strong> um colaborador por dia útil, na ordem das posições. Sábados e domingos não avançam o ciclo.
+            </p>
             @error('tipo')
                 <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
             @enderror
@@ -81,11 +87,65 @@
     </div>
     <div class="mt-5">
         <label for="data_inicio_ciclo_semanal" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Segunda-feira da semana 1</label>
-        <input type="hidden" name="data_inicio_ciclo" id="data_inicio_ciclo_hidden_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}">
+        <input type="hidden" name="data_inicio_ciclo" id="data_inicio_ciclo_hidden_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}" @disabled($tipoAtual !== 'rotativa_semanal')>
         <input type="date" id="data_inicio_ciclo_semanal" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d')) }}" class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
         @error('data_inicio_ciclo')
             <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
         @enderror
+    </div>
+</div>
+
+<div data-horario-rotativa-dias-uteis-campos class="overflow-hidden rounded-xl border border-sky-200/80 bg-sky-50/50 p-5 shadow-sm sm:p-6 {{ $tipoAtual === 'rotativa_dias_uteis' ? '' : 'hidden' }}">
+    <h2 class="text-lg font-bold text-brand-black">Rotativa por dias úteis</h2>
+    <p class="mt-1 text-sm text-brand-gray">Um colaborador por dia útil, seguindo a ordem das posições do rodízio. Sábados e domingos não avançam o ciclo. Feriados não deslocam a sequência.</p>
+    <div class="mt-4 rounded-lg border border-sky-200/60 bg-white p-4 text-xs text-brand-gray">
+        <p class="font-bold text-brand-black">Como funciona</p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+            <li>A <strong>segunda-feira da Semana 1</strong> é o dia da posição 1</li>
+            <li>Cada dia útil seguinte avança uma posição; ao fim, o ciclo recomeça</li>
+            <li>Sábado e domingo: folga para todos (o rodízio não avança)</li>
+            <li>Feriados continuam nas regras de frequência, mas <strong>não deslocam</strong> o rodízio</li>
+        </ul>
+    </div>
+    <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div>
+            <label for="data_inicio_ciclo_dias_uteis" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Segunda-feira da Semana 1</label>
+            <input type="hidden" name="data_inicio_ciclo" id="data_inicio_ciclo_hidden_dias_uteis" value="{{ $dataInicioDiasUteis }}" @disabled($tipoAtual !== 'rotativa_dias_uteis')>
+            <input type="date" id="data_inicio_ciclo_dias_uteis" value="{{ $dataInicioDiasUteis }}" data-horario-inicio-dias-uteis class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
+            @error('data_inicio_ciclo')
+                <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+        <div>
+            <label for="ciclo_dias_uteis" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Quantidade de posições no rodízio</label>
+            <input type="number" name="ciclo_dias" id="ciclo_dias_uteis" min="2" max="14" value="{{ $posicoesDiasUteis }}" data-horario-posicoes-dias-uteis class="mt-2 w-full max-w-[8rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20" @disabled($tipoAtual !== 'rotativa_dias_uteis')>
+            @error('ciclo_dias')
+                <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
+            @enderror
+            <p class="mt-1 text-[11px] text-brand-gray">Mínimo 2, máximo 14. Padrão: 4.</p>
+        </div>
+    </div>
+
+    <div class="mt-6" data-horario-previa-dias-uteis>
+        <h3 class="text-sm font-bold text-brand-black">Prévia — quatro semanas</h3>
+        <p class="mt-1 text-xs text-brand-gray">Recalculada ao alterar data, posições ou colaboradores. Não é salva no banco.</p>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-sky-200/70 bg-white">
+            <table class="w-full min-w-[640px] border-collapse text-left text-xs">
+                <thead class="border-b border-sky-100 bg-sky-50/80 text-[10px] font-bold uppercase tracking-wide text-brand-gray">
+                    <tr>
+                        <th class="px-3 py-2">Semana</th>
+                        <th class="px-2 py-2">Segunda</th>
+                        <th class="px-2 py-2">Terça</th>
+                        <th class="px-2 py-2">Quarta</th>
+                        <th class="px-2 py-2">Quinta</th>
+                        <th class="px-2 py-2">Sexta</th>
+                    </tr>
+                </thead>
+                <tbody data-horario-previa-dias-uteis-body class="divide-y divide-sky-50">
+                    <tr><td colspan="6" class="px-3 py-4 text-brand-gray">Selecione os colaboradores e as posições para ver a prévia.</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -95,14 +155,14 @@
     <div class="mt-5 grid gap-5 sm:grid-cols-2">
         <div>
             <label for="ciclo_dias" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Dias no ciclo</label>
-            <input type="number" name="ciclo_dias" id="ciclo_dias" min="2" max="14" value="{{ old('ciclo_dias', $escala->ciclo_dias ?? 2) }}" data-horario-ciclo-dias class="mt-2 w-full max-w-[8rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
+            <input type="number" name="ciclo_dias" id="ciclo_dias" min="2" max="14" value="{{ old('ciclo_dias', $escala->ciclo_dias ?? 2) }}" data-horario-ciclo-dias class="mt-2 w-full max-w-[8rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20" @disabled($tipoAtual !== 'rotativa')>
             @error('ciclo_dias')
                 <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
             @enderror
         </div>
         <div>
             <label for="data_inicio_ciclo" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Início do ciclo (dia 1)</label>
-            <input type="date" name="data_inicio_ciclo" id="data_inicio_ciclo" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
+            <input type="date" name="data_inicio_ciclo" id="data_inicio_ciclo" value="{{ old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20" @disabled($tipoAtual !== 'rotativa')>
             @error('data_inicio_ciclo')
                 <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
             @enderror
@@ -113,7 +173,7 @@
 <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
     <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 sm:p-6">
         <h2 class="text-lg font-bold text-brand-black" data-horario-grade-titulo>
-            @if ($tipoAtual === 'rotativa_semanal')
+            @if (in_array($tipoAtual, ['rotativa_semanal', 'rotativa_dias_uteis'], true))
                 Horário de trabalho
             @elseif ($tipoAtual === 'rotativa')
                 Grade do ciclo
@@ -122,7 +182,9 @@
             @endif
         </h2>
         <p class="mt-1 text-sm text-brand-gray" data-horario-grade-descricao>
-            @if ($tipoAtual === 'rotativa_semanal')
+            @if ($tipoAtual === 'rotativa_dias_uteis')
+                Informe o horário usado nos dias úteis em que o colaborador da vez trabalha (uma única jornada-template).
+            @elseif ($tipoAtual === 'rotativa_semanal')
                 Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).
             @elseif ($tipoAtual === 'rotativa')
                 Preencha os horários de cada dia do ciclo. Deixe vazio o dia de folga.
@@ -284,51 +346,83 @@
             const tipoSel = document.querySelector('[data-horario-tipo]');
             const rotativaBox = document.querySelector('[data-horario-rotativa-campos]');
             const rotativaSemanalBox = document.querySelector('[data-horario-rotativa-semanal-campos]');
+            const rotativaDiasUteisBox = document.querySelector('[data-horario-rotativa-dias-uteis-campos]');
             const cicloInput = document.querySelector('[data-horario-ciclo-dias]');
+            const posicoesDiasUteisInput = document.querySelector('[data-horario-posicoes-dias-uteis]');
             const padraoBtn = table.querySelector('[data-horario-padrao]');
             const inicioRotativa = document.getElementById('data_inicio_ciclo');
             const inicioSemanal = document.getElementById('data_inicio_ciclo_semanal');
+            const inicioDiasUteis = document.getElementById('data_inicio_ciclo_dias_uteis');
+            const previaBody = document.querySelector('[data-horario-previa-dias-uteis-body]');
+
+            function setDisabled(el, disabled) {
+                if (!el) return;
+                if (disabled) el.setAttribute('disabled', 'disabled');
+                else el.removeAttribute('disabled');
+            }
 
             function applyTipoUi() {
                 const tipo = tipoSel?.value || 'semanal';
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
+                const rotDias = tipo === 'rotativa_dias_uteis';
                 rotativaBox?.classList.toggle('hidden', !rot);
                 rotativaSemanalBox?.classList.toggle('hidden', !rotSem);
+                rotativaDiasUteisBox?.classList.toggle('hidden', !rotDias);
+
                 const hiddenInicioSemanal = document.getElementById('data_inicio_ciclo_hidden_semanal');
-                inicioRotativa?.toggleAttribute('disabled', !rot);
-                inicioSemanal?.toggleAttribute('disabled', !rotSem);
-                hiddenInicioSemanal?.toggleAttribute('disabled', !rotSem);
+                const hiddenInicioDiasUteis = document.getElementById('data_inicio_ciclo_hidden_dias_uteis');
+
+                setDisabled(inicioRotativa, !rot);
+                setDisabled(cicloInput, !rot);
+                setDisabled(inicioSemanal, !rotSem);
+                setDisabled(hiddenInicioSemanal, !rotSem);
+                setDisabled(inicioDiasUteis, !rotDias);
+                setDisabled(hiddenInicioDiasUteis, !rotDias);
+                setDisabled(posicoesDiasUteisInput, !rotDias);
+
                 if (rotSem && inicioSemanal && hiddenInicioSemanal) {
                     hiddenInicioSemanal.value = inicioSemanal.value;
                 }
+                if (rotDias && inicioDiasUteis && hiddenInicioDiasUteis) {
+                    hiddenInicioDiasUteis.value = inicioDiasUteis.value;
+                }
+
                 const notTh = padraoBtn?.closest('th');
-                if (notTh) notTh.classList.toggle('hidden', rot || rotSem);
+                if (notTh) notTh.classList.toggle('hidden', rot || rotSem || rotDias);
+
                 const titulo = document.querySelector('[data-horario-grade-titulo]');
                 const desc = document.querySelector('[data-horario-grade-descricao]');
                 if (titulo) {
-                    titulo.textContent = rotSem
+                    titulo.textContent = (rotSem || rotDias)
                         ? 'Horário de trabalho'
                         : (rot ? 'Grade do ciclo' : 'Grade semanal');
                 }
                 if (desc) {
-                    desc.textContent = rotSem
-                        ? 'Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).'
-                        : (rot
-                            ? 'Preencha os horários de cada dia do ciclo. Deixe vazio o dia de folga.'
-                            : 'Informe entradas e saídas; o total do dia e da semana são calculados automaticamente.');
+                    desc.textContent = rotDias
+                        ? 'Informe o horário usado nos dias úteis em que o colaborador da vez trabalha (uma única jornada-template).'
+                        : (rotSem
+                            ? 'Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).'
+                            : (rot
+                                ? 'Preencha os horários de cada dia do ciclo. Deixe vazio o dia de folga.'
+                                : 'Informe entradas e saídas; o total do dia e da semana são calculados automaticamente.'));
                 }
+
                 document.querySelectorAll('[data-escala-col-fase]').forEach((el) => {
-                    el.classList.toggle('hidden', !(rot || rotSem));
+                    el.classList.toggle('hidden', !(rot || rotSem || rotDias));
                 });
+
+                document.dispatchEvent(new CustomEvent('horario-escala-tipo-alterado', { detail: { tipo } }));
                 updateCicloRows();
+                atualizarPreviaDiasUteis();
             }
 
             function updateCicloRows() {
                 const tipo = tipoSel?.value || 'semanal';
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
-                const max = rotSem
+                const rotDias = tipo === 'rotativa_dias_uteis';
+                const max = (rotSem || rotDias)
                     ? 1
                     : (rot ? Math.min(14, Math.max(2, parseInt(cicloInput?.value || '2', 10))) : 7);
                 table.querySelectorAll('tbody tr[data-horario-dia-row]').forEach((tr) => {
@@ -338,14 +432,93 @@
                 refresh();
             }
 
+            function parseYmd(ymd) {
+                if (!ymd || typeof ymd !== 'string') return null;
+                const p = ymd.split('-').map((n) => parseInt(n, 10));
+                if (p.length !== 3 || p.some((n) => Number.isNaN(n))) return null;
+                const d = new Date(p[0], p[1] - 1, p[2]);
+                if (Number.isNaN(d.getTime())) return null;
+                return d;
+            }
+
+            function startOfMonday(date) {
+                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                const day = d.getDay(); // 0=dom
+                const diff = day === 0 ? -6 : 1 - day;
+                d.setDate(d.getDate() + diff);
+                return d;
+            }
+
+            function addDays(date, n) {
+                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                d.setDate(d.getDate() + n);
+                return d;
+            }
+
+            function nomesPorPosicao() {
+                const map = {};
+                document.querySelectorAll('[data-escala-colab-row]').forEach((row) => {
+                    const check = row.querySelector('[data-escala-colab-check]');
+                    if (!check?.checked) return;
+                    const offset = parseInt(row.querySelector('[data-escala-colab-offset]')?.value || '0', 10);
+                    const nome = row.querySelector('p.font-semibold')?.textContent?.trim() || '—';
+                    map[offset] = nome;
+                });
+                return map;
+            }
+
+            function atualizarPreviaDiasUteis() {
+                if (!previaBody) return;
+                const tipo = tipoSel?.value || 'semanal';
+                if (tipo !== 'rotativa_dias_uteis') return;
+
+                const inicio = parseYmd(inicioDiasUteis?.value || '');
+                const qtd = Math.min(14, Math.max(2, parseInt(posicoesDiasUteisInput?.value || '4', 10)));
+                if (!inicio) {
+                    previaBody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-brand-gray">Informe a segunda-feira da Semana 1.</td></tr>';
+                    return;
+                }
+
+                const segunda = startOfMonday(inicio);
+                const nomes = nomesPorPosicao();
+                let html = '';
+                for (let sem = 0; sem < 4; sem++) {
+                    const cells = [];
+                    for (let dia = 0; dia < 5; dia++) {
+                        const indice = sem * 5 + dia;
+                        const pos = ((indice % qtd) + qtd) % qtd;
+                        cells.push('<td class="px-2 py-2 font-medium text-brand-black">' + (nomes[pos] || ('Posição ' + (pos + 1))) + '</td>');
+                    }
+                    html += '<tr><td class="px-3 py-2 font-bold text-brand-black">Semana ' + (sem + 1) + '</td>' + cells.join('') + '</tr>';
+                }
+                previaBody.innerHTML = html;
+            }
+
+            window.atualizarPreviaDiasUteisHorario = atualizarPreviaDiasUteis;
+
             tipoSel?.addEventListener('change', applyTipoUi);
             cicloInput?.addEventListener('change', updateCicloRows);
+            posicoesDiasUteisInput?.addEventListener('change', () => {
+                document.dispatchEvent(new CustomEvent('horario-escala-posicoes-alteradas', {
+                    detail: { quantidade: parseInt(posicoesDiasUteisInput.value || '4', 10) },
+                }));
+                atualizarPreviaDiasUteis();
+            });
+            posicoesDiasUteisInput?.addEventListener('input', atualizarPreviaDiasUteis);
             inicioSemanal?.addEventListener('change', () => {
                 const hidden = document.getElementById('data_inicio_ciclo_hidden_semanal');
                 if (hidden && inicioSemanal) {
                     hidden.value = inicioSemanal.value;
                 }
             });
+            inicioDiasUteis?.addEventListener('change', () => {
+                const hidden = document.getElementById('data_inicio_ciclo_hidden_dias_uteis');
+                if (hidden && inicioDiasUteis) {
+                    hidden.value = inicioDiasUteis.value;
+                }
+                atualizarPreviaDiasUteis();
+            });
+            document.addEventListener('horario-escala-colab-alterado', atualizarPreviaDiasUteis);
 
             function refresh() {
                 let semana = 0;
@@ -437,7 +610,8 @@
                 const tipo = tipoSel?.value || 'semanal';
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
-                const max = rotSem
+                const rotDias = tipo === 'rotativa_dias_uteis';
+                const max = (rotSem || rotDias)
                     ? 1
                     : (rot ? Math.min(14, Math.max(2, parseInt(cicloInput?.value || '2', 10))) : 7);
 
@@ -459,12 +633,19 @@
                         hidden.value = inicioSemanal.value;
                     }
                 }
+                if (rotDias && inicioDiasUteis) {
+                    const hidden = document.getElementById('data_inicio_ciclo_hidden_dias_uteis');
+                    if (hidden) {
+                        hidden.value = inicioDiasUteis.value;
+                    }
+                }
             }
 
             document.querySelector('form[data-horario-escala-form]')?.addEventListener('submit', prepareFormSubmit);
 
             applyTipoUi();
             refresh();
+            atualizarPreviaDiasUteis();
         })();
     </script>
 @endpush

@@ -185,7 +185,9 @@
                                         @if ($registro->colaborador->horarioEscala)
                                             <p class="mt-1 text-[10px] font-bold uppercase tracking-wide text-brand-burgundy">
                                                 Escala: {{ $registro->colaborador->horarioEscala->nome }}
-                                                @if ($registro->colaborador->horarioEscala->isRotativaSemanal())
+                                                @if ($registro->colaborador->horarioEscala->isRotativaDiasUteis())
+                                                    · rotativa dias úteis · posição {{ (int) $registro->colaborador->horario_escala_ciclo_offset + 1 }}
+                                                @elseif ($registro->colaborador->horarioEscala->isRotativaSemanal())
                                                     · rotativa semanal · grupo {{ (int) $registro->colaborador->horario_escala_ciclo_offset }}
                                                 @elseif ($registro->colaborador->horarioEscala->isRotativa())
                                                     · rotativa · fase {{ (int) $registro->colaborador->horario_escala_ciclo_offset }}

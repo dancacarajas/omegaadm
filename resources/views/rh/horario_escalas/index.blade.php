@@ -35,6 +35,9 @@
                             <td class="px-5 py-4 font-semibold text-brand-black">{{ $escala->nome }}</td>
                             <td class="px-4 py-4 text-brand-gray">
                                 @switch($escala->tipo)
+                                    @case('rotativa_dias_uteis')
+                                        Rotativa por dias úteis
+                                        @break
                                     @case('rotativa_semanal')
                                         Rotativa semanal
                                         @break
@@ -51,7 +54,9 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-brand-gray">
-                                @if ($escala->tipo === 'rotativa_semanal')
+                                @if ($escala->tipo === 'rotativa_dias_uteis')
+                                    {{ $escala->ciclo_dias ?? '—' }} posições
+                                @elseif ($escala->tipo === 'rotativa_semanal')
                                     Revezamento semanal
                                 @elseif ($escala->tipo === 'rotativa')
                                     {{ $escala->ciclo_dias ?? $escala->dias_count }} dias/ciclo
