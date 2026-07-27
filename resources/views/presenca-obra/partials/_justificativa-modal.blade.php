@@ -36,7 +36,7 @@
                 <p class="mt-1 text-[11px] leading-relaxed text-brand-gray">PDF, imagens ou Word. Máximo 10 MB por arquivo.</p>
                 <div data-justificativa-pendentes-wrap hidden class="mt-3 rounded-lg border border-sky-200 bg-sky-50/60 p-3">
                     <p class="text-xs font-bold uppercase tracking-wide text-sky-900">Anexos selecionados</p>
-                    <p class="mt-0.5 text-[11px] text-sky-800">Serão enviados ao clicar em &quot;Salvar confirmação&quot;.</p>
+                    <p class="mt-0.5 text-[11px] text-sky-800">Serão salvos ao clicar em &quot;Salvar justificativa&quot;.</p>
                     <ul class="mt-2 space-y-2" data-justificativa-pendentes></ul>
                 </div>
                 <ul class="mt-2 space-y-1 text-xs text-brand-gray" data-justificativa-arquivos-novos hidden></ul>

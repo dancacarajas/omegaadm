@@ -118,6 +118,7 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
 
         Route::middleware('presenca-obra.colaborador')->group(function () {
         Route::get('/app', [PresencaObraColaboradorController::class, 'index'])->name('index');
+        Route::post('/justificativa', [PresencaObraColaboradorController::class, 'salvarJustificativa'])->name('justificativa.store');
         Route::post('/salvar', [PresencaObraColaboradorController::class, 'salvar'])->name('salvar');
         Route::get('/anexos/{anexo}/visualizar', [PresencaObraColaboradorController::class, 'visualizarAnexo'])->name('anexos.visualizar');
         Route::get('/anexos/{anexo}/download', [PresencaObraColaboradorController::class, 'downloadAnexo'])->name('anexos.download');

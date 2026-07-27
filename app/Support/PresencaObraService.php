@@ -184,6 +184,76 @@ class PresencaObraService
     }
 
     /**
+     * @param  list<UploadedFile>  $anexos
+     */
+    public function salvarJustificativa(
+        Colaborador $confirmador,
+        CarbonInterface|string $data,
+        int $colaboradorId,
+        ?string $observacao,
+        ?string $status,
+        array $anexos = [],
+    ): MedicaoPresencaObraRegistro {
+        if (! $this->podeConfirmar($confirmador)) {
+            throw ValidationException::withMessages([
+                'acesso' => 'Seu acesso para confirmar presença na obra não está liberado.',
+            ]);
+        }
+
+        $ymd = Carbon::parse($data)->toDateString();
+        $colab = Colaborador::query()
+            ->where('status', 'ativo')
+            ->whereKey($colaboradorId)
+            ->first(['id', 'centro_custo']);
+
+        if ($colab === null) {
+            throw ValidationException::withMessages([
+                'colaborador_id' => 'Colaborador não encontrado ou inativo.',
+            ]);
+        }
+
+        $registro = MedicaoPresencaObraRegistro::query()
+            ->whereDate('data', $ymd)
+            ->where('colaborador_id', $colaboradorId)
+            ->first();
+
+        $statusFinal = $status ?? $registro?->status;
+        if (! in_array($statusFinal, [
+            MedicaoPresencaObraRegistro::STATUS_PRESENTE,
+            MedicaoPresencaObraRegistro::STATUS_AUSENTE,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'Marque o colaborador como presente ou ausente antes de salvar a justificativa.',
+            ]);
+        }
+
+        $observacaoFinal = $observacao !== null && trim($observacao) !== ''
+            ? mb_substr(trim($observacao), 0, 500)
+            : null;
+
+        $registro = MedicaoPresencaObraRegistro::query()->updateOrCreate(
+            [
+                'data' => $ymd,
+                'colaborador_id' => $colaboradorId,
+            ],
+            [
+                'status' => $statusFinal,
+                'confirmado_por_id' => $confirmador->id,
+                'centro_custo' => $colab->centro_custo,
+                'observacao' => $observacaoFinal,
+                'confirmado_em' => now(),
+            ]
+        );
+
+        if ($anexos !== []) {
+            $this->salvarAnexos($data, [$colaboradorId => $anexos]);
+        }
+
+        return $registro->fresh(['anexos:id,registro_id,nome_original,caminho,mime,tamanho'])
+            ->loadCount('anexos');
+    }
+
+    /**
      * @return list<string>
      */
     public function centrosCustoAtivos(): array

@@ -155,6 +155,44 @@ class PresencaObraColaboradorController extends Controller
         ]);
     }
 
+    public function salvarJustificativa(Request $request): JsonResponse
+    {
+        /** @var Colaborador $confirmador */
+        $confirmador = $request->attributes->get('colaborador_presenca_obra');
+
+        $validated = $request->validate([
+            'data' => ['required', 'date'],
+            'colaborador_id' => ['required', 'integer', 'exists:colaboradores,id'],
+            'observacao' => ['nullable', 'string', 'max:500'],
+            'status' => ['nullable', 'in:presente,ausente'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx'],
+        ]);
+
+        $registro = $this->presenca->salvarJustificativa(
+            $confirmador,
+            $validated['data'],
+            (int) $validated['colaborador_id'],
+            $validated['observacao'] ?? null,
+            $validated['status'] ?? null,
+            $request->file('anexos', []) ?? [],
+        );
+
+        $anexos = $registro->anexos->map(fn (MedicaoPresencaObraAnexo $anexo) => [
+            'id' => $anexo->id,
+            'nome' => $anexo->nome_original,
+            'url' => route('presenca-obra.anexos.visualizar', $anexo),
+        ])->values()->all();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Justificativa salva com sucesso.',
+            'observacao' => $registro->observacao,
+            'anexos' => $anexos,
+            'anexos_count' => (int) $registro->anexos_count,
+        ]);
+    }
+
     public function salvar(Request $request): RedirectResponse|JsonResponse
     {
         /** @var Colaborador $confirmador */

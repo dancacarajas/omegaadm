@@ -342,6 +342,51 @@ class PresencaObraTest extends TestCase
         Storage::disk('public')->assertExists($registro->anexos->first()->caminho);
     }
 
+    public function test_salva_justificativa_direto_no_endpoint(): void
+    {
+        Storage::fake('public');
+
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor Justificativa',
+            'matricula' => 'SUP-JUS',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $operario = Colaborador::query()->create([
+            'nome' => 'Operario Justificativa',
+            'matricula' => 'OP-JUS',
+            'status' => 'ativo',
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.justificativa.store'), [
+                'data' => '2026-07-27',
+                'colaborador_id' => $operario->id,
+                'observacao' => 'Atestado médico',
+                'status' => 'ausente',
+                'anexos' => [
+                    UploadedFile::fake()->create('atestado.pdf', 50, 'application/pdf'),
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('observacao', 'Atestado médico')
+            ->assertJsonCount(1, 'anexos');
+
+        $registro = MedicaoPresencaObraRegistro::query()
+            ->with('anexos')
+            ->where('colaborador_id', $operario->id)
+            ->whereDate('data', '2026-07-27')
+            ->first();
+
+        $this->assertNotNull($registro);
+        $this->assertSame('ausente', $registro->status);
+        $this->assertSame('Atestado médico', $registro->observacao);
+        $this->assertCount(1, $registro->anexos);
+    }
+
     public function test_visualiza_anexo_enviado(): void
     {
         Storage::fake('public');

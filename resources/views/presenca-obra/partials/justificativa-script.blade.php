@@ -5,6 +5,10 @@
             return;
         }
 
+        const endpoint = @json(route('presenca-obra.justificativa.store'));
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || @json(csrf_token());
+        const salvarBtn = modal.querySelector('[data-justificativa-salvar]');
+
         const textoEl = document.getElementById('presenca-justificativa-texto');
         const arquivosEl = document.getElementById('presenca-justificativa-arquivos');
         const colaboradorEl = modal.querySelector('[data-justificativa-colaborador]');
@@ -199,28 +203,120 @@
             }
         };
 
-        const salvar = () => {
+        const atualizarAnexosNoBotao = (button, anexos) => {
+            [...button.attributes].forEach((attr) => {
+                if (attr.name.startsWith('data-anexo-existente-')) {
+                    button.removeAttribute(attr.name);
+                }
+            });
+
+            anexos.forEach((anexo, index) => {
+                button.setAttribute(`data-anexo-existente-${index}-nome`, anexo.nome);
+                button.setAttribute(`data-anexo-existente-${index}-url`, anexo.url);
+            });
+
+            button.dataset.anexosCount = String(anexos.length);
+        };
+
+        const statusSelecionado = (colaboradorId) => {
+            return document.querySelector(`input[name="itens[${colaboradorId}][status]"]:checked`)?.value || '';
+        };
+
+        const salvar = async () => {
             if (!colaboradorAtual) {
                 return;
             }
 
             const hidden = document.querySelector(`[data-justificativa-input="${colaboradorAtual}"]`);
-            if (hidden && textoEl) {
-                hidden.value = textoEl.value.trim();
-            }
-
+            const button = document.querySelector(`[data-justificativa-open][data-colaborador-id="${colaboradorAtual}"]`);
+            const observacao = textoEl ? textoEl.value.trim() : '';
             const pendentes = arquivosPorColaborador.get(colaboradorAtual) || [];
             const novos = Array.from(arquivosEl?.files || []);
-            if (novos.length > 0) {
-                arquivosPorColaborador.set(colaboradorAtual, [...pendentes, ...novos]);
+            const arquivos = [...pendentes, ...novos];
+            const status = statusSelecionado(colaboradorAtual);
+            const data = document.querySelector('#form-presenca-obra input[name="data"]')?.value || '';
+
+            if (!status) {
+                window.alert('Marque o colaborador como presente ou ausente antes de salvar a justificativa.');
+                return;
             }
 
-            if (arquivosEl) {
-                arquivosEl.value = '';
+            if (!navigator.onLine) {
+                if (hidden && textoEl) {
+                    hidden.value = observacao;
+                }
+                if (arquivos.length > 0) {
+                    arquivosPorColaborador.set(colaboradorAtual, arquivos);
+                }
+                if (arquivosEl) {
+                    arquivosEl.value = '';
+                }
+                atualizarBotao(colaboradorAtual);
+                window.alert('Sem internet. O texto ficou salvo neste aparelho, mas os anexos só são gravados com conexão.');
+                fechar();
+                return;
             }
 
-            atualizarBotao(colaboradorAtual);
-            fechar();
+            const formData = new FormData();
+            formData.append('data', data);
+            formData.append('colaborador_id', colaboradorAtual);
+            formData.append('observacao', observacao);
+            formData.append('status', status);
+            arquivos.forEach((file) => {
+                formData.append('anexos[]', file);
+            });
+
+            const labelOriginal = salvarBtn?.textContent || 'Salvar justificativa';
+            if (salvarBtn) {
+                salvarBtn.disabled = true;
+                salvarBtn.textContent = 'Salvando...';
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: formData,
+                });
+
+                const json = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const mensagem = json.message
+                        || Object.values(json.errors || {}).flat().join(' ')
+                        || 'Não foi possível salvar a justificativa.';
+                    window.alert(mensagem);
+                    return;
+                }
+
+                if (hidden) {
+                    hidden.value = json.observacao || observacao;
+                }
+
+                if (button) {
+                    button.dataset.justificativaTexto = json.observacao || observacao;
+                    atualizarAnexosNoBotao(button, json.anexos || []);
+                }
+
+                arquivosPorColaborador.delete(colaboradorAtual);
+                if (arquivosEl) {
+                    arquivosEl.value = '';
+                }
+
+                atualizarBotao(colaboradorAtual);
+                fechar();
+            } catch {
+                window.alert('Não foi possível salvar a justificativa. Verifique sua conexão e tente novamente.');
+            } finally {
+                if (salvarBtn) {
+                    salvarBtn.disabled = false;
+                    salvarBtn.textContent = labelOriginal;
+                }
+            }
         };
 
         document.querySelectorAll('[data-justificativa-open]').forEach((button) => {
