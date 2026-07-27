@@ -9,6 +9,13 @@
     $classeBotao = $temAnexo
         ? 'border-amber-300 bg-amber-50 text-amber-900'
         : ($temJustificativa ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-zinc-200 bg-white text-brand-gray hover:border-brand-burgundy hover:text-brand-burgundy');
+    $labelBotao = 'Justificativa';
+    if ($temJustificativa) {
+        $labelBotao .= ' ✓';
+        if ($temAnexo) {
+            $labelBotao .= ' ('.$qtdAnexos.' '.($qtdAnexos === 1 ? 'anexo' : 'anexos').')';
+        }
+    }
 @endphp
 
 <input
@@ -32,5 +39,5 @@
     class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition {{ $classeBotao }}"
 >
     <i data-lucide="message-square-text" class="h-3.5 w-3.5"></i>
-    <span data-justificativa-label>Justificativa@if($temJustificativa) ✓@if($temAnexo) ({{ $qtdAnexos }} {{ $qtdAnexos === 1 ? 'anexo' : 'anexos' }})@endif @endif</span>
+    <span data-justificativa-label>{{ $labelBotao }}</span>
 </button>
