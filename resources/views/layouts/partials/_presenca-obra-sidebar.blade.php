@@ -17,7 +17,7 @@
             <div class="mt-2 space-y-1 border-l border-zinc-200 pl-4">
                 <a href="{{ route('medicao.presenca-obra.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.presenca-obra.index') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                     <i data-lucide="layout-grid" class="h-4 w-4"></i>
-                    Portal público
+                    Gestão de Presenças
                 </a>
                 <a href="{{ route('presenca-obra.identificar') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('presenca-obra.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                     <i data-lucide="hard-hat" class="h-4 w-4"></i>
