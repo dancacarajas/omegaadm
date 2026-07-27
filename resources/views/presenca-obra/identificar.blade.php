@@ -1,4 +1,4 @@
-@extends('layouts.ponto-mobile')
+@extends('layouts.presenca-obra')
 
 @section('title', 'Presença na obra')
 
@@ -62,7 +62,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('presenca-obra.identificar.store') }}" class="flex flex-1 flex-col gap-4">
+        <form method="POST" action="{{ route('presenca-obra.identificar.store') }}" class="presenca-obra-identify-form flex flex-1 flex-col gap-4">
             @csrf
             <div class="ponto-field-card">
                 <label for="matricula" class="mb-2 block text-xs font-bold uppercase tracking-wide text-brand-gray">Matrícula</label>

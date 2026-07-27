@@ -1,4 +1,4 @@
-@extends('layouts.ponto-mobile')
+@extends('layouts.presenca-obra')
 
 @section('title', 'Presença na obra · sem internet')
 

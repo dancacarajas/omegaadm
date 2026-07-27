@@ -40,17 +40,6 @@
                                 <i data-lucide="smartphone" class="h-4 w-4"></i>
                                 Confirmar presença
                             </a>
-                            @auth
-                                <a href="{{ route('medicao.presenca-obra.consulta') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.presenca-obra.consulta') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
-                                    <i data-lucide="table-2" class="h-4 w-4"></i>
-                                    Consulta interna
-                                </a>
-                            @else
-                                <a href="{{ route('login', ['redirect' => route('medicao.presenca-obra.consulta', [], false)]) }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold text-brand-gray transition hover:bg-brand-gray-soft hover:text-brand-black">
-                                    <i data-lucide="mail" class="h-4 w-4"></i>
-                                    Consulta interna
-                                </a>
-                            @endauth
                         </div>
                     </div>
                 </nav>

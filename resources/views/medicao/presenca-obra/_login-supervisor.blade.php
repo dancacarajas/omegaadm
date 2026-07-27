@@ -38,15 +38,11 @@
                     placeholder="Somente números"
                 >
             </div>
-            <div class="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+            <div class="flex flex-col gap-2 sm:flex-row lg:col-span-1 lg:flex-col xl:flex-row">
                 <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-burgundy px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-burgundy-dark">
                     <i data-lucide="log-in" class="h-4 w-4"></i>
                     Entrar para confirmar
                 </button>
-                <a href="{{ route('presenca-obra.identificar') }}" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
-                    <i data-lucide="smartphone" class="h-4 w-4"></i>
-                    Modo celular
-                </a>
             </div>
         </form>
     </div>

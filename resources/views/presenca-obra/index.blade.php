@@ -1,4 +1,4 @@
-@extends('layouts.ponto-mobile')
+@extends('layouts.presenca-obra')
 
 @section('title', 'Confirmar presença')
 
@@ -15,8 +15,8 @@
         </div>
         <div class="mt-4">
             <p class="text-xs font-bold uppercase tracking-wide text-white/70">Confirmando como</p>
-            <h1 class="mt-1 text-lg font-bold text-white">{{ $confirmador->nome }}</h1>
-            <p class="mt-1 text-xs text-white/80">{{ $confirmador->matricula ?: 'Sem matrícula' }} · presença na obra (não é ponto RH)</p>
+            <h1 class="mt-1 text-lg font-bold text-white lg:text-2xl">{{ $confirmador->nome }}</h1>
+            <p class="mt-1 text-xs text-white/80 lg:text-sm">{{ $confirmador->matricula ?: 'Sem matrícula' }} · presença na obra (não é ponto RH)</p>
             <div class="mt-3 flex flex-wrap gap-2">
                 <span data-presenca-online-state class="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white">Verificando...</span>
                 <span data-presenca-pending-count class="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white">0 pendentes</span>
@@ -38,7 +38,7 @@
                     <button
                         type="button"
                         data-presenca-sync
-                        class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-800"
+                        class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-800 lg:w-auto"
                     >
                         <i data-lucide="upload-cloud" class="h-4 w-4"></i>
                         Enviar registros pendentes
@@ -78,13 +78,13 @@
             </div>
         @endif
 
-        <form method="GET" action="{{ route('presenca-obra.index') }}" class="ponto-field-card space-y-3">
+        <form method="GET" action="{{ route('presenca-obra.index') }}" class="ponto-field-card presenca-obra-filters space-y-3">
             <div>
-                <label for="data" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray">Data</label>
+                <label for="data" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray lg:text-xs">Data</label>
                 <input type="date" name="data" id="data" value="{{ $data }}" class="ponto-input" onchange="this.form.submit()">
             </div>
             <div>
-                <label for="centro_custo" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray">Centro de custo</label>
+                <label for="centro_custo" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray lg:text-xs">Centro de custo</label>
                 <select name="centro_custo" id="centro_custo" class="ponto-input" onchange="this.form.submit()">
                     <option value="">Todos</option>
                     @foreach ($centrosCusto as $cc)
@@ -92,26 +92,26 @@
                     @endforeach
                 </select>
             </div>
-            <div>
-                <label for="busca" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray">Buscar</label>
+            <div class="lg:col-span-2">
+                <label for="busca" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-gray lg:text-xs">Buscar</label>
                 <div class="flex gap-2">
                     <input type="search" name="busca" id="busca" value="{{ $busca }}" class="ponto-input" placeholder="Nome ou matrícula">
-                    <button type="submit" class="shrink-0 rounded-lg bg-brand-burgundy px-3 text-sm font-bold text-white">Filtrar</button>
+                    <button type="submit" class="shrink-0 rounded-lg bg-brand-burgundy px-3 text-sm font-bold text-white lg:px-4">Filtrar</button>
                 </div>
             </div>
         </form>
 
-        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+        <div class="presenca-obra-totais grid grid-cols-3 gap-2 text-center text-xs">
             <div class="rounded-xl border border-zinc-200 bg-white px-2 py-3">
-                <p class="font-bold text-brand-black">{{ $totais['lista'] }}</p>
+                <p class="font-bold text-brand-black lg:text-lg">{{ $totais['lista'] }}</p>
                 <p class="text-brand-gray">Na lista</p>
             </div>
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-3">
-                <p class="font-bold text-emerald-800">{{ $totais['presentes'] }}</p>
+                <p class="font-bold text-emerald-800 lg:text-lg">{{ $totais['presentes'] }}</p>
                 <p class="text-emerald-700">Presentes</p>
             </div>
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-2 py-3">
-                <p class="font-bold text-amber-900">{{ $totais['ausentes'] }}</p>
+                <p class="font-bold text-amber-900 lg:text-lg">{{ $totais['ausentes'] }}</p>
                 <p class="text-amber-800">Ausentes</p>
             </div>
         </div>
@@ -123,15 +123,15 @@
             <input type="hidden" name="centro_custo" value="{{ $centroCusto }}">
 
             <div class="mb-3 flex gap-2">
-                <button type="button" data-marcar-todos="presente" class="flex-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-2 text-xs font-bold text-emerald-800">
+                <button type="button" data-marcar-todos="presente" class="flex-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-2 text-xs font-bold text-emerald-800 lg:max-w-[12rem]">
                     Todos presentes
                 </button>
-                <button type="button" data-marcar-todos="ausente" class="flex-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-xs font-bold text-amber-900">
+                <button type="button" data-marcar-todos="ausente" class="flex-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-xs font-bold text-amber-900 lg:max-w-[12rem]">
                     Todos ausentes
                 </button>
             </div>
 
-            <div class="space-y-2">
+            <div class="space-y-2 lg:hidden">
                 @forelse ($colaboradores as $colab)
                     @php
                         $atual = $statusDia[$colab->id] ?? old("itens.{$colab->id}.status", '');
@@ -169,14 +169,64 @@
                 @endforelse
             </div>
 
+            <div class="presenca-obra-table-wrap hidden lg:block">
+                <table class="presenca-obra-table">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Matrícula</th>
+                            <th>Centro de custo</th>
+                            <th>Cargo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($colaboradores as $colab)
+                            @php
+                                $atual = $statusDia[$colab->id] ?? old("itens.{$colab->id}.status", '');
+                            @endphp
+                            <tr data-presenca-row>
+                                <td class="font-semibold text-brand-black">{{ $colab->nome }}</td>
+                                <td class="text-brand-gray">{{ $colab->matricula ?: '—' }}</td>
+                                <td class="text-brand-gray">{{ $colab->centro_custo ?: '—' }}</td>
+                                <td class="text-brand-gray">{{ $colab->cargo ?: '—' }}</td>
+                                <td>
+                                    <div class="presenca-obra-status-group">
+                                        <label>
+                                            <input type="radio" name="itens[{{ $colab->id }}][status]" value="presente" class="sr-only" @checked($atual === 'presente') data-presenca-status>
+                                            Presente
+                                        </label>
+                                        <label>
+                                            <input type="radio" name="itens[{{ $colab->id }}][status]" value="ausente" class="sr-only" @checked($atual === 'ausente') data-presenca-status>
+                                            Ausente
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-5 py-10 text-center text-sm text-brand-gray">
+                                    Nenhum colaborador ativo encontrado com os filtros atuais.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
             @if ($colaboradores->isNotEmpty())
-                <button type="submit" class="ponto-btn-primary mt-4">
-                    <span class="ponto-btn-primary-row">
-                        <i data-lucide="save" class="h-5 w-5"></i>
-                        Salvar confirmação
-                    </span>
-                </button>
-                <p class="mt-2 text-center text-[11px] leading-relaxed text-brand-gray">
+                <div class="presenca-obra-save-bar">
+                    <p class="hidden text-sm text-brand-gray lg:block">
+                        Sem internet? A confirmação fica salva no aparelho e pode ser enviada depois pelo alerta acima.
+                    </p>
+                    <button type="submit" class="ponto-btn-primary mt-4 lg:mt-0">
+                        <span class="ponto-btn-primary-row">
+                            <i data-lucide="save" class="h-5 w-5"></i>
+                            Salvar confirmação
+                        </span>
+                    </button>
+                </div>
+                <p class="mt-2 text-center text-[11px] leading-relaxed text-brand-gray lg:hidden">
                     Sem internet? A confirmação fica salva no aparelho e pode ser enviada depois pelo alerta acima.
                 </p>
             @endif
