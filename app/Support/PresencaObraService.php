@@ -3,9 +3,11 @@
 namespace App\Support;
 
 use App\Models\Colaborador;
+use App\Models\MedicaoPresencaObraAnexo;
 use App\Models\MedicaoPresencaObraRegistro;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -60,6 +62,22 @@ class PresencaObraService
             ->whereDate('data', $ymd)
             ->pluck('status', 'colaborador_id')
             ->map(fn ($s) => (string) $s)
+            ->all();
+    }
+
+    /**
+     * @return array<int, MedicaoPresencaObraRegistro>
+     */
+    public function registrosDoDia(CarbonInterface|string $data): array
+    {
+        $ymd = Carbon::parse($data)->toDateString();
+
+        return MedicaoPresencaObraRegistro::query()
+            ->with(['anexos:id,registro_id,nome_original,caminho,mime,tamanho'])
+            ->withCount('anexos')
+            ->whereDate('data', $ymd)
+            ->get()
+            ->keyBy('colaborador_id')
             ->all();
     }
 
@@ -121,6 +139,46 @@ class PresencaObraService
                 $salvos++;
             }
         });
+
+        return $salvos;
+    }
+
+    /**
+     * @param  array<int|string, list<UploadedFile>>  $anexosPorColaborador
+     */
+    public function salvarAnexos(CarbonInterface|string $data, array $anexosPorColaborador): int
+    {
+        $ymd = Carbon::parse($data)->toDateString();
+        $salvos = 0;
+
+        foreach ($anexosPorColaborador as $colaboradorId => $arquivos) {
+            $registro = MedicaoPresencaObraRegistro::query()
+                ->whereDate('data', $ymd)
+                ->where('colaborador_id', (int) $colaboradorId)
+                ->first();
+
+            if ($registro === null) {
+                continue;
+            }
+
+            foreach ($arquivos as $arquivo) {
+                if (! $arquivo instanceof UploadedFile || ! $arquivo->isValid()) {
+                    continue;
+                }
+
+                $path = $arquivo->store('medicao/presenca-obra/'.$registro->id, 'public');
+
+                MedicaoPresencaObraAnexo::query()->create([
+                    'registro_id' => $registro->id,
+                    'nome_original' => $arquivo->getClientOriginalName(),
+                    'caminho' => $path,
+                    'mime' => $arquivo->getClientMimeType(),
+                    'tamanho' => $arquivo->getSize(),
+                ]);
+
+                $salvos++;
+            }
+        }
 
         return $salvos;
     }

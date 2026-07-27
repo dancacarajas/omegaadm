@@ -6,6 +6,8 @@ use App\Models\Colaborador;
 use App\Models\MedicaoPresencaObraRegistro;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PresencaObraTest extends TestCase
@@ -291,6 +293,70 @@ class PresencaObraTest extends TestCase
                 'redirect' => route('medicao.presenca-obra.index', [], false),
             ])
             ->assertRedirect(route('medicao.presenca-obra.index'));
+    }
+
+    public function test_salva_justificativa_e_anexo_na_confirmacao(): void
+    {
+        Storage::fake('public');
+
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor Anexo',
+            'matricula' => 'SUP-ANX',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $operario = Colaborador::query()->create([
+            'nome' => 'Operario Anexo',
+            'matricula' => 'OP-ANX',
+            'status' => 'ativo',
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.salvar'), [
+                'data' => '2026-07-27',
+                'itens' => [
+                    $operario->id => [
+                        'status' => 'ausente',
+                        'observacao' => 'Atestado médico apresentado.',
+                    ],
+                ],
+                'anexos' => [
+                    $operario->id => [
+                        UploadedFile::fake()->create('atestado.pdf', 50, 'application/pdf'),
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $registro = MedicaoPresencaObraRegistro::query()
+            ->with('anexos')
+            ->where('colaborador_id', $operario->id)
+            ->whereDate('data', '2026-07-27')
+            ->first();
+
+        $this->assertNotNull($registro);
+        $this->assertSame('Atestado médico apresentado.', $registro->observacao);
+        $this->assertCount(1, $registro->anexos);
+        Storage::disk('public')->assertExists($registro->anexos->first()->caminho);
+    }
+
+    public function test_tela_confirmacao_inclui_botao_justificativa(): void
+    {
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor UI',
+            'matricula' => 'SUP-UI',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->get(route('presenca-obra.index'))
+            ->assertOk()
+            ->assertSee('Justificativa', false)
+            ->assertSee('presenca-justificativa-modal', false);
     }
 
     public function test_consulta_exige_login_admin(): void

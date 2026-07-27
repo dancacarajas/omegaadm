@@ -4,6 +4,7 @@ namespace App\Http\Controllers\PresencaObra;
 
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
+use App\Models\MedicaoPresencaObraAnexo;
 use App\Support\PontoColaboradorService;
 use App\Support\PresencaObraService;
 use Carbon\Carbon;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PresencaObraColaboradorController extends Controller
 {
@@ -126,6 +128,7 @@ class PresencaObraColaboradorController extends Controller
             is_string($centroCusto) ? $centroCusto : null,
         );
         $statusDia = $this->presenca->statusDoDia($data);
+        $registrosDia = $this->presenca->registrosDoDia($data);
 
         $bootstrap = session('presenca_obra_offline_bootstrap');
         if (is_array($bootstrap)) {
@@ -136,6 +139,7 @@ class PresencaObraColaboradorController extends Controller
             'confirmador' => $confirmador,
             'colaboradores' => $colaboradores,
             'statusDia' => $statusDia,
+            'registrosDia' => $registrosDia,
             'data' => $data,
             'busca' => is_string($busca) ? $busca : '',
             'centroCusto' => is_string($centroCusto) ? $centroCusto : '',
@@ -160,6 +164,9 @@ class PresencaObraColaboradorController extends Controller
             'itens' => ['required', 'array', 'min:1'],
             'itens.*.status' => ['nullable', 'in:presente,ausente'],
             'itens.*.observacao' => ['nullable', 'string', 'max:500'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['nullable', 'array'],
+            'anexos.*.*' => ['file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx'],
         ]);
 
         $itens = collect($validated['itens'])
@@ -187,7 +194,19 @@ class PresencaObraColaboradorController extends Controller
             $itens,
         );
 
+        $anexosSalvos = 0;
+        $anexosPorColaborador = $request->file('anexos', []);
+        if (is_array($anexosPorColaborador) && $anexosPorColaborador !== []) {
+            $anexosSalvos = $this->presenca->salvarAnexos(
+                $validated['data'],
+                $anexosPorColaborador,
+            );
+        }
+
         $mensagem = "Presença confirmada para {$salvos} colaborador(es).";
+        if ($anexosSalvos > 0) {
+            $mensagem .= " {$anexosSalvos} documento(s) anexado(s).";
+        }
         $redirectParams = [
             'data' => Carbon::parse($validated['data'])->toDateString(),
             'busca' => $request->input('busca'),
@@ -205,6 +224,18 @@ class PresencaObraColaboradorController extends Controller
         return redirect()
             ->route('presenca-obra.index', $redirectParams)
             ->with('success', $mensagem);
+    }
+
+    public function downloadAnexo(Request $request, MedicaoPresencaObraAnexo $anexo): StreamedResponse
+    {
+        $anexo->loadMissing('registro');
+        $registro = $anexo->registro;
+        abort_if($registro === null, 404);
+
+        return response()->download(
+            storage_path('app/public/'.$anexo->caminho),
+            $anexo->nome_original,
+        );
     }
 
     public function sair(): RedirectResponse

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MedicaoPresencaObraRegistro extends Model
 {
@@ -36,6 +37,11 @@ class MedicaoPresencaObraRegistro extends Model
     public function confirmadoPor(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class, 'confirmado_por_id');
+    }
+
+    public function anexos(): HasMany
+    {
+        return $this->hasMany(MedicaoPresencaObraAnexo::class, 'registro_id');
     }
 
     public function isPresente(): bool

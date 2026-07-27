@@ -116,9 +116,10 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
     Route::post('/identificar', [PresencaObraColaboradorController::class, 'identificar'])->name('identificar.store');
     Route::get('/modo-offline', [PresencaObraColaboradorController::class, 'modoOffline'])->name('modo-offline');
 
-    Route::middleware('presenca-obra.colaborador')->group(function () {
+        Route::middleware('presenca-obra.colaborador')->group(function () {
         Route::get('/app', [PresencaObraColaboradorController::class, 'index'])->name('index');
         Route::post('/salvar', [PresencaObraColaboradorController::class, 'salvar'])->name('salvar');
+        Route::get('/anexos/{anexo}', [PresencaObraColaboradorController::class, 'downloadAnexo'])->name('anexos.download');
         Route::post('/sair', [PresencaObraColaboradorController::class, 'sair'])->name('sair');
     });
 });

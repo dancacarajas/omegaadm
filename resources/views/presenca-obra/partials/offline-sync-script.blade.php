@@ -74,6 +74,8 @@
                     radio.checked = true;
                 }
             });
+
+            window.PresencaObraJustificativas?.applyObservacoes?.(queueItem.itens);
         };
 
         const formToPayload = (form) => {
@@ -81,9 +83,20 @@
             const itens = {};
 
             for (const [name, value] of data.entries()) {
-                const match = name.match(/^itens\[(\d+)]\[status]$/);
-                if (match && value) {
-                    itens[match[1]] = { status: value };
+                const statusMatch = name.match(/^itens\[(\d+)]\[status]$/);
+                if (statusMatch && value) {
+                    itens[statusMatch[1]] = {
+                        ...(itens[statusMatch[1]] || {}),
+                        status: value,
+                    };
+                }
+
+                const observacaoMatch = name.match(/^itens\[(\d+)]\[observacao]$/);
+                if (observacaoMatch && value) {
+                    itens[observacaoMatch[1]] = {
+                        ...(itens[observacaoMatch[1]] || {}),
+                        observacao: value,
+                    };
                 }
             }
 
@@ -95,6 +108,52 @@
                 centro_custo: data.get('centro_custo') || '',
                 itens,
             };
+        };
+
+        const enviarPayload = async (payload) => {
+            const hasFiles = window.PresencaObraJustificativas?.hasPendingFiles?.() || false;
+
+            if (hasFiles) {
+                const formData = new FormData();
+                formData.append('data', payload.data);
+                formData.append('busca', payload.busca || '');
+                formData.append('centro_custo', payload.centro_custo || '');
+
+                Object.entries(payload.itens).forEach(([colaboradorId, row]) => {
+                    formData.append(`itens[${colaboradorId}][status]`, row.status);
+                    if (row.observacao) {
+                        formData.append(`itens[${colaboradorId}][observacao]`, row.observacao);
+                    }
+                });
+
+                window.PresencaObraJustificativas.appendToFormData(formData);
+
+                return fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: formData,
+                });
+            }
+
+            return fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    data: payload.data,
+                    itens: payload.itens,
+                    busca: payload.busca || '',
+                    centro_custo: payload.centro_custo || '',
+                }),
+            });
         };
 
         const ensureServerSession = async () => {
@@ -166,21 +225,7 @@
 
             for (const item of queue) {
                 try {
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: JSON.stringify({
-                            data: item.data,
-                            itens: item.itens,
-                            busca: item.busca || '',
-                            centro_custo: item.centro_custo || '',
-                        }),
-                    });
+                    const response = await enviarPayload(item);
 
                     if (response.ok) {
                         synced++;
@@ -226,6 +271,10 @@
                 return false;
             }
 
+            if (window.PresencaObraJustificativas?.hasPendingFiles?.()) {
+                showBanner('Anexos só podem ser enviados com internet. A justificativa em texto será salva no aparelho.', 'warning');
+            }
+
             store.mergeIntoQueue(payload);
             showBanner(
                 totalItens === 1
@@ -259,21 +308,7 @@
                 event.preventDefault();
 
                 try {
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: JSON.stringify({
-                            data: payload.data,
-                            itens: payload.itens,
-                            busca: payload.busca,
-                            centro_custo: payload.centro_custo,
-                        }),
-                    });
+                    const response = await enviarPayload(payload);
 
                     if (response.ok) {
                         const json = await response.json();

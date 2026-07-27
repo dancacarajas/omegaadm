@@ -161,6 +161,9 @@
                                 Ausente
                             </label>
                         </div>
+                        <div class="mt-2">
+                            @include('presenca-obra.partials._justificativa-botao', ['colab' => $colab])
+                        </div>
                     </div>
                 @empty
                     <div class="rounded-xl border border-dashed border-zinc-300 bg-white p-6 text-center text-sm text-brand-gray">
@@ -178,6 +181,7 @@
                             <th>Centro de custo</th>
                             <th>Cargo</th>
                             <th>Status</th>
+                            <th>Justificativa</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -202,10 +206,13 @@
                                         </label>
                                     </div>
                                 </td>
+                                <td>
+                                    @include('presenca-obra.partials._justificativa-botao', ['colab' => $colab])
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-5 py-10 text-center text-sm text-brand-gray">
+                                <td colspan="6" class="px-5 py-10 text-center text-sm text-brand-gray">
                                     Nenhum colaborador ativo encontrado com os filtros atuais.
                                 </td>
                             </tr>
@@ -231,11 +238,14 @@
                 </p>
             @endif
         </form>
+
+        @include('presenca-obra.partials._justificativa-modal')
     </main>
 @endsection
 
 @push('scripts')
     @include('presenca-obra.partials.offline-core-script')
+    @include('presenca-obra.partials.justificativa-script')
     @include('presenca-obra.partials.offline-sync-script')
     <script>
         document.querySelectorAll('[data-marcar-todos]').forEach((btn) => {
