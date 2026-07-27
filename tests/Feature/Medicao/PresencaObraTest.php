@@ -252,9 +252,10 @@ class PresencaObraTest extends TestCase
     {
         $this->get(route('medicao.presenca-obra.index'))
             ->assertOk()
-            ->assertSee('Confirmar presença', false)
-            ->assertSee('Consulta Medição', false)
-            ->assertSee('Entrar para confirmar', false);
+            ->assertSee('Consulta de confirmações', false)
+            ->assertSee('Confirmar presença (supervisor)', false)
+            ->assertSee('Entrar para confirmar', false)
+            ->assertSee('Filtrar', false);
     }
 
     public function test_consulta_exige_login_admin(): void

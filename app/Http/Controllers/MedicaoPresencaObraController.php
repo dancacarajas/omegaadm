@@ -16,17 +16,62 @@ class MedicaoPresencaObraController extends Controller
         private readonly PresencaObraService $presenca,
     ) {}
 
-    public function portal()
+    public function portal(Request $request)
     {
-        return view('medicao.presenca-obra.portal', [
-            'urlConfirmacao' => route('presenca-obra.identificar'),
-            'urlConsulta' => route('medicao.presenca-obra.consulta'),
-            'urlLoginConsulta' => route('login', ['redirect' => route('medicao.presenca-obra.consulta', [], false)]),
-            'usuarioLogado' => auth()->user(),
-        ]);
+        return view('medicao.presenca-obra.portal', $this->dadosConsulta($request, [
+            'urlFiltro' => route('medicao.presenca-obra.index'),
+            'podeExportar' => auth()->check(),
+        ]));
     }
 
     public function consulta(Request $request)
+    {
+        return view('medicao.presenca-obra.index', $this->dadosConsulta($request, [
+            'urlFiltro' => route('medicao.presenca-obra.consulta'),
+            'podeExportar' => true,
+            'urlPublica' => route('presenca-obra.identificar'),
+        ]));
+    }
+
+    public function exportarExcel(Request $request)
+    {
+        $validated = $request->validate([
+            'data_inicio' => ['required', 'date'],
+            'data_fim' => ['required', 'date', 'after_or_equal:data_inicio'],
+            'centro_custo' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        try {
+            $dados = $this->presenca->dadosParaFolhaExport(
+                $validated['data_inicio'],
+                $validated['data_fim'],
+                $validated['centro_custo'] ?? null,
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $inicio = Carbon::parse($validated['data_inicio']);
+        $fim = Carbon::parse($validated['data_fim']);
+        $centroCusto = isset($validated['centro_custo']) && trim((string) $validated['centro_custo']) !== ''
+            ? (string) $validated['centro_custo']
+            : null;
+
+        return PresencaObraFolhaExcelExport::download(
+            $dados['colaboradores'],
+            $dados['dias'],
+            $dados['marcacoes'],
+            $inicio,
+            $fim,
+            $centroCusto,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $extras
+     * @return array<string, mixed>
+     */
+    private function dadosConsulta(Request $request, array $extras = []): array
     {
         $data = $request->input('data', now()->toDateString());
         try {
@@ -100,7 +145,7 @@ class MedicaoPresencaObraController extends Controller
         $presentes = (clone $resumoBase)->where('status', MedicaoPresencaObraRegistro::STATUS_PRESENTE)->count();
         $ausentes = (clone $resumoBase)->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)->count();
 
-        return view('medicao.presenca-obra.index', [
+        return array_merge([
             'registros' => $registros,
             'data' => $data,
             'status' => is_string($status) ? $status : '',
@@ -112,43 +157,8 @@ class MedicaoPresencaObraController extends Controller
                 'ausentes' => $ausentes,
                 'total' => $presentes + $ausentes,
             ],
-            'urlPublica' => route('presenca-obra.identificar'),
             'dataInicioPadrao' => Carbon::parse($data)->startOfMonth()->toDateString(),
             'dataFimPadrao' => Carbon::parse($data)->endOfMonth()->toDateString(),
-        ]);
-    }
-
-    public function exportarExcel(Request $request)
-    {
-        $validated = $request->validate([
-            'data_inicio' => ['required', 'date'],
-            'data_fim' => ['required', 'date', 'after_or_equal:data_inicio'],
-            'centro_custo' => ['nullable', 'string', 'max:120'],
-        ]);
-
-        try {
-            $dados = $this->presenca->dadosParaFolhaExport(
-                $validated['data_inicio'],
-                $validated['data_fim'],
-                $validated['centro_custo'] ?? null,
-            );
-        } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput();
-        }
-
-        $inicio = Carbon::parse($validated['data_inicio']);
-        $fim = Carbon::parse($validated['data_fim']);
-        $centroCusto = isset($validated['centro_custo']) && trim((string) $validated['centro_custo']) !== ''
-            ? (string) $validated['centro_custo']
-            : null;
-
-        return PresencaObraFolhaExcelExport::download(
-            $dados['colaboradores'],
-            $dados['dias'],
-            $dados['marcacoes'],
-            $inicio,
-            $fim,
-            $centroCusto,
-        );
+        ], $extras);
     }
 }
