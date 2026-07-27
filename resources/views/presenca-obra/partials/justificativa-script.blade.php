@@ -173,19 +173,23 @@
             const texto = (hidden.value || '').trim();
             const qtdPendentes = arquivosPorColaborador.get(colaboradorId)?.length || 0;
             const qtdExistentes = Number(button.dataset.anexosCount || 0);
-            const preenchido = texto !== '' || qtdPendentes > 0 || qtdExistentes > 0;
+            const totalAnexos = qtdPendentes + qtdExistentes;
+            const temAnexo = totalAnexos > 0;
+            const preenchido = texto !== '' || temAnexo;
             const label = button.querySelector('[data-justificativa-label]');
 
-            button.classList.toggle('border-sky-300', preenchido);
-            button.classList.toggle('bg-sky-50', preenchido);
-            button.classList.toggle('text-sky-900', preenchido);
+            button.classList.toggle('border-amber-300', temAnexo);
+            button.classList.toggle('bg-amber-50', temAnexo);
+            button.classList.toggle('text-amber-900', temAnexo);
+            button.classList.toggle('border-sky-300', preenchido && !temAnexo);
+            button.classList.toggle('bg-sky-50', preenchido && !temAnexo);
+            button.classList.toggle('text-sky-900', preenchido && !temAnexo);
             button.classList.toggle('border-zinc-200', !preenchido);
             button.classList.toggle('bg-white', !preenchido);
             button.classList.toggle('text-brand-gray', !preenchido);
 
             if (label) {
-                const totalAnexos = qtdPendentes + qtdExistentes;
-                if (preenchido && totalAnexos > 0) {
+                if (preenchido && temAnexo) {
                     label.textContent = `Justificativa ✓ (${totalAnexos} anexo${totalAnexos === 1 ? '' : 's'})`;
                 } else if (preenchido) {
                     label.textContent = 'Justificativa ✓';

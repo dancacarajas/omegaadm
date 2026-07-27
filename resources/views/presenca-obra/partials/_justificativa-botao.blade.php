@@ -3,8 +3,12 @@
     $registro = $registrosDia[$colab->id] ?? null;
     $observacaoAtual = old("itens.{$colab->id}.observacao", $registro?->observacao ?? '');
     $qtdAnexos = (int) ($registro?->anexos_count ?? 0);
-    $temJustificativa = trim((string) $observacaoAtual) !== '' || $qtdAnexos > 0;
+    $temAnexo = $qtdAnexos > 0;
+    $temJustificativa = trim((string) $observacaoAtual) !== '' || $temAnexo;
     $anexosExistentes = $registro?->anexos ?? collect();
+    $classeBotao = $temAnexo
+        ? 'border-amber-300 bg-amber-50 text-amber-900'
+        : ($temJustificativa ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-zinc-200 bg-white text-brand-gray hover:border-brand-burgundy hover:text-brand-burgundy');
 @endphp
 
 <input
@@ -25,8 +29,8 @@
         data-anexo-existente-{{ $loop->index }}-nome="{{ e($anexo->nome_original) }}"
         data-anexo-existente-{{ $loop->index }}-url="{{ route('presenca-obra.anexos.visualizar', $anexo) }}"
     @endforeach
-    class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition {{ $temJustificativa ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-zinc-200 bg-white text-brand-gray hover:border-brand-burgundy hover:text-brand-burgundy' }}"
+    class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition {{ $classeBotao }}"
 >
     <i data-lucide="message-square-text" class="h-3.5 w-3.5"></i>
-    <span data-justificativa-label>Justificativa{{ $temJustificativa ? ' ✓' : '' }}</span>
+    <span data-justificativa-label>Justificativa@if($temJustificativa) ✓@if($temAnexo) ({{ $qtdAnexos }} {{ $qtdAnexos === 1 ? 'anexo' : 'anexos' }})@endif @endif</span>
 </button>
