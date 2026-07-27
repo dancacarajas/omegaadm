@@ -23,7 +23,7 @@
     data-anexos-count="{{ $qtdAnexos }}"
     @foreach ($anexosExistentes as $anexo)
         data-anexo-existente-{{ $loop->index }}-nome="{{ e($anexo->nome_original) }}"
-        data-anexo-existente-{{ $loop->index }}-url="{{ route('presenca-obra.anexos.download', $anexo) }}"
+        data-anexo-existente-{{ $loop->index }}-url="{{ route('presenca-obra.anexos.visualizar', $anexo) }}"
     @endforeach
     class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition {{ $temJustificativa ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-zinc-200 bg-white text-brand-gray hover:border-brand-burgundy hover:text-brand-burgundy' }}"
 >

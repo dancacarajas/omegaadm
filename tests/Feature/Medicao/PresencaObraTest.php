@@ -342,6 +342,54 @@ class PresencaObraTest extends TestCase
         Storage::disk('public')->assertExists($registro->anexos->first()->caminho);
     }
 
+    public function test_visualiza_anexo_enviado(): void
+    {
+        Storage::fake('public');
+
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor View',
+            'matricula' => 'SUP-VIEW',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $operario = Colaborador::query()->create([
+            'nome' => 'Operario View',
+            'matricula' => 'OP-VIEW',
+            'status' => 'ativo',
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.salvar'), [
+                'data' => '2026-07-27',
+                'itens' => [
+                    $operario->id => [
+                        'status' => 'ausente',
+                        'observacao' => 'Com anexo',
+                    ],
+                ],
+                'anexos' => [
+                    $operario->id => [
+                        UploadedFile::fake()->create('atestado.pdf', 50, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $anexo = MedicaoPresencaObraRegistro::query()
+            ->with('anexos')
+            ->where('colaborador_id', $operario->id)
+            ->first()
+            ?->anexos
+            ->first();
+
+        $this->assertNotNull($anexo);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->get(route('presenca-obra.anexos.visualizar', $anexo))
+            ->assertOk();
+    }
+
     public function test_tela_confirmacao_inclui_botao_justificativa(): void
     {
         $supervisor = Colaborador::query()->create([

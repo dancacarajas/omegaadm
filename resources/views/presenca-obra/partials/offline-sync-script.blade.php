@@ -312,6 +312,7 @@
 
                     if (response.ok) {
                         const json = await response.json();
+                        window.PresencaObraJustificativas?.clearPendingFiles?.();
                         showBanner(json.message || 'Presença confirmada com sucesso.', 'success');
                         setTimeout(() => window.location.reload(), 900);
 

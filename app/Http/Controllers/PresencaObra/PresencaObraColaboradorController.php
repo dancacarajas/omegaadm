@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -226,16 +227,27 @@ class PresencaObraColaboradorController extends Controller
             ->with('success', $mensagem);
     }
 
+    public function visualizarAnexo(MedicaoPresencaObraAnexo $anexo): StreamedResponse
+    {
+        $anexo->loadMissing('registro');
+        abort_if($anexo->registro === null, 404);
+        abort_unless(Storage::disk('public')->exists($anexo->caminho), 404);
+
+        return Storage::disk('public')->response(
+            $anexo->caminho,
+            $anexo->nome_original,
+            ['Content-Disposition' => 'inline; filename="'.str_replace('"', '', $anexo->nome_original).'"'],
+        );
+    }
+
     public function downloadAnexo(Request $request, MedicaoPresencaObraAnexo $anexo): StreamedResponse
     {
         $anexo->loadMissing('registro');
         $registro = $anexo->registro;
         abort_if($registro === null, 404);
+        abort_unless(Storage::disk('public')->exists($anexo->caminho), 404);
 
-        return response()->download(
-            storage_path('app/public/'.$anexo->caminho),
-            $anexo->nome_original,
-        );
+        return Storage::disk('public')->download($anexo->caminho, $anexo->nome_original);
     }
 
     public function sair(): RedirectResponse

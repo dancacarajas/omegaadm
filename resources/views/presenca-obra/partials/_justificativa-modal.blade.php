@@ -34,12 +34,17 @@
                     class="mt-2 block w-full text-sm text-brand-gray file:mr-3 file:rounded-lg file:border-0 file:bg-brand-burgundy-soft file:px-3 file:py-2 file:text-xs file:font-bold file:text-brand-burgundy"
                 >
                 <p class="mt-1 text-[11px] leading-relaxed text-brand-gray">PDF, imagens ou Word. Máximo 10 MB por arquivo.</p>
-                <ul class="mt-2 space-y-1 text-xs text-brand-gray" data-justificativa-arquivos-novos></ul>
+                <div data-justificativa-pendentes-wrap hidden class="mt-3 rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+                    <p class="text-xs font-bold uppercase tracking-wide text-sky-900">Anexos selecionados</p>
+                    <p class="mt-0.5 text-[11px] text-sky-800">Serão enviados ao clicar em &quot;Salvar confirmação&quot;.</p>
+                    <ul class="mt-2 space-y-2" data-justificativa-pendentes></ul>
+                </div>
+                <ul class="mt-2 space-y-1 text-xs text-brand-gray" data-justificativa-arquivos-novos hidden></ul>
             </div>
 
-            <div data-justificativa-existentes-wrap hidden>
-                <p class="text-xs font-bold uppercase tracking-wide text-brand-gray">Documentos já enviados</p>
-                <ul class="mt-2 space-y-1" data-justificativa-existentes></ul>
+            <div data-justificativa-existentes-wrap hidden class="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                <p class="text-xs font-bold uppercase tracking-wide text-emerald-900">Documentos já enviados</p>
+                <ul class="mt-2 space-y-2" data-justificativa-existentes></ul>
             </div>
         </div>
 
