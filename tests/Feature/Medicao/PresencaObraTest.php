@@ -435,6 +435,55 @@ class PresencaObraTest extends TestCase
             ->assertOk();
     }
 
+    public function test_consulta_medicao_exibe_botao_justificativa_e_visualiza_anexo(): void
+    {
+        Storage::fake('public');
+
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor Consulta',
+            'matricula' => 'SUP-CON',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $operario = Colaborador::query()->create([
+            'nome' => 'Operario Consulta',
+            'matricula' => 'OP-CON',
+            'status' => 'ativo',
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.justificativa.store'), [
+                'data' => '2026-07-27',
+                'colaborador_id' => $operario->id,
+                'observacao' => 'Atestado médico',
+                'status' => 'ausente',
+                'anexos' => [
+                    UploadedFile::fake()->create('atestado.pdf', 50, 'application/pdf'),
+                ],
+            ]);
+
+        $anexo = MedicaoPresencaObraRegistro::query()
+            ->with('anexos')
+            ->where('colaborador_id', $operario->id)
+            ->first()
+            ?->anexos
+            ->first();
+
+        $user = User::factory()->create(['todos_contratos' => true]);
+
+        $this->actingAs($user)
+            ->get(route('medicao.presenca-obra.consulta', ['data' => '2026-07-27']))
+            ->assertOk()
+            ->assertSee('data-justificativa-ver-open', false)
+            ->assertSee('Atestado médico', false);
+
+        $this->actingAs($user)
+            ->get(route('medicao.presenca-obra.anexos.visualizar', $anexo))
+            ->assertOk();
+    }
+
     public function test_tela_confirmacao_inclui_botao_justificativa(): void
     {
         $supervisor = Colaborador::query()->create([

@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MedicaoPresencaObraAnexo;
 use App\Models\MedicaoPresencaObraRegistro;
 use App\Support\ContratoAccess;
 use App\Support\Medicao\PresencaObraFolhaExcelExport;
 use App\Support\PresencaObraService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MedicaoPresencaObraController extends Controller
 {
@@ -71,6 +74,24 @@ class MedicaoPresencaObraController extends Controller
         );
     }
 
+    public function visualizarAnexo(Request $request, MedicaoPresencaObraAnexo $anexo): StreamedResponse
+    {
+        abort_unless(
+            auth()->check() || session('presenca_obra_colaborador_id'),
+            403,
+        );
+
+        $anexo->loadMissing('registro');
+        abort_if($anexo->registro === null, 404);
+        abort_unless(Storage::disk('public')->exists($anexo->caminho), 404);
+
+        return Storage::disk('public')->response(
+            $anexo->caminho,
+            $anexo->nome_original,
+            ['Content-Disposition' => 'inline; filename="'.str_replace('"', '', $anexo->nome_original).'"'],
+        );
+    }
+
     /**
      * @param  array<string, mixed>  $extras
      * @return array<string, mixed>
@@ -89,7 +110,12 @@ class MedicaoPresencaObraController extends Controller
         $busca = $request->input('busca');
 
         $query = MedicaoPresencaObraRegistro::query()
-            ->with(['colaborador:id,nome,matricula,cargo,centro_custo', 'confirmadoPor:id,nome,matricula'])
+            ->with([
+                'colaborador:id,nome,matricula,cargo,centro_custo',
+                'confirmadoPor:id,nome,matricula',
+                'anexos:id,registro_id,nome_original,caminho,mime,tamanho',
+            ])
+            ->withCount('anexos')
             ->whereDate('data', $data)
             ->latest('confirmado_em')
             ->latest('id');

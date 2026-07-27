@@ -125,6 +125,9 @@
                         <dd class="text-right text-brand-black">{{ $registro->confirmado_em?->format('d/m/Y H:i') ?? '—' }}</dd>
                     </div>
                 </dl>
+                <div class="mt-3">
+                    @include('medicao.presenca-obra.partials._justificativa-ver-botao', ['registro' => $registro])
+                </div>
             </article>
         @empty
             <p class="px-5 py-12 text-center text-sm text-brand-gray">
@@ -142,6 +145,7 @@
                     <th class="px-4 py-4">Status</th>
                     <th class="px-4 py-4">Confirmado por</th>
                     <th class="px-5 py-4">Horário</th>
+                    <th class="px-5 py-4">Justificativa</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-zinc-100">
@@ -166,10 +170,13 @@
                         <td class="px-5 py-4 text-brand-gray">
                             {{ $registro->confirmado_em?->format('d/m/Y H:i') ?? '—' }}
                         </td>
+                        <td class="px-5 py-4">
+                            @include('medicao.presenca-obra.partials._justificativa-ver-botao', ['registro' => $registro])
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-5 py-12 text-center text-sm text-brand-gray">
+                        <td colspan="6" class="px-5 py-12 text-center text-sm text-brand-gray">
                             Nenhuma confirmação registrada para esta data.
                         </td>
                     </tr>
@@ -184,3 +191,5 @@
         </div>
     @endif
 </section>
+
+@include('medicao.presenca-obra.partials._justificativa-ver-modal')

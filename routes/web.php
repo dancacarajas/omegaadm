@@ -128,6 +128,7 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
 
 Route::middleware(['installed'])->group(function () {
     Route::get('/medicao/presenca-obra', [MedicaoPresencaObraController::class, 'portal'])->name('medicao.presenca-obra.index');
+    Route::get('/medicao/presenca-obra/anexos/{anexo}/visualizar', [MedicaoPresencaObraController::class, 'visualizarAnexo'])->name('medicao.presenca-obra.anexos.visualizar');
 });
 
 Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(function () {
