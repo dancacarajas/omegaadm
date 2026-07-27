@@ -434,7 +434,7 @@
                                     <i data-lucide="line-chart" class="h-4 w-4"></i>
                                     Fluxo financeiro
                                 </a>
-                                <a href="{{ route('medicao.presenca-obra.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.presenca-obra.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                                <a href="{{ route('medicao.presenca-obra.consulta') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.presenca-obra.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                                     <i data-lucide="hard-hat" class="h-4 w-4"></i>
                                     Presença na obra
                                 </a>

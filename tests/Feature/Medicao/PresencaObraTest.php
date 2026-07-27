@@ -73,7 +73,7 @@ class PresencaObraTest extends TestCase
             'todos_contratos' => true,
         ]);
         $this->actingAs($user)
-            ->get(route('medicao.presenca-obra.index', ['data' => '2026-07-27']))
+            ->get(route('medicao.presenca-obra.consulta', ['data' => '2026-07-27']))
             ->assertOk()
             ->assertSee('JOSE EDVIVALDO', false)
             ->assertSee('Presente', false)
@@ -248,17 +248,32 @@ class PresencaObraTest extends TestCase
             ->assertSee('PresencaObraStore', false);
     }
 
+    public function test_portal_publico_abre_sem_login_admin(): void
+    {
+        $this->get(route('medicao.presenca-obra.index'))
+            ->assertOk()
+            ->assertSee('Confirmar presença', false)
+            ->assertSee('Consulta Medição', false)
+            ->assertSee('Entrar para confirmar', false);
+    }
+
+    public function test_consulta_exige_login_admin(): void
+    {
+        $this->get(route('medicao.presenca-obra.consulta'))
+            ->assertRedirect(route('login'));
+    }
+
     public function test_rejeita_periodo_maior_que_62_dias(): void
     {
         $user = User::factory()->create(['todos_contratos' => true]);
 
         $this->actingAs($user)
-            ->from(route('medicao.presenca-obra.index'))
+            ->from(route('medicao.presenca-obra.consulta'))
             ->get(route('medicao.presenca-obra.exportar-excel', [
                 'data_inicio' => '2026-01-01',
                 'data_fim' => '2026-04-01',
             ]))
-            ->assertRedirect(route('medicao.presenca-obra.index'))
+            ->assertRedirect(route('medicao.presenca-obra.consulta'))
             ->assertSessionHasErrors('data_fim');
     }
 }

@@ -2,6 +2,7 @@ const CACHE_NAME = 'omega286-presenca-obra-v1';
 const OFFLINE_URLS = [
     '/presenca-obra/identificar',
     '/presenca-obra/modo-offline',
+    '/medicao/presenca-obra',
 ];
 
 self.addEventListener('install', (event) => {

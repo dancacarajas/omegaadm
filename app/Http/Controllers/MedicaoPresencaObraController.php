@@ -16,7 +16,17 @@ class MedicaoPresencaObraController extends Controller
         private readonly PresencaObraService $presenca,
     ) {}
 
-    public function index(Request $request)
+    public function portal()
+    {
+        return view('medicao.presenca-obra.portal', [
+            'urlConfirmacao' => route('presenca-obra.identificar'),
+            'urlConsulta' => route('medicao.presenca-obra.consulta'),
+            'urlLoginConsulta' => route('login', ['redirect' => route('medicao.presenca-obra.consulta', [], false)]),
+            'usuarioLogado' => auth()->user(),
+        ]);
+    }
+
+    public function consulta(Request $request)
     {
         $data = $request->input('data', now()->toDateString());
         try {

@@ -5,9 +5,13 @@
 @section('page-title', 'Presença na obra')
 
 @section('actions')
-    <a href="{{ $urlPublica }}" target="_blank" rel="noopener" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+    <a href="{{ route('medicao.presenca-obra.index') }}" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
         <i data-lucide="smartphone" class="h-4 w-4"></i>
-        Abrir app de confirmação
+        Portal público
+    </a>
+    <a href="{{ $urlPublica }}" target="_blank" rel="noopener" class="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-brand-black shadow-sm transition hover:border-brand-burgundy hover:text-brand-burgundy">
+        <i data-lucide="hard-hat" class="h-4 w-4"></i>
+        App de confirmação
     </a>
 @endsection
 
@@ -75,7 +79,7 @@
     </section>
 
     <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <form method="GET" action="{{ route('medicao.presenca-obra.index') }}" class="grid gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/50 p-5 sm:grid-cols-2 lg:grid-cols-5">
+        <form method="GET" action="{{ route('medicao.presenca-obra.consulta') }}" class="grid gap-4 border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/50 p-5 sm:grid-cols-2 lg:grid-cols-5">
             <div>
                 <label for="data" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Data</label>
                 <input type="date" name="data" id="data" value="{{ $data }}" class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-brand-black">

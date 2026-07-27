@@ -11,7 +11,7 @@
             <p class="mt-1 text-sm text-brand-gray">Módulo preparado para consolidar produção, disponibilidade, glosas e performance mensal dos contratos.</p>
         </div>
         <div class="grid gap-4 p-6 sm:grid-cols-2">
-            <a href="{{ route('medicao.presenca-obra.index') }}" class="rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft p-4 transition hover:border-brand-burgundy/40">
+            <a href="{{ route('medicao.presenca-obra.consulta') }}" class="rounded-xl border border-brand-burgundy/20 bg-brand-burgundy-soft p-4 transition hover:border-brand-burgundy/40">
                 <p class="text-sm font-bold text-brand-burgundy">Presença na obra</p>
                 <p class="mt-1 text-xs font-medium text-brand-burgundy/80">Consulta quem os supervisores confirmaram como presente ou ausente no dia.</p>
             </a>

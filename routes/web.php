@@ -123,6 +123,10 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
     });
 });
 
+Route::middleware(['installed'])->group(function () {
+    Route::get('/medicao/presenca-obra', [MedicaoPresencaObraController::class, 'portal'])->name('medicao.presenca-obra.index');
+});
+
 Route::middleware(['installed'])->prefix('publico')->name('publico.')->group(function () {
     Route::redirect('/', '/publico/contratos/histograma');
     Route::get('assinatura', [AssinaturaPublicaController::class, 'index'])->name('assinatura.index');
@@ -389,8 +393,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         ->names('medicao.contratual')
         ->parameters(['contratual' => 'contratual']);
     Route::get('/medicao/fluxo-financeiro', [MedicaoFluxoFinanceiroController::class, 'index'])->name('medicao.fluxo-financeiro.index');
-    Route::get('/medicao/presenca-obra', [MedicaoPresencaObraController::class, 'index'])->name('medicao.presenca-obra.index');
-    Route::get('/medicao/presenca-obra/exportar-excel', [MedicaoPresencaObraController::class, 'exportarExcel'])->name('medicao.presenca-obra.exportar-excel');
+    Route::get('/medicao/presenca-obra/consulta', [MedicaoPresencaObraController::class, 'consulta'])->name('medicao.presenca-obra.consulta');
+    Route::get('/medicao/presenca-obra/consulta/exportar-excel', [MedicaoPresencaObraController::class, 'exportarExcel'])->name('medicao.presenca-obra.exportar-excel');
     Route::get('/rdo/exportar/excel', [RdoController::class, 'exportExcel'])->name('rdo.export.excel');
     Route::get('/rdo/exportar/pdf', [RdoController::class, 'exportPdf'])->name('rdo.export.pdf');
     Route::get('/rdo/{rdo}/pdf', [RdoController::class, 'pdf'])->name('rdo.pdf');
