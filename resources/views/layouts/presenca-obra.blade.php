@@ -14,8 +14,22 @@
     @stack('head')
 </head>
 <body class="presenca-obra-shell font-sans text-brand-black antialiased">
-    <div class="presenca-obra-frame">
-        @yield('content')
+    <div class="presenca-obra-layout">
+        <div data-mobile-nav-backdrop class="fixed inset-0 z-40 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200 lg:hidden" aria-hidden="true"></div>
+
+        @include('layouts.partials._presenca-obra-sidebar')
+
+        <div class="presenca-obra-main">
+            <div class="presenca-obra-mobile-bar lg:hidden">
+                <button type="button" data-mobile-nav-toggle class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-brand-black shadow-sm" aria-expanded="false" aria-controls="presenca-obra-sidebar" title="Abrir menu">
+                    <i data-lucide="menu" class="h-5 w-5"></i>
+                </button>
+            </div>
+
+            <div class="presenca-obra-frame">
+                @yield('content')
+            </div>
+        </div>
     </div>
     @stack('scripts')
     <script>

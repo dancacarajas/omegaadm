@@ -641,10 +641,27 @@ button[data-tst-btn-galeria]:disabled {
     pointer-events: none;
 }
 
-/* Presença na obra — mobile estreito, desktop expandido */
+/* Presença na obra — mobile estreito, desktop com menu lateral */
 .presenca-obra-shell {
     min-height: 100dvh;
     background-color: #ebebed;
+}
+
+.presenca-obra-layout {
+    min-height: 100dvh;
+}
+
+.presenca-obra-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.presenca-obra-mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    padding: 0.75rem 1rem 0;
 }
 
 .presenca-obra-frame {
@@ -661,19 +678,35 @@ button[data-tst-btn-galeria]:disabled {
 
 @media (min-width: 1024px) {
     .presenca-obra-shell {
-        padding: 1.5rem;
+        padding: 0;
         background-color: #f6f6f7;
     }
 
+    .presenca-obra-layout {
+        display: flex;
+        min-height: 100dvh;
+    }
+
+    .presenca-obra-main {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+    }
+
+    .presenca-obra-mobile-bar {
+        display: none;
+    }
+
     .presenca-obra-frame {
-        min-height: calc(100dvh - 3rem);
-        max-width: 72rem;
+        min-height: 100dvh;
+        max-width: none;
         width: 100%;
-        border-radius: 1rem;
-        overflow: hidden;
-        box-shadow:
-            0 25px 50px -12px rgb(0 0 0 / 0.15),
-            0 0 0 1px rgb(0 0 0 / 0.05);
+        margin: 0;
+        border-radius: 0;
+        overflow: visible;
+        box-shadow: none;
+        outline: none;
+        background-color: #f4f4f5;
     }
 
     .presenca-obra-frame .ponto-header {
@@ -686,6 +719,7 @@ button[data-tst-btn-galeria]:disabled {
         padding: 1.5rem 2rem 2rem;
         gap: 1.25rem;
         box-shadow: none;
+        flex: 1;
     }
 
     .presenca-obra-frame .ponto-identify-hero {
