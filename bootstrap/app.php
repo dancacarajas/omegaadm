@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'perfil.rota' => EnsurePerfilPermissaoRota::class,
             'ponto.colaborador' => \App\Http\Middleware\EnsureColaboradorPonto::class,
             'tst.colaborador' => \App\Http\Middleware\EnsureColaboradorTst::class,
+            'presenca-obra.colaborador' => \App\Http\Middleware\EnsureColaboradorPresencaObra::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

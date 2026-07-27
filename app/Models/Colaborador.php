@@ -66,6 +66,7 @@ class Colaborador extends Model
         'local_trabalho',
         'almoco',
         'status',
+        'presenca_obra_liberado',
         'mobilizacao_status',
         'sgc_data_postagem',
         'sgc_numero_solicitacao',
@@ -91,6 +92,7 @@ class Colaborador extends Model
         'sgc_data_aprovacao' => 'date',
         'sgc_data_entrega_cracha' => 'date',
         'salario_inicial' => 'decimal:2',
+        'presenca_obra_liberado' => 'boolean',
     ];
 
     public function scopeElegivelVinculoBeneficio($query)

@@ -232,6 +232,15 @@
                     @endforeach
                 </select>
             </label>
+            <label class="flex flex-col justify-end">
+                <span class="{{ $labelClass }}">Presença na obra</span>
+                <span class="mt-2 inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black">
+                    <input type="hidden" name="presenca_obra_liberado" value="0">
+                    <input type="checkbox" name="presenca_obra_liberado" value="1" class="h-4 w-4 rounded border-zinc-300 text-brand-burgundy focus:ring-brand-burgundy" @checked((string) old('presenca_obra_liberado', $colaborador->presenca_obra_liberado ? '1' : '0') === '1')>
+                    Liberar confirmação pública
+                </span>
+                <span class="mt-1 text-xs text-brand-gray">Permite entrar em /presenca-obra com matrícula e CPF.</span>
+            </label>
             <label>
                 <span class="{{ $labelClass }}">Departamento</span>
                 <input name="departamento" value="{{ $value('departamento') }}" class="{{ $inputClass }}">

@@ -62,10 +62,21 @@ goto FALHA
 :DB_OK
 echo     MySQL pronto.
 
+set "PHP_EXE="
+for /f "delims=" %%P in ('where php 2^>nul') do (
+    if not defined PHP_EXE set "PHP_EXE=%%P"
+)
+if not defined PHP_EXE if exist "C:\xampp\php\php.exe" set "PHP_EXE=C:\xampp\php\php.exe"
+if not defined PHP_EXE (
+    echo ERRO: PHP nao encontrado. Instala XAMPP ou adiciona php ao PATH.
+    goto FALHA
+)
+echo     PHP: !PHP_EXE!
+
 echo [3/4] Laravel :2080, fila SIGO e Vite...
-start "Omega286 - Laravel" cmd /k "cd /d %~dp0 && C:\xampp\php\php.exe artisan config:clear && C:\xampp\php\php.exe artisan serve --host=127.0.0.1 --port=2080"
+start "Omega286 - Laravel" cmd /k "cd /d %~dp0 && "!PHP_EXE!" artisan config:clear && "!PHP_EXE!" artisan serve --host=127.0.0.1 --port=2080"
 timeout /t 2 /nobreak >nul
-start "Omega286 - Queue" cmd /k "cd /d %~dp0 && C:\xampp\php\php.exe artisan queue:work --sleep=3 --tries=1 --timeout=3700"
+start "Omega286 - Queue" cmd /k "cd /d %~dp0 && "!PHP_EXE!" artisan queue:work --sleep=3 --tries=1 --timeout=3700"
 timeout /t 1 /nobreak >nul
 start "Omega286 - Vite" cmd /k "cd /d %~dp0 && npm run dev"
 

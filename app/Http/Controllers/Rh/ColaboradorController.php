@@ -356,6 +356,8 @@ class ColaboradorController extends Controller
                 : null;
         }
 
+        $data['presenca_obra_liberado'] = $request->boolean('presenca_obra_liberado');
+
         return $data;
     }
 
@@ -644,6 +646,7 @@ class ColaboradorController extends Controller
             'local_trabalho' => ['nullable', 'string', 'max:255'],
             'almoco' => ['nullable', 'string', 'max:80'],
             'status' => ['required', 'string', Rule::in(['ativo', 'afastado', 'desligado'])],
+            'presenca_obra_liberado' => ['nullable', 'boolean'],
             'mobilizacao_status' => ['nullable', 'string', Rule::in(['pendente', 'postado_sgc', 'aprovado', 'mobilizacao_concluida'])],
             'sgc_data_postagem' => ['nullable', 'date'],
             'sgc_numero_solicitacao' => ['nullable', 'string', 'max:80'],

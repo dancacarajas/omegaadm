@@ -15,6 +15,8 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\MedicaoContratualController;
 use App\Http\Controllers\MedicaoController;
 use App\Http\Controllers\MedicaoFluxoFinanceiroController;
+use App\Http\Controllers\MedicaoPresencaObraController;
+use App\Http\Controllers\PresencaObra\PresencaObraColaboradorController;
 use App\Http\Controllers\Almoxarifado\MobilizacaoMaterialController;
 use App\Http\Controllers\AlmoxarifadoController;
 use App\Http\Controllers\PatrimonialController;
@@ -105,6 +107,19 @@ Route::middleware(['installed'])->prefix('registro-tst')->name('tst-campo.')->gr
         Route::get('/app', [TstColaboradorController::class, 'index'])->name('index');
         Route::post('/registrar', [TstColaboradorController::class, 'store'])->name('store');
         Route::post('/sair', [TstColaboradorController::class, 'sair'])->name('sair');
+    });
+});
+
+Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.')->group(function () {
+    Route::get('/', fn () => redirect()->route('presenca-obra.identificar'))->name('home');
+    Route::get('/identificar', [PresencaObraColaboradorController::class, 'showIdentificar'])->name('identificar');
+    Route::post('/identificar', [PresencaObraColaboradorController::class, 'identificar'])->name('identificar.store');
+    Route::get('/modo-offline', [PresencaObraColaboradorController::class, 'modoOffline'])->name('modo-offline');
+
+    Route::middleware('presenca-obra.colaborador')->group(function () {
+        Route::get('/app', [PresencaObraColaboradorController::class, 'index'])->name('index');
+        Route::post('/salvar', [PresencaObraColaboradorController::class, 'salvar'])->name('salvar');
+        Route::post('/sair', [PresencaObraColaboradorController::class, 'sair'])->name('sair');
     });
 });
 
@@ -374,6 +389,8 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         ->names('medicao.contratual')
         ->parameters(['contratual' => 'contratual']);
     Route::get('/medicao/fluxo-financeiro', [MedicaoFluxoFinanceiroController::class, 'index'])->name('medicao.fluxo-financeiro.index');
+    Route::get('/medicao/presenca-obra', [MedicaoPresencaObraController::class, 'index'])->name('medicao.presenca-obra.index');
+    Route::get('/medicao/presenca-obra/exportar-excel', [MedicaoPresencaObraController::class, 'exportarExcel'])->name('medicao.presenca-obra.exportar-excel');
     Route::get('/rdo/exportar/excel', [RdoController::class, 'exportExcel'])->name('rdo.export.excel');
     Route::get('/rdo/exportar/pdf', [RdoController::class, 'exportPdf'])->name('rdo.export.pdf');
     Route::get('/rdo/{rdo}/pdf', [RdoController::class, 'pdf'])->name('rdo.pdf');
