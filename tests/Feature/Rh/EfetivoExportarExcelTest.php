@@ -46,4 +46,28 @@ class EfetivoExportarExcelTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_exporta_ficha_cadastro_do_colaborador(): void
+    {
+        $user = User::factory()->create(['todos_contratos' => true]);
+
+        $colaborador = Colaborador::query()->create([
+            'nome' => 'Ficha Excel Test',
+            'matricula' => '12345',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'cargo' => 'Soldador II',
+            'centro_custo' => '286',
+            'observacoes' => 'Observação de teste',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('rh.efetivo.exportar-ficha-excel', $colaborador));
+
+        $response->assertOk();
+        $response->assertHeader(
+            'content-type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        $this->assertStringContainsString('ficha-cadastro-12345', $response->headers->get('content-disposition') ?? '');
+    }
 }

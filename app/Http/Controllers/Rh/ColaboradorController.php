@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\HorarioEscala;
 use App\Models\SsmaTstRegistro;
+use App\Support\Rh\ColaboradorFichaExcelExport;
 use App\Support\Rh\EfetivoExcelExport;
 use App\Support\Rh\EfetivoResumoCards;
 use App\Support\Rh\MoedaBr;
@@ -42,6 +43,16 @@ class ColaboradorController extends Controller
         $resumo = EfetivoResumoCards::paraTelaEfetivo();
 
         return EfetivoExcelExport::download($colaboradores, $resumo);
+    }
+
+    public function exportarFichaExcel(Colaborador $colaborador)
+    {
+        $colaborador->load([
+            'horarioEscala',
+            'movimentacoes' => fn ($q) => $q->with('registradoPor:id,name')->limit(50),
+        ]);
+
+        return ColaboradorFichaExcelExport::download($colaborador);
     }
 
     private function queryEfetivoListagem(Request $request): Builder

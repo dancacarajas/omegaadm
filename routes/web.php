@@ -560,6 +560,9 @@ Route::middleware(['installed', 'auth', 'perfil.rota'])->group(function () {
         Route::get('efetivo/{colaborador}/contrato-webcard/pdf', [ContratoWebcardController::class, 'pdf'])
             ->whereNumber('colaborador')
             ->name('efetivo.contrato-webcard.pdf');
+        Route::get('efetivo/{colaborador}/exportar-ficha-excel', [ColaboradorController::class, 'exportarFichaExcel'])
+            ->whereNumber('colaborador')
+            ->name('efetivo.exportar-ficha-excel');
         Route::get('efetivo/exportar-excel', [ColaboradorController::class, 'exportarExcel'])->name('efetivo.exportar-excel');
         Route::get('efetivo/modelo-importacao', [ColaboradorController::class, 'modeloImportacao'])->name('efetivo.modelo-importacao');
         Route::post('efetivo/importar', [ColaboradorController::class, 'importar'])->name('efetivo.importar');
