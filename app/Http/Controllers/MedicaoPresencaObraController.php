@@ -18,6 +18,10 @@ class MedicaoPresencaObraController extends Controller
 
     public function portal(Request $request)
     {
+        if (! session('presenca_obra_colaborador_id')) {
+            return view('medicao.presenca-obra.login');
+        }
+
         return view('medicao.presenca-obra.portal', $this->dadosConsulta($request, [
             'urlFiltro' => route('medicao.presenca-obra.index'),
             'podeExportar' => auth()->check(),

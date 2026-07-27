@@ -252,10 +252,45 @@ class PresencaObraTest extends TestCase
     {
         $this->get(route('medicao.presenca-obra.index'))
             ->assertOk()
+            ->assertSee('Acesso à gestão de presenças', false)
+            ->assertSee('Entrar', false)
+            ->assertDontSee('Consulta de confirmações', false);
+    }
+
+    public function test_portal_exibe_gestao_apos_login_supervisor(): void
+    {
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor Portal',
+            'matricula' => 'SUP-PORTAL',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->get(route('medicao.presenca-obra.index'))
+            ->assertOk()
             ->assertSee('Consulta de confirmações', false)
-            ->assertSee('Confirmar presença (supervisor)', false)
-            ->assertSee('Entrar para confirmar', false)
             ->assertSee('Filtrar', false);
+    }
+
+    public function test_login_no_portal_redireciona_para_gestao(): void
+    {
+        Colaborador::query()->create([
+            'nome' => 'Supervisor Portal',
+            'matricula' => 'SUP-PORTAL',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $this->from(route('medicao.presenca-obra.index'))
+            ->post(route('presenca-obra.identificar.store'), [
+                'matricula' => 'SUP-PORTAL',
+                'cpf' => '11144477735',
+                'redirect' => route('medicao.presenca-obra.index', [], false),
+            ])
+            ->assertRedirect(route('medicao.presenca-obra.index'));
     }
 
     public function test_consulta_exige_login_admin(): void

@@ -15,7 +15,7 @@ class EnsureColaboradorPresencaObra
         $id = session('presenca_obra_colaborador_id');
 
         if (! $id) {
-            return redirect()->route('presenca-obra.identificar');
+            return redirect()->route('medicao.presenca-obra.index');
         }
 
         $colaborador = Colaborador::query()
@@ -27,7 +27,7 @@ class EnsureColaboradorPresencaObra
             session()->forget('presenca_obra_colaborador_id');
 
             return redirect()
-                ->route('presenca-obra.identificar')
+                ->route('medicao.presenca-obra.index')
                 ->withErrors([
                     'identificacao' => 'Sessão expirada ou acesso não liberado. Identifique-se novamente.',
                 ]);

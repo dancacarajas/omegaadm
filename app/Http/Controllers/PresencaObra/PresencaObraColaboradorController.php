@@ -77,6 +77,8 @@ class PresencaObraColaboradorController extends Controller
 
         session(['presenca_obra_colaborador_id' => $colaborador->id]);
 
+        $redirect = $this->redirectAposLogin($request);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
@@ -87,12 +89,11 @@ class PresencaObraColaboradorController extends Controller
                     'matricula' => $colaborador->matricula,
                 ],
                 'cache' => $this->cachePayload($colaborador),
-                'redirect' => route('presenca-obra.index'),
+                'redirect' => $redirect,
             ]);
         }
 
-        return redirect()
-            ->route('presenca-obra.index')
+        return redirect($redirect)
             ->with('success', 'Olá, '.$colaborador->nome.'! Confirme quem subiu para trabalhar.')
             ->with('presenca_obra_offline_bootstrap', [
                 'matricula' => $dados['matricula'],
@@ -211,8 +212,18 @@ class PresencaObraColaboradorController extends Controller
         session()->forget('presenca_obra_colaborador_id');
 
         return redirect()
-            ->route('presenca-obra.identificar')
-            ->with('success', 'Você saiu da confirmação de presença.');
+            ->route('medicao.presenca-obra.index')
+            ->with('success', 'Você saiu da gestão de presenças.');
+    }
+
+    private function redirectAposLogin(Request $request): string
+    {
+        $redirect = $request->input('redirect');
+        if (is_string($redirect) && str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
+            return $redirect;
+        }
+
+        return route('presenca-obra.index', absolute: false);
     }
 
     /**
