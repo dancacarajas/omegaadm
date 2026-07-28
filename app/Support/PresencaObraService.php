@@ -254,6 +254,277 @@ class PresencaObraService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function dadosDashboardPainel(
+        CarbonInterface|string $dataInicio,
+        CarbonInterface|string $dataFim,
+        ?string $centroCusto = null,
+    ): array {
+        $inicio = Carbon::parse($dataInicio)->startOfDay();
+        $fim = Carbon::parse($dataFim)->startOfDay();
+
+        if ($fim->lt($inicio)) {
+            throw ValidationException::withMessages([
+                'data_fim' => 'A data final deve ser igual ou posterior à data inicial.',
+            ]);
+        }
+
+        $diasPeriodo = $inicio->diffInDays($fim) + 1;
+        if ($diasPeriodo > 62) {
+            throw ValidationException::withMessages([
+                'data_fim' => 'O período máximo do painel é de 62 dias.',
+            ]);
+        }
+
+        $inicioYmd = $inicio->toDateString();
+        $fimYmd = $fim->toDateString();
+
+        $baseQuery = MedicaoPresencaObraRegistro::query()
+            ->whereBetween('data', [$inicioYmd, $fimYmd]);
+
+        if ($centroCusto !== null && trim($centroCusto) !== '') {
+            $baseQuery->where('centro_custo', $centroCusto);
+        }
+
+        $totalPresentes = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_PRESENTE)
+            ->count();
+
+        $totalAusentes = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->count();
+
+        $totalRegistros = $totalPresentes + $totalAusentes;
+        $taxaPresenca = $totalRegistros > 0 ? round(($totalPresentes / $totalRegistros) * 100, 1) : 0.0;
+        $taxaAbsenteismo = $totalRegistros > 0 ? round(($totalAusentes / $totalRegistros) * 100, 1) : 0.0;
+
+        $diasComRegistro = (clone $baseQuery)
+            ->distinct()
+            ->count('data');
+
+        $colaboradoresComFalta = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->distinct()
+            ->count('colaborador_id');
+
+        $colaboradoresRegistrados = (clone $baseQuery)
+            ->distinct()
+            ->count('colaborador_id');
+
+        $faltasComJustificativa = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->where(function ($q) {
+                $q->whereNotNull('observacao')->where('observacao', '!=', '');
+            })
+            ->count();
+
+        $faltasComAnexo = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->whereHas('anexos')
+            ->count();
+
+        $faltasSemJustificativa = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->where(function ($q) {
+                $q->where(function ($inner) {
+                    $inner->whereNull('observacao')->orWhere('observacao', '');
+                })->whereDoesntHave('anexos');
+            })
+            ->count();
+
+        $rankingFaltas = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->selectRaw('colaborador_id, COUNT(*) as faltas')
+            ->groupBy('colaborador_id')
+            ->orderByDesc('faltas')
+            ->limit(5)
+            ->get();
+
+        $rankingAtestados = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->whereHas('anexos')
+            ->selectRaw('colaborador_id, COUNT(*) as atestados')
+            ->groupBy('colaborador_id')
+            ->orderByDesc('atestados')
+            ->limit(5)
+            ->get();
+
+        $idsRanking = $rankingFaltas->pluck('colaborador_id')
+            ->merge($rankingAtestados->pluck('colaborador_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $presentesPorColab = $idsRanking === [] ? collect() : (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_PRESENTE)
+            ->whereIn('colaborador_id', $idsRanking)
+            ->selectRaw('colaborador_id, COUNT(*) as presentes')
+            ->groupBy('colaborador_id')
+            ->pluck('presentes', 'colaborador_id');
+
+        $colaboradoresRanking = $idsRanking === []
+            ? collect()
+            : Colaborador::query()
+                ->whereIn('id', $idsRanking)
+                ->get(['id', 'nome', 'matricula', 'cargo', 'centro_custo', 'foto_path'])
+                ->keyBy('id');
+
+        $rankingMaisFaltas = $this->montarRankingDashboard(
+            $rankingFaltas,
+            $colaboradoresRanking,
+            $presentesPorColab,
+            'faltas',
+        );
+
+        $rankingMaisAtestados = $this->montarRankingDashboard(
+            $rankingAtestados,
+            $colaboradoresRanking,
+            collect(),
+            'atestados',
+        );
+
+        $serieRaw = (clone $baseQuery)
+            ->selectRaw('DATE(data) as dia, status, COUNT(*) as total')
+            ->groupBy('dia', 'status')
+            ->orderBy('dia')
+            ->get();
+
+        $seriePorDia = [];
+        foreach ($serieRaw as $row) {
+            $dia = Carbon::parse($row->dia)->toDateString();
+            $seriePorDia[$dia][$row->status] = (int) $row->total;
+        }
+
+        $evolucaoPeriodo = [];
+        for ($cursor = $inicio->copy(); $cursor->lte($fim); $cursor->addDay()) {
+            $dia = $cursor->toDateString();
+            $evolucaoPeriodo[] = [
+                'label' => $cursor->format('d/m'),
+                'presentes' => (int) ($seriePorDia[$dia][MedicaoPresencaObraRegistro::STATUS_PRESENTE] ?? 0),
+                'ausentes' => (int) ($seriePorDia[$dia][MedicaoPresencaObraRegistro::STATUS_AUSENTE] ?? 0),
+            ];
+        }
+
+        $porCentroCusto = (clone $baseQuery)
+            ->selectRaw("COALESCE(NULLIF(centro_custo, ''), 'Sem CC') as cc, status, COUNT(*) as total")
+            ->groupBy('cc', 'status')
+            ->get()
+            ->groupBy('cc')
+            ->map(function ($rows, $cc) {
+                $presentes = (int) ($rows->firstWhere('status', MedicaoPresencaObraRegistro::STATUS_PRESENTE)?->total ?? 0);
+                $ausentes = (int) ($rows->firstWhere('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)?->total ?? 0);
+
+                return [
+                    'centro_custo' => $cc,
+                    'presentes' => $presentes,
+                    'ausentes' => $ausentes,
+                    'total' => $presentes + $ausentes,
+                    'taxa_falta' => ($presentes + $ausentes) > 0
+                        ? round(($ausentes / ($presentes + $ausentes)) * 100, 1)
+                        : 0.0,
+                ];
+            })
+            ->sortByDesc('ausentes')
+            ->values()
+            ->take(10)
+            ->all();
+
+        $confirmadores = (clone $baseQuery)
+            ->selectRaw('confirmado_por_id, COUNT(*) as total')
+            ->groupBy('confirmado_por_id')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        $confirmadorIds = $confirmadores->pluck('confirmado_por_id')->filter()->all();
+        $confirmadoresMap = $confirmadorIds === []
+            ? collect()
+            : Colaborador::query()->whereIn('id', $confirmadorIds)->get(['id', 'nome', 'matricula'])->keyBy('id');
+
+        $rankingSupervisores = $confirmadores->map(function ($row) use ($confirmadoresMap) {
+            $sup = $confirmadoresMap->get((int) $row->confirmado_por_id);
+
+            return [
+                'nome' => $sup?->nome ?? '—',
+                'matricula' => $sup?->matricula,
+                'total' => (int) $row->total,
+            ];
+        })->values()->all();
+
+        $totalAtestados = (clone $baseQuery)
+            ->where('status', MedicaoPresencaObraRegistro::STATUS_AUSENTE)
+            ->whereHas('anexos')
+            ->count();
+
+        $efetivoAtivo = $this->colaboradoresParaConfirmacao(null, $centroCusto)->count();
+
+        return [
+            'dataInicio' => $inicioYmd,
+            'dataFim' => $fimYmd,
+            'centroCusto' => $centroCusto ?? '',
+            'centrosCusto' => $this->centrosCustoAtivos(),
+            'indicadores' => [
+                'dias_periodo' => $diasPeriodo,
+                'dias_com_registro' => $diasComRegistro,
+                'efetivo_ativo' => $efetivoAtivo,
+                'colaboradores_registrados' => $colaboradoresRegistrados,
+                'colaboradores_com_falta' => $colaboradoresComFalta,
+                'total_registros' => $totalRegistros,
+                'total_presentes' => $totalPresentes,
+                'total_ausentes' => $totalAusentes,
+                'taxa_presenca' => $taxaPresenca,
+                'taxa_absenteismo' => $taxaAbsenteismo,
+                'faltas_com_justificativa' => $faltasComJustificativa,
+                'faltas_com_anexo' => $faltasComAnexo,
+                'faltas_sem_justificativa' => $faltasSemJustificativa,
+                'total_atestados' => $totalAtestados,
+            ],
+            'rankingMaisFaltas' => $rankingMaisFaltas,
+            'rankingMaisAtestados' => $rankingMaisAtestados,
+            'porCentroCusto' => $porCentroCusto,
+            'evolucaoPeriodo' => $evolucaoPeriodo,
+            'rankingSupervisores' => $rankingSupervisores,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, object>  $rankingRows
+     * @param  \Illuminate\Support\Collection<int, Colaborador>  $colaboradoresRanking
+     * @param  \Illuminate\Support\Collection<int, int>  $presentesPorColab
+     * @return list<array<string, mixed>>
+     */
+    private function montarRankingDashboard(
+        \Illuminate\Support\Collection $rankingRows,
+        \Illuminate\Support\Collection $colaboradoresRanking,
+        \Illuminate\Support\Collection $presentesPorColab,
+        string $campoValor,
+    ): array {
+        return $rankingRows->map(function ($row) use ($colaboradoresRanking, $presentesPorColab, $campoValor) {
+            $colab = $colaboradoresRanking->get((int) $row->colaborador_id);
+            $valor = (int) $row->{$campoValor};
+            $presentes = (int) ($presentesPorColab[(int) $row->colaborador_id] ?? 0);
+            $marcacoes = $campoValor === 'faltas' ? $valor + $presentes : $valor;
+
+            return [
+                'nome' => $colab?->nome ?? '—',
+                'matricula' => $colab?->matricula,
+                'cargo' => $colab?->cargo,
+                'centro_custo' => $colab?->centro_custo,
+                'foto_url' => $colab?->urlFotoPerfil(),
+                'iniciais' => $colab ? mb_strtoupper(mb_substr($colab->nome, 0, 1)) : '?',
+                'faltas' => $campoValor === 'faltas' ? $valor : 0,
+                'atestados' => $campoValor === 'atestados' ? $valor : 0,
+                'presentes' => $presentes,
+                'valor' => $valor,
+                'taxa_falta' => $campoValor === 'faltas' && $marcacoes > 0
+                    ? round(($valor / $marcacoes) * 100, 1)
+                    : 0.0,
+            ];
+        })->values()->all();
+    }
+
+    /**
      * @return list<string>
      */
     public function centrosCustoAtivos(): array

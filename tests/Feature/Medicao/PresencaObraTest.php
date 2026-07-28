@@ -501,6 +501,104 @@ class PresencaObraTest extends TestCase
             ->assertSee('presenca-justificativa-modal', false);
     }
 
+    public function test_dashboard_presenca_obra_exibe_indicadores(): void
+    {
+        $supervisor = Colaborador::query()->create([
+            'nome' => 'Supervisor Dashboard',
+            'matricula' => 'SUP-DASH',
+            'cpf' => '111.444.777-35',
+            'status' => 'ativo',
+            'presenca_obra_liberado' => true,
+        ]);
+
+        $operario1 = Colaborador::query()->create([
+            'nome' => 'Operario Muitas Faltas',
+            'matricula' => 'OP-F1',
+            'status' => 'ativo',
+            'centro_custo' => '286',
+        ]);
+
+        $operarioAtestado = Colaborador::query()->create([
+            'nome' => 'Operario Com Atestado',
+            'matricula' => 'OP-AT1',
+            'status' => 'ativo',
+            'centro_custo' => '286',
+        ]);
+
+        $operario2 = Colaborador::query()->create([
+            'nome' => 'Operario Presente',
+            'matricula' => 'OP-P1',
+            'status' => 'ativo',
+            'centro_custo' => '286',
+        ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.salvar'), [
+                'data' => '2026-07-25',
+                'itens' => [$operario1->id => ['status' => 'ausente']],
+            ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.salvar'), [
+                'data' => '2026-07-26',
+                'itens' => [$operario1->id => ['status' => 'ausente']],
+            ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.salvar'), [
+                'data' => '2026-07-27',
+                'itens' => [
+                    $operario1->id => ['status' => 'ausente'],
+                    $operario2->id => ['status' => 'presente'],
+                ],
+            ]);
+
+        Storage::fake('public');
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.justificativa.store'), [
+                'data' => '2026-07-25',
+                'colaborador_id' => $operarioAtestado->id,
+                'status' => 'ausente',
+                'observacao' => 'Atestado médico',
+                'anexos' => [
+                    UploadedFile::fake()->create('atestado.pdf', 50, 'application/pdf'),
+                ],
+            ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->post(route('presenca-obra.justificativa.store'), [
+                'data' => '2026-07-26',
+                'colaborador_id' => $operarioAtestado->id,
+                'status' => 'ausente',
+                'anexos' => [
+                    UploadedFile::fake()->create('atestado2.pdf', 50, 'application/pdf'),
+                ],
+            ]);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->get(route('presenca-obra.dashboard', [
+                'data_inicio' => '2026-07-25',
+                'data_fim' => '2026-07-27',
+            ]))
+            ->assertOk()
+            ->assertSee('Painel de gerenciamento', false)
+            ->assertSee('Top 5 — Mais faltas', false)
+            ->assertSee('Top 5 — Atestados', false)
+            ->assertSee('Operario Muitas Faltas', false)
+            ->assertSee('Operario Com Atestado', false)
+            ->assertSee('presenca-ranking-avatar', false)
+            ->assertSee('Período inicial', false);
+
+        $this->withSession(['presenca_obra_colaborador_id' => $supervisor->id])
+            ->get(route('medicao.presenca-obra.dashboard', [
+                'data_inicio' => '2026-07-25',
+                'data_fim' => '2026-07-27',
+            ]))
+            ->assertOk()
+            ->assertSee('Painel de Gerenciamento', false);
+    }
+
     public function test_consulta_exige_login_admin(): void
     {
         $this->get(route('medicao.presenca-obra.consulta'))

@@ -1,3 +1,12 @@
+@php
+    $urlDashboard = request()->routeIs('medicao.presenca-obra.*')
+        ? route('medicao.presenca-obra.dashboard')
+        : route('presenca-obra.dashboard');
+    $dashboardActive = request()->routeIs('presenca-obra.dashboard', 'medicao.presenca-obra.dashboard');
+    $gestaoActive = request()->routeIs('medicao.presenca-obra.index');
+    $confirmarActive = request()->routeIs('presenca-obra.index');
+@endphp
+
 <aside id="presenca-obra-sidebar" data-app-sidebar class="fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 -translate-x-full flex-col border-r border-zinc-200/80 bg-white shadow-xl transition-transform duration-200 ease-out lg:static lg:inset-y-auto lg:left-auto lg:z-auto lg:flex lg:w-[280px] lg:translate-x-0 lg:shadow-none">
     <div class="flex h-16 items-center border-b border-zinc-100 px-4">
         <div class="flex flex-1 justify-center">
@@ -15,11 +24,15 @@
                 <span class="flex-1 text-left">Presença na obra</span>
             </div>
             <div class="mt-2 space-y-1 border-l border-zinc-200 pl-4">
-                <a href="{{ route('medicao.presenca-obra.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('medicao.presenca-obra.index') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                <a href="{{ $urlDashboard }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ $dashboardActive ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                    <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+                    Dashboard
+                </a>
+                <a href="{{ route('medicao.presenca-obra.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ $gestaoActive ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                     <i data-lucide="layout-grid" class="h-4 w-4"></i>
                     Gestão de Presenças
                 </a>
-                <a href="{{ route('presenca-obra.identificar') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ request()->routeIs('presenca-obra.*') ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
+                <a href="{{ route('presenca-obra.index') }}" class="group flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-semibold transition {{ $confirmarActive ? 'bg-brand-burgundy-soft text-brand-burgundy' : 'text-brand-gray hover:bg-brand-gray-soft hover:text-brand-black' }}">
                     <i data-lucide="hard-hat" class="h-4 w-4"></i>
                     Confirmar presença
                 </a>

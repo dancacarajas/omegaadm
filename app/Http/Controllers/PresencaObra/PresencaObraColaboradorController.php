@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -153,6 +154,32 @@ class PresencaObraColaboradorController extends Controller
             'pageCachePayload' => $this->cachePayload($confirmador, $data),
             'offlineBootstrap' => is_array($bootstrap) ? $bootstrap : null,
         ]);
+    }
+
+    public function dashboard(Request $request): View|RedirectResponse
+    {
+        /** @var Colaborador $confirmador */
+        $confirmador = $request->attributes->get('colaborador_presenca_obra');
+
+        [$dataInicio, $dataFim] = $this->parsePeriodoDashboard($request);
+        $centroCusto = $request->input('centro_custo');
+
+        try {
+            $painel = $this->presenca->dadosDashboardPainel(
+                $dataInicio,
+                $dataFim,
+                is_string($centroCusto) && trim($centroCusto) !== '' ? $centroCusto : null,
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('presenca-obra.dashboard', $request->only(['data_inicio', 'data_fim', 'centro_custo']))
+                ->withErrors($e->errors());
+        }
+
+        return view('presenca-obra.dashboard', array_merge($painel, [
+            'confirmador' => $confirmador,
+            'urlFiltro' => route('presenca-obra.dashboard'),
+        ]));
     }
 
     public function salvarJustificativa(Request $request): JsonResponse
@@ -305,6 +332,22 @@ class PresencaObraColaboradorController extends Controller
         }
 
         return route('presenca-obra.index', absolute: false);
+    }
+
+    private function parsePeriodoDashboard(Request $request): array
+    {
+        $fim = $request->input('data_fim', now()->toDateString());
+        $inicio = $request->input('data_inicio', now()->startOfMonth()->toDateString());
+
+        try {
+            $fim = Carbon::parse($fim)->toDateString();
+            $inicio = Carbon::parse($inicio)->toDateString();
+        } catch (\Throwable) {
+            $fim = now()->toDateString();
+            $inicio = now()->startOfMonth()->toDateString();
+        }
+
+        return [$inicio, $fim];
     }
 
     /**

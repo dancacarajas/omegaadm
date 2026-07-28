@@ -117,6 +117,7 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
     Route::get('/modo-offline', [PresencaObraColaboradorController::class, 'modoOffline'])->name('modo-offline');
 
         Route::middleware('presenca-obra.colaborador')->group(function () {
+        Route::get('/dashboard', [PresencaObraColaboradorController::class, 'dashboard'])->name('dashboard');
         Route::get('/app', [PresencaObraColaboradorController::class, 'index'])->name('index');
         Route::post('/justificativa', [PresencaObraColaboradorController::class, 'salvarJustificativa'])->name('justificativa.store');
         Route::post('/salvar', [PresencaObraColaboradorController::class, 'salvar'])->name('salvar');
@@ -128,6 +129,7 @@ Route::middleware(['installed'])->prefix('presenca-obra')->name('presenca-obra.'
 
 Route::middleware(['installed'])->group(function () {
     Route::get('/medicao/presenca-obra', [MedicaoPresencaObraController::class, 'portal'])->name('medicao.presenca-obra.index');
+    Route::get('/medicao/presenca-obra/dashboard', [MedicaoPresencaObraController::class, 'dashboard'])->name('medicao.presenca-obra.dashboard');
     Route::get('/medicao/presenca-obra/anexos/{anexo}/visualizar', [MedicaoPresencaObraController::class, 'visualizarAnexo'])->name('medicao.presenca-obra.anexos.visualizar');
 });
 

@@ -31,6 +31,41 @@ class MedicaoPresencaObraController extends Controller
         ]));
     }
 
+    public function dashboard(Request $request)
+    {
+        if (! session('presenca_obra_colaborador_id')) {
+            return view('medicao.presenca-obra.login');
+        }
+
+        $fim = $request->input('data_fim', now()->toDateString());
+        $inicio = $request->input('data_inicio', now()->startOfMonth()->toDateString());
+        try {
+            $fim = Carbon::parse($fim)->toDateString();
+            $inicio = Carbon::parse($inicio)->toDateString();
+        } catch (\Throwable) {
+            $fim = now()->toDateString();
+            $inicio = now()->startOfMonth()->toDateString();
+        }
+
+        $centroCusto = $request->input('centro_custo');
+
+        try {
+            $painel = $this->presenca->dadosDashboardPainel(
+                $inicio,
+                $fim,
+                is_string($centroCusto) && trim($centroCusto) !== '' ? $centroCusto : null,
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('medicao.presenca-obra.dashboard', $request->only(['data_inicio', 'data_fim', 'centro_custo']))
+                ->withErrors($e->errors());
+        }
+
+        return view('medicao.presenca-obra.dashboard', array_merge($painel, [
+            'urlFiltro' => route('medicao.presenca-obra.dashboard'),
+        ]));
+    }
+
     public function consulta(Request $request)
     {
         return view('medicao.presenca-obra.index', $this->dadosConsulta($request, [
