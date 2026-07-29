@@ -31,18 +31,19 @@
             'stroke' => ['width' => 0],
         ],
         'evolucao' => [
-            'chart' => $chartBase + ['type' => 'area', 'height' => 320, 'stacked' => true],
+            'chart' => $chartBase + ['type' => 'line', 'height' => 320],
             'series' => [
                 ['name' => 'Presenças', 'data' => $presentesEvolucao],
                 ['name' => 'Faltas', 'data' => $ausentesEvolucao],
             ],
             'colors' => ['#059669', '#dc2626'],
-            'stroke' => ['curve' => 'smooth', 'width' => 2],
-            'fill' => ['type' => 'gradient', 'gradient' => ['opacityFrom' => 0.45, 'opacityTo' => 0.08]],
+            'stroke' => ['curve' => 'smooth', 'width' => 3],
+            'markers' => ['size' => 4, 'strokeWidth' => 2, 'hover' => ['size' => 6]],
             'xaxis' => ['categories' => $labelsEvolucao, 'labels' => ['rotate' => -45, 'style' => ['fontSize' => '10px']]],
             'legend' => ['position' => 'top', 'horizontalAlign' => 'left', 'fontWeight' => 800],
             'grid' => ['borderColor' => '#f0f0f0'],
             'dataLabels' => ['enabled' => false],
+            'tooltip' => ['shared' => true, 'intersect' => false],
         ],
         'centro_faltas' => [
             'chart' => $chartBase + ['type' => 'bar', 'height' => 320, 'stacked' => true],
