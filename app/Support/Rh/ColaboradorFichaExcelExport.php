@@ -3,7 +3,6 @@
 namespace App\Support\Rh;
 
 use App\Models\Colaborador;
-use Carbon\Carbon;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -82,112 +81,14 @@ final class ColaboradorFichaExcelExport
      */
     private static function secoes(Colaborador $c): array
     {
-        $statusLabel = match ($c->status) {
-            'ativo' => 'Ativo',
-            'afastado' => 'Afastado INSS',
-            'desligado' => 'Desligado',
-            default => $c->status ? ucfirst((string) $c->status) : '',
-        };
+        return array_map(function (array $secao) {
+            $secao['campos'] = array_map(
+                static fn (array $campo) => [$campo[0], $campo[1] !== '' ? $campo[1] : '—'],
+                $secao['campos'],
+            );
 
-        $mobilizacaoLabel = match ($c->mobilizacao_status) {
-            'postado_sgc' => 'Postado no SGC',
-            'aprovado' => 'Aprovado',
-            'mobilizacao_concluida' => 'Mobilização concluída',
-            'pendente' => 'Pendente',
-            default => $c->mobilizacao_status ? ucfirst(str_replace('_', ' ', (string) $c->mobilizacao_status)) : 'Pendente',
-        };
-
-        return [
-            [
-                'titulo' => '01 — Identificação',
-                'campos' => [
-                    ['Nome completo', self::txt($c->nome)],
-                    ['Matrícula', self::txt($c->matricula)],
-                    ['CPF', self::txt($c->cpf)],
-                    ['RG', self::txt($c->rg)],
-                    ['Telefone', self::txt($c->telefone)],
-                    ['E-mail', self::txt($c->email)],
-                    ['Status no sistema', $statusLabel],
-                    ['Presença na obra liberada', $c->presenca_obra_liberado ? 'Sim' : 'Não'],
-                ],
-            ],
-            [
-                'titulo' => '02 — Dados pessoais',
-                'campos' => [
-                    ['Data de nascimento', self::data($c->data_nascimento)],
-                    ['Local de nascimento', self::txt($c->local_nascimento)],
-                    ['UF de nascimento', self::txt($c->uf_nascimento)],
-                    ['Nacionalidade', self::txt($c->nacionalidade)],
-                    ['Estado civil', self::txt($c->estado_civil)],
-                    ['Cônjuge', self::txt($c->conjuge)],
-                    ['Sexo', self::txt($c->sexo)],
-                    ['Cor', self::txt($c->cor)],
-                    ['Grau de instrução', self::txt($c->grau_instrucao)],
-                    ['Nome do pai', self::txt($c->filiacao_pai)],
-                    ['Nome da mãe', self::txt($c->filiacao_mae)],
-                ],
-            ],
-            [
-                'titulo' => '03 — Documentos e endereço',
-                'campos' => [
-                    ['Carteira profissional', self::txt($c->carteira_profissional)],
-                    ['Série CTPS', self::txt($c->serie_ctps)],
-                    ['Data CTPS', self::data($c->data_ctps)],
-                    ['Vencimento CTPS', self::data($c->vencimento_ctps)],
-                    ['PIS', self::txt($c->pis)],
-                    ['Título de eleitor', self::txt($c->titulo_eleitor)],
-                    ['Zona / Seção', collect([$c->zona_eleitoral, $c->secao_eleitoral])->filter()->join(' / ') ?: '—'],
-                    ['Identidade', self::txt($c->carteira_identidade)],
-                    ['Emissão identidade', self::data($c->emissao_identidade)],
-                    ['Órgão emissor', self::txt($c->orgao_emissor)],
-                    ['Endereço', trim(collect([$c->endereco, $c->numero])->filter()->join(', ')) ?: '—'],
-                    ['Bairro', self::txt($c->bairro)],
-                    ['Cidade / UF', trim(collect([$c->cidade, $c->estado])->filter()->join(' — ')) ?: '—'],
-                    ['CEP', self::txt($c->cep)],
-                ],
-            ],
-            [
-                'titulo' => '04 — Contrato e jornada',
-                'campos' => [
-                    ['Tipo de contrato', self::txt($c->tipo_contrato)],
-                    ['Centro de custo', self::txt($c->centro_custo)],
-                    ['Cargo', self::txt($c->cargo)],
-                    ['CBO', self::txt($c->cbo)],
-                    ['Departamento', self::txt($c->departamento)],
-                    ['Jornada semanal', self::txt($c->jornada_semanal)],
-                    ['Horário (texto)', self::txt($c->horario)],
-                    ['Escala cadastrada', self::txt($c->horarioEscala?->nome)],
-                    ['Local de trabalho', self::txt($c->local_trabalho)],
-                ],
-            ],
-            [
-                'titulo' => '05 — Admissão e contatos',
-                'campos' => [
-                    ['Data de admissão', self::data($c->data_admissao)],
-                    ['Opção FGTS', self::data($c->data_opcao_fgts)],
-                    ['Data de demissão', self::data($c->data_demissao)],
-                    ['Forma de pagamento', self::txt($c->forma_pagamento)],
-                    ['Salário inicial', MoedaBr::format(filled($c->salario_inicial) ? (float) $c->salario_inicial : null) ?: '—'],
-                    ['Almoço', self::txt($c->almoco)],
-                    ['Dependentes', self::txt($c->dependentes)],
-                    ['Emergência — Nome', self::txt($c->contato_emergencia_nome)],
-                    ['Emergência — Telefone', self::txt($c->contato_emergencia_telefone)],
-                    ['Emergência — Parentesco', self::txt($c->contato_emergencia_parentesco)],
-                    ['Observações', self::txt($c->observacoes)],
-                ],
-            ],
-            [
-                'titulo' => '06 — Mobilização SGC Vale',
-                'campos' => [
-                    ['Status', $mobilizacaoLabel],
-                    ['Data postagem SGC', self::data($c->sgc_data_postagem)],
-                    ['Nº solicitação', self::txt($c->sgc_numero_solicitacao)],
-                    ['Data aprovação', self::data($c->sgc_data_aprovacao)],
-                    ['Entrega do crachá', self::data($c->sgc_data_entrega_cracha)],
-                    ['Observações SGC', self::txt($c->sgc_observacoes)],
-                ],
-            ],
-        ];
+            return $secao;
+        }, ColaboradorCadastroExportCampos::secoesFicha($c));
     }
 
     /**
@@ -253,8 +154,8 @@ final class ColaboradorFichaExcelExport
 
         foreach ($colaborador->movimentacoes as $mov) {
             $sheet->fromArray([
-                self::data($mov->data_inicio),
-                self::data($mov->data_fim),
+                ColaboradorCadastroExportCampos::data($mov->data_inicio) ?: '—',
+                ColaboradorCadastroExportCampos::data($mov->data_fim) ?: '—',
                 $mov->tipoLabel(),
                 $mov->situacaoLabel(),
                 $mov->resumoAlteracao(),
@@ -271,27 +172,5 @@ final class ColaboradorFichaExcelExport
         $sheet->getColumnDimension('E')->setWidth(48);
 
         return $row;
-    }
-
-    private static function txt(mixed $value): string
-    {
-        return filled($value) ? trim((string) $value) : '—';
-    }
-
-    private static function data(mixed $value): string
-    {
-        if ($value === null || $value === '') {
-            return '—';
-        }
-
-        if ($value instanceof Carbon) {
-            return $value->format('d/m/Y');
-        }
-
-        try {
-            return Carbon::parse($value)->format('d/m/Y');
-        } catch (\Throwable) {
-            return (string) $value;
-        }
     }
 }

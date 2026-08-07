@@ -3,7 +3,6 @@
 namespace App\Support\Rh;
 
 use App\Models\Colaborador;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -19,45 +18,28 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class EfetivoExcelExport
 {
-    /** @var list<string> */
-    private const HEADERS = [
-        'Matrícula',
-        'Nome',
-        'CPF',
-        'Telefone',
-        'E-mail',
-        'Cargo',
-        'Centro de custo',
-        'Local de trabalho',
-        'Escala de horários',
-        'Data de admissão',
-        'Status',
-        'Mobilização SGC',
-        'Nº solicitação SGC',
-        'Data demissão',
-        'Tipo contrato',
-        'PIS',
-    ];
-
     /**
      * @param  Collection<int, Colaborador>|SupportCollection<int, Colaborador>  $colaboradores
      * @param  array<string, mixed>  $resumo
      */
     public static function download(Collection|SupportCollection $colaboradores, array $resumo = []): StreamedResponse
     {
+        $headers = ColaboradorCadastroExportCampos::headersPlanilhaEfetivo();
+        $colCount = count($headers);
+        $lastCol = self::colLetter($colCount);
+        $statusColIndex = ColaboradorCadastroExportCampos::indiceColunaStatus() + 1;
+        $statusColLetter = self::colLetter($statusColIndex);
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Efetivo');
 
-        self::montarCabecalhoRelatorio($sheet, $resumo);
+        self::montarCabecalhoRelatorio($sheet, $resumo, $lastCol);
 
         $headerRow = 6;
-        $colCount = count(self::HEADERS);
-        $lastCol = self::colLetter($colCount);
 
-        foreach (self::HEADERS as $i => $label) {
-            $cell = self::colLetter($i + 1).$headerRow;
-            $sheet->setCellValue($cell, $label);
+        foreach ($headers as $i => $label) {
+            $sheet->setCellValue(self::colLetter($i + 1).$headerRow, $label);
         }
 
         $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray([
@@ -87,7 +69,7 @@ final class EfetivoExcelExport
 
         $row = $headerRow + 1;
         foreach ($colaboradores as $index => $colaborador) {
-            $sheet->fromArray([self::linhaColaborador($colaborador)], null, 'A'.$row);
+            $sheet->fromArray([ColaboradorCadastroExportCampos::linhaPlanilhaEfetivo($colaborador)], null, 'A'.$row);
 
             $fillRgb = $index % 2 === 0 ? 'FFFFFF' : 'F7E9EE';
             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
@@ -103,10 +85,11 @@ final class EfetivoExcelExport
                 ],
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
                 ],
             ]);
 
-            $statusCell = 'J'.$row;
+            $statusCell = $statusColLetter.$row;
             $status = (string) $colaborador->status;
             if ($status === 'desligado') {
                 $sheet->getStyle($statusCell)->getFont()->getColor()->setRGB('71717A');
@@ -152,10 +135,10 @@ final class EfetivoExcelExport
     /**
      * @param  array<string, mixed>  $resumo
      */
-    private static function montarCabecalhoRelatorio(Worksheet $sheet, array $resumo): void
+    private static function montarCabecalhoRelatorio(Worksheet $sheet, array $resumo, string $lastCol): void
     {
-        $sheet->mergeCells('A1:O1');
-        $sheet->setCellValue('A1', 'OMEGA286 — Cadastro de Efetivo');
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'OMEGA286 — Cadastro de Efetivo (completo)');
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF'], 'name' => 'Calibri'],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '6F1731']],
@@ -163,7 +146,7 @@ final class EfetivoExcelExport
         ]);
         $sheet->getRowDimension(1)->setRowHeight(32);
 
-        $sheet->mergeCells('A2:O2');
+        $sheet->mergeCells("A2:{$lastCol}2");
         $sheet->setCellValue('A2', 'Exportado em '.now()->format('d/m/Y H:i'));
         $sheet->getStyle('A2')->applyFromArray([
             'font' => ['size' => 10, 'color' => ['rgb' => '431020'], 'name' => 'Calibri'],
@@ -175,7 +158,7 @@ final class EfetivoExcelExport
         $desligados = (int) ($resumo['desligados'] ?? 0);
         $afastados = (int) ($resumo['afastados'] ?? 0);
 
-        $sheet->mergeCells('A3:O3');
+        $sheet->mergeCells("A3:{$lastCol}3");
         $sheet->setCellValue(
             'A3',
             "Resumo: {$ativos} ativo(s) · {$total} cadastro(s) · {$desligados} desligado(s) · {$afastados} afastado(s) INSS"
@@ -187,69 +170,6 @@ final class EfetivoExcelExport
 
         $sheet->getRowDimension(4)->setRowHeight(8);
         $sheet->getRowDimension(5)->setRowHeight(8);
-    }
-
-    /**
-     * @return list<string|int|null>
-     */
-    private static function linhaColaborador(Colaborador $c): array
-    {
-        return [
-            $c->matricula ?: '',
-            $c->nome,
-            $c->cpf ?: '',
-            $c->telefone ?: '',
-            $c->email ?: '',
-            $c->cargo ?: '',
-            $c->centro_custo ?: '',
-            $c->local_trabalho ?: '',
-            $c->horarioEscala?->nome ?? '',
-            self::formatarData($c->data_admissao),
-            self::rotuloStatus($c->status),
-            self::rotuloMobilizacao($c->mobilizacao_status),
-            $c->sgc_numero_solicitacao ?: '',
-            self::formatarData($c->data_demissao),
-            $c->tipo_contrato ?: '',
-            $c->pis ?: '',
-        ];
-    }
-
-    private static function rotuloStatus(?string $status): string
-    {
-        return match ($status) {
-            'ativo' => 'Ativo',
-            'afastado' => 'Afastado INSS',
-            'desligado' => 'Desligado',
-            default => $status ? ucfirst($status) : '',
-        };
-    }
-
-    private static function rotuloMobilizacao(?string $status): string
-    {
-        return match ($status) {
-            'postado_sgc' => 'Postado no SGC',
-            'aprovado' => 'Aprovado',
-            'mobilizacao_concluida' => 'Mobilização concluída',
-            'pendente' => 'Pendente',
-            default => $status ? ucfirst(str_replace('_', ' ', $status)) : 'Pendente',
-        };
-    }
-
-    private static function formatarData(mixed $data): string
-    {
-        if ($data === null || $data === '') {
-            return '';
-        }
-
-        if ($data instanceof Carbon) {
-            return $data->format('d/m/Y');
-        }
-
-        try {
-            return Carbon::parse($data)->format('d/m/Y');
-        } catch (\Throwable) {
-            return (string) $data;
-        }
     }
 
     private static function colLetter(int $col): string

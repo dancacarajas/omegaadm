@@ -5,12 +5,25 @@ namespace Tests\Feature\Rh;
 use App\Models\Colaborador;
 use App\Models\HorarioEscala;
 use App\Models\User;
+use App\Support\Rh\ColaboradorCadastroExportCampos;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class EfetivoExportarExcelTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_planilha_efetivo_inclui_todos_campos_do_cadastro(): void
+    {
+        $headers = ColaboradorCadastroExportCampos::headersPlanilhaEfetivo();
+
+        $this->assertGreaterThanOrEqual(60, count($headers));
+        $this->assertContains('RG', $headers);
+        $this->assertContains('Data de nascimento', $headers);
+        $this->assertContains('Salário inicial', $headers);
+        $this->assertContains('Observações SGC', $headers);
+        $this->assertContains('Emergência — Nome', $headers);
+    }
 
     public function test_exporta_planilha_xlsx_do_efetivo(): void
     {
