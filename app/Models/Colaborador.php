@@ -186,6 +186,10 @@ class Colaborador extends Model
             return \App\Support\HorarioEscalaDiasUteis::diaNaData($this, $carbon);
         }
 
+        if ($escala->isRotativaVeiculos()) {
+            return \App\Support\HorarioEscalaVeiculos::diaNaData($this, $carbon);
+        }
+
         if ($escala->isRotativa()) {
             $indice = \App\Support\HorarioEscalaRotativa::indiceDiaCiclo(
                 $escala,

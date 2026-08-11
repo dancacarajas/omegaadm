@@ -2,8 +2,9 @@
     $colaboradoresDisponiveis = $colaboradoresDisponiveis ?? collect();
     $excecoesEscala = $excecoesEscala ?? collect();
     $tipoAtual = $tipoAtual ?? old('tipo', $escala->tipo ?? 'semanal');
-    $mostraGrupo = in_array($tipoAtual, ['rotativa', 'rotativa_semanal', 'rotativa_dias_uteis'], true);
+    $mostraGrupo = in_array($tipoAtual, ['rotativa', 'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos'], true);
     $ehDiasUteis = $tipoAtual === 'rotativa_dias_uteis';
+    $ehVeiculos = $tipoAtual === 'rotativa_veiculos';
     $posicoesDiasUteis = max(2, min(14, (int) old('ciclo_dias', $escala->ciclo_dias ?? 4)));
     $idsNaEscala = collect(old('escala_colaboradores', []))
         ->pluck('colaborador_id')
@@ -19,20 +20,20 @@
     <h2 class="text-lg font-bold text-brand-black">Colaboradores nesta escala</h2>
     <p class="mt-1 text-sm text-brand-gray">
         Marque quem participa da escala.
-        <span data-escala-grupo-ajuda class="{{ $mostraGrupo && ! $ehDiasUteis ? '' : 'hidden' }}">
+        <span data-escala-grupo-ajuda class="{{ $mostraGrupo && ! $ehDiasUteis && ! $ehVeiculos ? '' : 'hidden' }}">
             Depois defina o <strong>grupo 0 ou 1</strong> na coluna à direita.
         </span>
-        <span data-escala-posicao-ajuda class="{{ $ehDiasUteis ? '' : 'hidden' }}">
+        <span data-escala-posicao-ajuda class="{{ ($ehDiasUteis || $ehVeiculos) ? '' : 'hidden' }}">
             Depois defina a <strong>posição no rodízio</strong> (1 = primeiro dia útil do ciclo).
         </span>
     </p>
 
-    <div data-escala-grupo-legenda class="mt-4 grid gap-2 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/30 p-3 text-xs text-brand-black sm:grid-cols-2 {{ $mostraGrupo && ! $ehDiasUteis ? '' : 'hidden' }}">
+    <div data-escala-grupo-legenda class="mt-4 grid gap-2 rounded-lg border border-brand-burgundy/20 bg-brand-burgundy-soft/30 p-3 text-xs text-brand-black sm:grid-cols-2 {{ $mostraGrupo && ! $ehDiasUteis && ! $ehVeiculos ? '' : 'hidden' }}">
         <p><span class="font-bold">Grupo 0</span> — Sem. 1: seg, qua, sex · Sem. 2: ter, qui</p>
         <p><span class="font-bold">Grupo 1</span> — Sem. 1: ter, qui · Sem. 2: seg, qua, sex</p>
     </div>
 
-    <div data-escala-posicao-legenda class="mt-4 rounded-lg border border-sky-200/60 bg-sky-50/60 p-3 text-xs text-brand-black {{ $ehDiasUteis ? '' : 'hidden' }}">
+    <div data-escala-posicao-legenda class="mt-4 rounded-lg border border-sky-200/60 bg-sky-50/60 p-3 text-xs text-brand-black {{ ($ehDiasUteis || $ehVeiculos) ? '' : 'hidden' }}">
         <p>Cada posição trabalha em um dia útil do ciclo. Posição visual <strong>1</strong> = offset interno <strong>0</strong>.</p>
         <p class="mt-1 text-brand-gray">Selecione exatamente a quantidade de posições informada, sem duplicar.</p>
     </div>
@@ -51,7 +52,7 @@
                         <th class="w-24 px-3 py-3">Incluir</th>
                         <th class="px-3 py-3">Colaborador</th>
                         <th data-escala-col-fase-header class="w-[min(320px,45%)] px-3 py-3 text-brand-burgundy {{ $mostraGrupo ? '' : 'hidden' }}">
-                            <span data-escala-col-fase-titulo>{{ $ehDiasUteis ? 'Posição no rodízio' : 'Grupo na rotatividade' }}</span>
+                            <span data-escala-col-fase-titulo>{{ ($ehDiasUteis || $ehVeiculos) ? 'Posição no rodízio' : 'Grupo na rotatividade' }}</span>
                         </th>
                     </tr>
                 </thead>
@@ -76,7 +77,7 @@
                             <td data-escala-col-fase class="align-top px-3 py-3 {{ $mostraGrupo ? '' : 'hidden' }}">
                                 <label class="block">
                                     <span class="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-brand-burgundy lg:sr-only" data-escala-offset-label>
-                                        {{ $ehDiasUteis ? 'Posição' : 'Grupo' }}
+                                        {{ ($ehDiasUteis || $ehVeiculos) ? 'Posição' : 'Grupo' }}
                                     </span>
                                     <select
                                         name="escala_colaboradores[{{ $idx }}][ciclo_offset]"
@@ -85,10 +86,14 @@
                                         data-escala-colab-offset
                                         data-offset-atual="{{ $offset }}"
                                     >
-                                        @if ($ehDiasUteis)
-                                            @for ($p = 0; $p < $posicoesDiasUteis; $p++)
+                                        @if ($ehDiasUteis || $ehVeiculos)
+                                            @for ($p = 0; $p < ($ehVeiculos ? 4 : $posicoesDiasUteis); $p++)
                                                 <option value="{{ $p }}" @selected($offset === $p)>
-                                                    Posição {{ $p + 1 }} — {{ $p === 0 ? 'primeiro' : ($p === 1 ? 'segundo' : ($p + 1).'º') }} dia útil do ciclo
+                                                    @if ($ehVeiculos)
+                                                        Posição {{ $p + 1 }} - {{ ['Micro no dia inicial', 'Caminhonete no dia inicial', 'Micro no dia útil seguinte', 'Caminhonete no dia útil seguinte'][$p] }}
+                                                    @else
+                                                        Posição {{ $p + 1 }} — {{ $p === 0 ? 'primeiro' : ($p === 1 ? 'segundo' : ($p + 1).'º') }} dia útil do ciclo
+                                                    @endif
                                                 </option>
                                             @endfor
                                         @else
@@ -225,10 +230,11 @@
 
             function tipoMostraGrupo() {
                 const v = tipoAtual();
-                return v === 'rotativa' || v === 'rotativa_semanal' || v === 'rotativa_dias_uteis';
+                return v === 'rotativa' || v === 'rotativa_semanal' || v === 'rotativa_dias_uteis' || v === 'rotativa_veiculos';
             }
 
             function quantidadePosicoes() {
+                if (tipoAtual() === 'rotativa_veiculos') return 4;
                 return Math.min(14, Math.max(2, parseInt(posicoesInput?.value || '4', 10)));
             }
 
@@ -247,7 +253,16 @@
                 for (let p = 0; p < quantidade; p++) {
                     const opt = document.createElement('option');
                     opt.value = String(p);
-                    opt.textContent = 'Posição ' + (p + 1) + ' — ' + ordinalDiaUtil(p + 1) + ' dia útil do ciclo';
+                    if (tipoAtual() === 'rotativa_veiculos') {
+                        opt.textContent = [
+                            'Posicao 1 - Micro no dia inicial',
+                            'Posicao 2 - Caminhonete no dia inicial',
+                            'Posicao 3 - Micro no dia util seguinte',
+                            'Posicao 4 - Caminhonete no dia util seguinte',
+                        ][p] || ('Posicao ' + (p + 1));
+                    } else {
+                        opt.textContent = 'Posição ' + (p + 1) + ' — ' + ordinalDiaUtil(p + 1) + ' dia útil do ciclo';
+                    }
                     if (p === valorAtual) {
                         opt.selected = true;
                         temSelecionado = true;
@@ -294,9 +309,10 @@
             function syncOffsetSelects() {
                 const tipo = tipoAtual();
                 const diasUteis = tipo === 'rotativa_dias_uteis';
+                const veiculos = tipo === 'rotativa_veiculos';
                 let houveInvalido = false;
                 document.querySelectorAll('[data-escala-colab-offset]').forEach((select) => {
-                    if (diasUteis) {
+                    if (diasUteis || veiculos) {
                         if (rebuildOffsetOptions(select, quantidadePosicoes())) {
                             houveInvalido = true;
                         }
@@ -304,27 +320,28 @@
                         rebuildGrupoOptions(select);
                     }
                 });
-                alertaPosicao?.classList.toggle('hidden', !(diasUteis && houveInvalido));
+                alertaPosicao?.classList.toggle('hidden', !((diasUteis || veiculos) && houveInvalido));
             }
 
             function syncTipoColab() {
                 const show = tipoMostraGrupo();
                 const diasUteis = tipoAtual() === 'rotativa_dias_uteis';
+                const veiculos = tipoAtual() === 'rotativa_veiculos';
                 [faseHeader].forEach((el) => {
                     if (el) el.classList.toggle('hidden', !show);
                 });
                 faseCells.forEach((el) => {
                     el.classList.toggle('hidden', !show);
                 });
-                legenda?.classList.toggle('hidden', !show || diasUteis);
-                ajuda?.classList.toggle('hidden', !show || diasUteis);
-                posicaoLegenda?.classList.toggle('hidden', !diasUteis);
-                posicaoAjuda?.classList.toggle('hidden', !diasUteis);
+                legenda?.classList.toggle('hidden', !show || diasUteis || veiculos);
+                ajuda?.classList.toggle('hidden', !show || diasUteis || veiculos);
+                posicaoLegenda?.classList.toggle('hidden', !(diasUteis || veiculos));
+                posicaoAjuda?.classList.toggle('hidden', !(diasUteis || veiculos));
                 if (faseTitulo) {
-                    faseTitulo.textContent = diasUteis ? 'Posição no rodízio' : 'Grupo na rotatividade';
+                    faseTitulo.textContent = (diasUteis || veiculos) ? 'Posição no rodízio' : 'Grupo na rotatividade';
                 }
                 document.querySelectorAll('[data-escala-offset-label]').forEach((el) => {
-                    el.textContent = diasUteis ? 'Posição' : 'Grupo';
+                    el.textContent = (diasUteis || veiculos) ? 'Posição' : 'Grupo';
                 });
                 syncOffsetSelects();
                 document.dispatchEvent(new CustomEvent('horario-escala-colab-alterado'));
@@ -371,7 +388,7 @@
                     }
                 });
 
-                if (tipoAtual() === 'rotativa_dias_uteis') {
+                if (tipoAtual() === 'rotativa_dias_uteis' || tipoAtual() === 'rotativa_veiculos') {
                     const qtd = quantidadePosicoes();
                     let invalido = false;
                     document.querySelectorAll('[data-escala-colab-row]').forEach((row) => {

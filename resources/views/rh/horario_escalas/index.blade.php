@@ -38,6 +38,9 @@
                                     @case('rotativa_dias_uteis')
                                         Rotativa por dias úteis
                                         @break
+                                    @case('rotativa_veiculos')
+                                        Rotativa veículos
+                                        @break
                                     @case('rotativa_semanal')
                                         Rotativa semanal
                                         @break
@@ -54,7 +57,9 @@
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-brand-gray">
-                                @if ($escala->tipo === 'rotativa_dias_uteis')
+                                @if ($escala->tipo === 'rotativa_veiculos')
+                                    2 veículos / 4 posições
+                                @elseif ($escala->tipo === 'rotativa_dias_uteis')
                                     {{ $escala->ciclo_dias ?? '—' }} posições
                                 @elseif ($escala->tipo === 'rotativa_semanal')
                                     Revezamento semanal

@@ -1,7 +1,7 @@
 @php
     $tipoAtual = $tipoAtual ?? old('tipo', $escala->tipo ?? 'semanal');
     $numDiasGrade = (int) ($numDiasGrade ?? match ($tipoAtual) {
-        'rotativa_semanal', 'rotativa_dias_uteis' => 1,
+        'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos' => 1,
         'rotativa' => max(2, (int) old('ciclo_dias', $escala->ciclo_dias ?? 2)),
         default => 7,
     });
@@ -9,6 +9,7 @@
     $segundaPadrao = now()->startOfWeek(\Carbon\Carbon::MONDAY)->format('Y-m-d');
     $dataInicioDiasUteis = old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? $segundaPadrao);
     $posicoesDiasUteis = (int) old('ciclo_dias', ($tipoAtual === 'rotativa_dias_uteis' ? ($escala->ciclo_dias ?? 4) : 4));
+    $dataInicioVeiculos = old('data_inicio_ciclo', optional($escala->data_inicio_ciclo)->format('Y-m-d') ?? '2026-08-11');
     $fmtTime = static function ($v) {
         if ($v === null || $v === '') {
             return '';
@@ -46,6 +47,7 @@
                 <option value="semanal" @selected($tipoAtual === 'semanal')>Semanal (fixo: seg, ter, qua…)</option>
                 <option value="rotativa_semanal" @selected($tipoAtual === 'rotativa_semanal')>Rotativa motoristas (alterna a cada semana)</option>
                 <option value="rotativa_dias_uteis" @selected($tipoAtual === 'rotativa_dias_uteis')>Rotativa por dias úteis</option>
+                <option value="rotativa_veiculos" @selected($tipoAtual === 'rotativa_veiculos')>Rotativa veículos (micro-ônibus/caminhonete)</option>
                 <option value="rotativa" @selected($tipoAtual === 'rotativa')>Rotativa (ciclo dia sim / dia não no calendário)</option>
             </select>
             <p class="mt-1.5 text-xs text-brand-gray">
@@ -149,6 +151,55 @@
     </div>
 </div>
 
+<div data-horario-rotativa-veiculos-campos class="overflow-hidden rounded-xl border border-sky-200/80 bg-sky-50/50 p-5 shadow-sm sm:p-6 {{ $tipoAtual === 'rotativa_veiculos' ? '' : 'hidden' }}">
+    <h2 class="text-lg font-bold text-brand-black">Rotativa de veículos</h2>
+    <p class="mt-1 text-sm text-brand-gray">Dois motoristas trabalham por dia útil: um no Micro-ônibus e outro na Caminhonete. Quem trabalhou folga no dia útil seguinte e retorna no outro veículo.</p>
+    <div class="mt-4 rounded-lg border border-sky-200/60 bg-white p-4 text-xs text-brand-gray">
+        <p class="font-bold text-brand-black">Como funciona</p>
+        <ul class="mt-2 list-inside list-disc space-y-1">
+            <li><strong>Dia inicial</strong>: posição 1 no Micro-ônibus e posição 2 na Caminhonete.</li>
+            <li><strong>Dia útil seguinte</strong>: posição 3 no Micro-ônibus e posição 4 na Caminhonete.</li>
+            <li>No retorno, a dupla troca de veículo. Sábado e domingo não avançam o ciclo.</li>
+        </ul>
+    </div>
+    <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div>
+            <label for="data_inicio_ciclo_veiculos" class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Data inicial do ciclo</label>
+            <input type="hidden" name="data_inicio_ciclo" id="data_inicio_ciclo_hidden_veiculos" value="{{ $dataInicioVeiculos }}" @disabled($tipoAtual !== 'rotativa_veiculos')>
+            <input type="date" id="data_inicio_ciclo_veiculos" value="{{ $dataInicioVeiculos }}" data-horario-inicio-veiculos class="mt-2 w-full max-w-[14rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-black shadow-sm focus:border-brand-burgundy focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20">
+            @error('data_inicio_ciclo')
+                <p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+        <div>
+            <label class="block text-xs font-bold uppercase tracking-wide text-brand-gray">Posições fixas no ciclo</label>
+            <input type="number" name="ciclo_dias" value="4" data-horario-posicoes-veiculos class="mt-2 w-full max-w-[8rem] rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-brand-black shadow-sm" readonly @disabled($tipoAtual !== 'rotativa_veiculos')>
+            <p class="mt-1 text-[11px] text-brand-gray">Sempre 4 posições: dois veículos e dois em folga.</p>
+        </div>
+    </div>
+
+    <div class="mt-6">
+        <h3 class="text-sm font-bold text-brand-black">Prévia da escala</h3>
+        <p class="mt-1 text-xs text-brand-gray">Mostra os próximos dias úteis a partir da data inicial. Não salva dados extras no banco.</p>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-sky-200/70 bg-white">
+            <table class="w-full min-w-[760px] border-collapse text-left text-xs">
+                <thead class="border-b border-sky-100 bg-sky-50/80 text-[10px] font-bold uppercase tracking-wide text-brand-gray">
+                    <tr>
+                        <th class="px-3 py-2">Data</th>
+                        <th class="px-2 py-2">Dia</th>
+                        <th class="px-2 py-2">Micro-ônibus</th>
+                        <th class="px-2 py-2">Caminhonete</th>
+                        <th class="px-2 py-2">Folga</th>
+                    </tr>
+                </thead>
+                <tbody data-horario-previa-veiculos-body class="divide-y divide-sky-50">
+                    <tr><td colspan="5" class="px-3 py-4 text-brand-gray">Selecione os colaboradores e as posições para ver a prévia.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div data-horario-rotativa-campos class="overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50/50 p-5 shadow-sm sm:p-6 {{ $tipoAtual === 'rotativa' ? '' : 'hidden' }}">
     <h2 class="text-lg font-bold text-brand-black">Ciclo rotativo</h2>
     <p class="mt-1 text-sm text-brand-gray">Ex.: ciclo de <strong>2 dias</strong> = trabalha 1, folga 1. A data de início define qual dia do calendário é o «dia 1». Na ficha do colaborador, fase <strong>0</strong> ou <strong>1</strong> alterna quem trabalha.</p>
@@ -173,7 +224,7 @@
 <section class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
     <div class="border-b border-zinc-200 bg-gradient-to-br from-white to-brand-gray-soft/70 p-5 sm:p-6">
         <h2 class="text-lg font-bold text-brand-black" data-horario-grade-titulo>
-            @if (in_array($tipoAtual, ['rotativa_semanal', 'rotativa_dias_uteis'], true))
+            @if (in_array($tipoAtual, ['rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos'], true))
                 Horário de trabalho
             @elseif ($tipoAtual === 'rotativa')
                 Grade do ciclo
@@ -182,7 +233,9 @@
             @endif
         </h2>
         <p class="mt-1 text-sm text-brand-gray" data-horario-grade-descricao>
-            @if ($tipoAtual === 'rotativa_dias_uteis')
+            @if ($tipoAtual === 'rotativa_veiculos')
+                Informe o horário usado pelos motoristas nos dias em que estiverem alocados em um veículo.
+            @elseif ($tipoAtual === 'rotativa_dias_uteis')
                 Informe o horário usado nos dias úteis em que o colaborador da vez trabalha (uma única jornada-template).
             @elseif ($tipoAtual === 'rotativa_semanal')
                 Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).
@@ -347,13 +400,17 @@
             const rotativaBox = document.querySelector('[data-horario-rotativa-campos]');
             const rotativaSemanalBox = document.querySelector('[data-horario-rotativa-semanal-campos]');
             const rotativaDiasUteisBox = document.querySelector('[data-horario-rotativa-dias-uteis-campos]');
+            const rotativaVeiculosBox = document.querySelector('[data-horario-rotativa-veiculos-campos]');
             const cicloInput = document.querySelector('[data-horario-ciclo-dias]');
             const posicoesDiasUteisInput = document.querySelector('[data-horario-posicoes-dias-uteis]');
+            const posicoesVeiculosInput = document.querySelector('[data-horario-posicoes-veiculos]');
             const padraoBtn = table.querySelector('[data-horario-padrao]');
             const inicioRotativa = document.getElementById('data_inicio_ciclo');
             const inicioSemanal = document.getElementById('data_inicio_ciclo_semanal');
             const inicioDiasUteis = document.getElementById('data_inicio_ciclo_dias_uteis');
+            const inicioVeiculos = document.getElementById('data_inicio_ciclo_veiculos');
             const previaBody = document.querySelector('[data-horario-previa-dias-uteis-body]');
+            const previaVeiculosBody = document.querySelector('[data-horario-previa-veiculos-body]');
 
             function setDisabled(el, disabled) {
                 if (!el) return;
@@ -366,12 +423,15 @@
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
                 const rotDias = tipo === 'rotativa_dias_uteis';
+                const rotVeiculos = tipo === 'rotativa_veiculos';
                 rotativaBox?.classList.toggle('hidden', !rot);
                 rotativaSemanalBox?.classList.toggle('hidden', !rotSem);
                 rotativaDiasUteisBox?.classList.toggle('hidden', !rotDias);
+                rotativaVeiculosBox?.classList.toggle('hidden', !rotVeiculos);
 
                 const hiddenInicioSemanal = document.getElementById('data_inicio_ciclo_hidden_semanal');
                 const hiddenInicioDiasUteis = document.getElementById('data_inicio_ciclo_hidden_dias_uteis');
+                const hiddenInicioVeiculos = document.getElementById('data_inicio_ciclo_hidden_veiculos');
 
                 setDisabled(inicioRotativa, !rot);
                 setDisabled(cicloInput, !rot);
@@ -380,6 +440,9 @@
                 setDisabled(inicioDiasUteis, !rotDias);
                 setDisabled(hiddenInicioDiasUteis, !rotDias);
                 setDisabled(posicoesDiasUteisInput, !rotDias);
+                setDisabled(inicioVeiculos, !rotVeiculos);
+                setDisabled(hiddenInicioVeiculos, !rotVeiculos);
+                setDisabled(posicoesVeiculosInput, !rotVeiculos);
 
                 if (rotSem && inicioSemanal && hiddenInicioSemanal) {
                     hiddenInicioSemanal.value = inicioSemanal.value;
@@ -387,34 +450,40 @@
                 if (rotDias && inicioDiasUteis && hiddenInicioDiasUteis) {
                     hiddenInicioDiasUteis.value = inicioDiasUteis.value;
                 }
+                if (rotVeiculos && inicioVeiculos && hiddenInicioVeiculos) {
+                    hiddenInicioVeiculos.value = inicioVeiculos.value;
+                }
 
                 const notTh = padraoBtn?.closest('th');
-                if (notTh) notTh.classList.toggle('hidden', rot || rotSem || rotDias);
+                if (notTh) notTh.classList.toggle('hidden', rot || rotSem || rotDias || rotVeiculos);
 
                 const titulo = document.querySelector('[data-horario-grade-titulo]');
                 const desc = document.querySelector('[data-horario-grade-descricao]');
                 if (titulo) {
-                    titulo.textContent = (rotSem || rotDias)
+                    titulo.textContent = (rotSem || rotDias || rotVeiculos)
                         ? 'Horário de trabalho'
                         : (rot ? 'Grade do ciclo' : 'Grade semanal');
                 }
                 if (desc) {
-                    desc.textContent = rotDias
-                        ? 'Informe o horário usado nos dias úteis em que o colaborador da vez trabalha (uma única jornada-template).'
-                        : (rotSem
-                            ? 'Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).'
-                            : (rot
-                                ? 'Preencha os horários de cada dia do ciclo. Deixe vazio o dia de folga.'
-                                : 'Informe entradas e saídas; o total do dia e da semana são calculados automaticamente.'));
+                    desc.textContent = rotVeiculos
+                        ? 'Informe o horario usado pelos motoristas nos dias em que estiverem alocados em um veiculo.'
+                        : (rotDias
+                            ? 'Informe o horário usado nos dias úteis em que o colaborador da vez trabalha (uma única jornada-template).'
+                            : (rotSem
+                                ? 'Informe o horário usado nos dias em que cada motorista trabalha (o sistema define os dias automaticamente).'
+                                : (rot
+                                    ? 'Preencha os horários de cada dia do ciclo. Deixe vazio o dia de folga.'
+                                    : 'Informe entradas e saídas; o total do dia e da semana são calculados automaticamente.')));
                 }
 
                 document.querySelectorAll('[data-escala-col-fase]').forEach((el) => {
-                    el.classList.toggle('hidden', !(rot || rotSem || rotDias));
+                    el.classList.toggle('hidden', !(rot || rotSem || rotDias || rotVeiculos));
                 });
 
                 document.dispatchEvent(new CustomEvent('horario-escala-tipo-alterado', { detail: { tipo } }));
                 updateCicloRows();
                 atualizarPreviaDiasUteis();
+                atualizarPreviaVeiculos();
             }
 
             function updateCicloRows() {
@@ -422,7 +491,8 @@
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
                 const rotDias = tipo === 'rotativa_dias_uteis';
-                const max = (rotSem || rotDias)
+                const rotVeiculos = tipo === 'rotativa_veiculos';
+                const max = (rotSem || rotDias || rotVeiculos)
                     ? 1
                     : (rot ? Math.min(14, Math.max(2, parseInt(cicloInput?.value || '2', 10))) : 7);
                 table.querySelectorAll('tbody tr[data-horario-dia-row]').forEach((tr) => {
@@ -453,6 +523,16 @@
                 const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                 d.setDate(d.getDate() + n);
                 return d;
+            }
+
+            function formatDateBr(date) {
+                return String(date.getDate()).padStart(2, '0') + '/'
+                    + String(date.getMonth() + 1).padStart(2, '0') + '/'
+                    + date.getFullYear();
+            }
+
+            function diaSemanaBr(date) {
+                return ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'][date.getDay()] || '';
             }
 
             function nomesPorPosicao() {
@@ -494,6 +574,47 @@
                 previaBody.innerHTML = html;
             }
 
+            function atualizarPreviaVeiculos() {
+                if (!previaVeiculosBody) return;
+                const tipo = tipoSel?.value || 'semanal';
+                if (tipo !== 'rotativa_veiculos') return;
+
+                const inicio = parseYmd(inicioVeiculos?.value || '');
+                if (!inicio) {
+                    previaVeiculosBody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-brand-gray">Informe a data inicial do ciclo.</td></tr>';
+                    return;
+                }
+
+                const nomes = nomesPorPosicao();
+                const padrao = [
+                    [0, 1, [2, 3]],
+                    [2, 3, [0, 1]],
+                    [1, 0, [2, 3]],
+                    [3, 2, [0, 1]],
+                ];
+                let html = '';
+                let data = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+                let uteis = 0;
+
+                while (uteis < 15) {
+                    if (data.getDay() !== 0 && data.getDay() !== 6) {
+                        const linha = padrao[uteis % 4];
+                        const nome = (offset) => nomes[offset] || ('Posicao ' + (offset + 1));
+                        html += '<tr>'
+                            + '<td class="px-3 py-2 font-bold text-brand-black">' + formatDateBr(data) + '</td>'
+                            + '<td class="px-2 py-2 text-brand-gray">' + diaSemanaBr(data) + '</td>'
+                            + '<td class="px-2 py-2 font-medium text-brand-black">' + nome(linha[0]) + '</td>'
+                            + '<td class="px-2 py-2 font-medium text-brand-black">' + nome(linha[1]) + '</td>'
+                            + '<td class="px-2 py-2 text-brand-gray">' + linha[2].map(nome).join(' / ') + '</td>'
+                            + '</tr>';
+                        uteis++;
+                    }
+                    data = addDays(data, 1);
+                }
+
+                previaVeiculosBody.innerHTML = html;
+            }
+
             window.atualizarPreviaDiasUteisHorario = atualizarPreviaDiasUteis;
 
             tipoSel?.addEventListener('change', applyTipoUi);
@@ -518,7 +639,17 @@
                 }
                 atualizarPreviaDiasUteis();
             });
-            document.addEventListener('horario-escala-colab-alterado', atualizarPreviaDiasUteis);
+            inicioVeiculos?.addEventListener('change', () => {
+                const hidden = document.getElementById('data_inicio_ciclo_hidden_veiculos');
+                if (hidden && inicioVeiculos) {
+                    hidden.value = inicioVeiculos.value;
+                }
+                atualizarPreviaVeiculos();
+            });
+            document.addEventListener('horario-escala-colab-alterado', () => {
+                atualizarPreviaDiasUteis();
+                atualizarPreviaVeiculos();
+            });
 
             function refresh() {
                 let semana = 0;
@@ -611,7 +742,8 @@
                 const rot = tipo === 'rotativa';
                 const rotSem = tipo === 'rotativa_semanal';
                 const rotDias = tipo === 'rotativa_dias_uteis';
-                const max = (rotSem || rotDias)
+                const rotVeiculos = tipo === 'rotativa_veiculos';
+                const max = (rotSem || rotDias || rotVeiculos)
                     ? 1
                     : (rot ? Math.min(14, Math.max(2, parseInt(cicloInput?.value || '2', 10))) : 7);
 
@@ -639,6 +771,12 @@
                         hidden.value = inicioDiasUteis.value;
                     }
                 }
+                if (rotVeiculos && inicioVeiculos) {
+                    const hidden = document.getElementById('data_inicio_ciclo_hidden_veiculos');
+                    if (hidden) {
+                        hidden.value = inicioVeiculos.value;
+                    }
+                }
             }
 
             document.querySelector('form[data-horario-escala-form]')?.addEventListener('submit', prepareFormSubmit);
@@ -646,6 +784,7 @@
             applyTipoUi();
             refresh();
             atualizarPreviaDiasUteis();
+            atualizarPreviaVeiculos();
         })();
     </script>
 @endpush

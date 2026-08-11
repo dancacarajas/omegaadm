@@ -9,6 +9,7 @@ use App\Models\HorarioEscalaDia;
 use App\Models\HorarioEscalaExcecao;
 use App\Support\HorarioEscalaDiasUteis;
 use App\Support\HorarioEscalaSemanalAlternada;
+use App\Support\HorarioEscalaVeiculos;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +45,7 @@ class HorarioEscalaController extends Controller
     {
         $validated = $request->validate($this->rulesCompletas($request));
         $tipo = $validated['tipo'];
-        $this->validarColaboradoresRotativaDiasUteis($request, $tipo, (int) ($validated['ciclo_dias'] ?? HorarioEscalaDiasUteis::POSICOES_PADRAO));
+        $this->validarColaboradoresRotativaPorPosicao($request, $tipo, (int) ($validated['ciclo_dias'] ?? HorarioEscalaDiasUteis::POSICOES_PADRAO));
         $data = $this->extrairCabecalho($validated, $tipo);
         $dias = $this->normalizarDiasInput(
             $validated['dias'] ?? [],
@@ -75,7 +76,7 @@ class HorarioEscalaController extends Controller
     {
         $validated = $request->validate($this->rulesCompletas($request));
         $tipo = $validated['tipo'];
-        $this->validarColaboradoresRotativaDiasUteis($request, $tipo, (int) ($validated['ciclo_dias'] ?? HorarioEscalaDiasUteis::POSICOES_PADRAO));
+        $this->validarColaboradoresRotativaPorPosicao($request, $tipo, (int) ($validated['ciclo_dias'] ?? HorarioEscalaDiasUteis::POSICOES_PADRAO));
         $data = $this->extrairCabecalho($validated, $tipo);
         $dias = $this->normalizarDiasInput(
             $validated['dias'] ?? [],
@@ -96,6 +97,7 @@ class HorarioEscalaController extends Controller
         $template = match (true) {
             $horario_escala->isRotativaSemanal() => HorarioEscalaSemanalAlternada::templateDia($horario_escala),
             $horario_escala->isRotativaDiasUteis() => HorarioEscalaDiasUteis::templateDia($horario_escala),
+            $horario_escala->isRotativaVeiculos() => HorarioEscalaVeiculos::templateDia($horario_escala),
             default => $horario_escala->dias->first(),
         };
 
@@ -120,9 +122,11 @@ class HorarioEscalaController extends Controller
     private function dadosFormulario(HorarioEscala $escala, string $escalaKey = 'escala'): array
     {
         $tipo = old('tipo', $escala->tipo ?? 'semanal');
-        $cicloPadrao = $tipo === 'rotativa_dias_uteis'
-            ? HorarioEscalaDiasUteis::POSICOES_PADRAO
-            : 2;
+        $cicloPadrao = match ($tipo) {
+            'rotativa_dias_uteis' => HorarioEscalaDiasUteis::POSICOES_PADRAO,
+            'rotativa_veiculos' => HorarioEscalaVeiculos::POSICOES,
+            default => 2,
+        };
         $ciclo = (int) old('ciclo_dias', $escala->ciclo_dias ?? $cicloPadrao);
         $numDias = $this->quantidadeDiasGrade($tipo, $ciclo);
 
@@ -155,7 +159,7 @@ class HorarioEscalaController extends Controller
     {
         $out = [];
         for ($d = 1; $d <= $numDias; $d++) {
-            if ($tipo === 'rotativa_semanal' || $tipo === 'rotativa_dias_uteis') {
+            if ($tipo === 'rotativa_semanal' || $tipo === 'rotativa_dias_uteis' || $tipo === 'rotativa_veiculos') {
                 $out[$d] = 'Horário nos dias de trabalho';
             } elseif ($tipo === 'rotativa') {
                 $out[$d] = $numDias === 2
@@ -265,16 +269,18 @@ class HorarioEscalaController extends Controller
         ];
     }
 
-    private function validarColaboradoresRotativaDiasUteis(Request $request, string $tipo, int $cicloDias): void
+    private function validarColaboradoresRotativaPorPosicao(Request $request, string $tipo, int $cicloDias): void
     {
-        if ($tipo !== 'rotativa_dias_uteis') {
+        if (! in_array($tipo, ['rotativa_dias_uteis', 'rotativa_veiculos'], true)) {
             return;
         }
 
-        $quantidade = max(
-            HorarioEscalaDiasUteis::POSICOES_MIN,
-            min(HorarioEscalaDiasUteis::POSICOES_MAX, $cicloDias)
-        );
+        $quantidade = $tipo === 'rotativa_veiculos'
+            ? HorarioEscalaVeiculos::POSICOES
+            : max(
+                HorarioEscalaDiasUteis::POSICOES_MIN,
+                min(HorarioEscalaDiasUteis::POSICOES_MAX, $cicloDias)
+            );
 
         $rows = collect($request->input('escala_colaboradores', []))
             ->filter(fn ($row) => is_array($row) && ! empty($row['colaborador_id']))
@@ -358,10 +364,11 @@ class HorarioEscalaController extends Controller
         $maxOffset = match ($tipo) {
             'rotativa_semanal' => 1,
             'rotativa_dias_uteis' => max(1, (int) ($escala->ciclo_dias ?? HorarioEscalaDiasUteis::POSICOES_PADRAO)) - 1,
+            'rotativa_veiculos' => HorarioEscalaVeiculos::POSICOES - 1,
             default => max(1, (int) ($escala->ciclo_dias ?? 2)) - 1,
         };
 
-        $usaOffset = in_array($tipo, ['rotativa', 'rotativa_semanal', 'rotativa_dias_uteis'], true);
+        $usaOffset = in_array($tipo, ['rotativa', 'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos'], true);
 
         foreach ($vinculados as $colaboradorId => $offset) {
             $data = ['horario_escala_id' => $escala->id];
@@ -432,6 +439,9 @@ class HorarioEscalaController extends Controller
                 min(HorarioEscalaDiasUteis::POSICOES_MAX, (int) $validated['ciclo_dias'])
             );
             $data['data_inicio_ciclo'] = $this->normalizarSegundaInicio($validated['data_inicio_ciclo']);
+        } elseif ($tipo === 'rotativa_veiculos') {
+            $data['ciclo_dias'] = HorarioEscalaVeiculos::POSICOES;
+            $data['data_inicio_ciclo'] = $validated['data_inicio_ciclo'];
         } else {
             $data['ciclo_dias'] = null;
             $data['data_inicio_ciclo'] = null;
@@ -453,7 +463,7 @@ class HorarioEscalaController extends Controller
     private function quantidadeDiasGrade(string $tipo, int $ciclo): int
     {
         return match ($tipo) {
-            'rotativa_semanal', 'rotativa_dias_uteis' => 1,
+            'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos' => 1,
             'rotativa' => max(2, min(14, $ciclo)),
             default => 7,
         };
@@ -466,17 +476,17 @@ class HorarioEscalaController extends Controller
     {
         return [
             'nome' => ['required', 'string', 'max:255'],
-            'tipo' => ['required', Rule::in(['semanal', 'rotativa', 'rotativa_semanal', 'rotativa_dias_uteis'])],
+            'tipo' => ['required', Rule::in(['semanal', 'rotativa', 'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos'])],
             'status' => ['required', Rule::in(['ativo', 'inativo'])],
             'ciclo_dias' => [
-                'required_if:tipo,rotativa,rotativa_dias_uteis',
+                'required_if:tipo,rotativa,rotativa_dias_uteis,rotativa_veiculos',
                 'nullable',
                 'integer',
                 'min:2',
                 'max:14',
             ],
             'data_inicio_ciclo' => [
-                'required_if:tipo,rotativa,rotativa_semanal,rotativa_dias_uteis',
+                'required_if:tipo,rotativa,rotativa_semanal,rotativa_dias_uteis,rotativa_veiculos',
                 'nullable',
                 'date',
             ],
@@ -489,7 +499,7 @@ class HorarioEscalaController extends Controller
     private function diasRules(string $tipo, Request $request): array
     {
         $max = match ($tipo) {
-            'rotativa_semanal', 'rotativa_dias_uteis' => 1,
+            'rotativa_semanal', 'rotativa_dias_uteis', 'rotativa_veiculos' => 1,
             'rotativa' => max(2, min(14, (int) $request->input('ciclo_dias', 2))),
             default => 7,
         };
